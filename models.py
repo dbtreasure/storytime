@@ -18,6 +18,7 @@ class TextSegment(BaseModel):
     # Optional metadata for TTS processing
     voice_hint: Optional[str] = Field(None, description="Suggested voice characteristics (e.g., 'male', 'female', 'elderly')")
     emotion: Optional[str] = Field(None, description="Emotional tone of the text (e.g., 'angry', 'sad', 'cheerful')")
+    instruction: Optional[str] = Field(None, description="TTS instruction for optimal audio delivery")
     
     class Config:
         use_enum_values = True

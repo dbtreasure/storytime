@@ -19,46 +19,114 @@ class ChapterParser:
         self.model = genai.GenerativeModel('gemini-1.5-flash')
     
     def create_parsing_prompt(self, chapter_text: str, chapter_number: int) -> str:
-        """Create a detailed prompt for Gemini to parse the chapter."""
+        """Create a detailed prompt for Gemini to parse the chapter with professional dialogue separation."""
         prompt = f"""
-You are an expert literary analyzer. Parse this chapter from a novel into structured segments for text-to-speech processing.
+### ROLE AND OBJECTIVE ###
+You are a professional audiobook dialogue separator with expertise in industry-standard voice acting practices. Your goal is to parse novel text into precisely structured segments that follow professional audiobook conventions where dialogue and narrative descriptions are read by different voice actors.
 
-CHAPTER {chapter_number} TEXT:
+### INSTRUCTIONS / RESPONSE RULES ###
+
+**Core Separation Rules:**
+• Direct quoted speech ("dialogue text") must be assigned to the CHARACTER who speaks it
+• Dialogue tags (said, replied, whispered, etc.) must be assigned to the NARRATOR
+• Action descriptions within dialogue paragraphs must be assigned to the NARRATOR
+• Pure narrative text must be assigned to the NARRATOR
+• Each segment must contain ONLY text for one speaker type (never mix character + narrator in same segment)
+
+**TTS Instruction Rules:**
+• Generate specific, actionable TTS instructions for each segment based on context and emotion
+• Instructions should guide voice delivery, pacing, tone, and emotional expression
+• Consider the broader narrative context when crafting instructions
+• Make instructions concise but specific (1-2 sentences maximum)
+
+**Text Processing Rules:**
+• Preserve exact punctuation, capitalization, and spacing
+• Maintain strict sequential order of all text
+• Include ALL text from the source - nothing should be omitted
+• Use consistent character names throughout (first occurrence sets the standard)
+
+**Character Identification Rules:**
+• Extract speaker names from dialogue tags: "said Marcus" → speaker is "Marcus"
+• For implied dialogue (no explicit tag), use context clues to identify speaker
+• When unsure of speaker, default to previous established speaker in conversation
+
+**Output Validation Rules:**
+• Return ONLY valid JSON - no explanatory text before or after
+• Each segment must have all required fields populated
+• Sequence numbers must be consecutive starting from 1
+
+### CONTEXT ###
+CHAPTER {chapter_number} TEXT TO PROCESS:
+```
 {chapter_text}
+```
 
-INSTRUCTIONS:
-1. Break the text into segments where each segment is either:
-   - NARRATOR: Descriptive text, scene setting, action descriptions
-   - CHARACTER: Direct speech/dialogue from a specific character
+### EXAMPLES ###
 
-2. For each segment, identify:
-   - The exact text content
-   - Whether it's narrator or character dialogue
-   - If character dialogue, identify the speaker's name
-   - Emotional tone (if apparent): angry, sad, cheerful, calm, dramatic, etc.
-   - Voice characteristics: male/female, young/old, aristocratic/common, etc.
+**Input Text:**
+"Hello there," said Sarah with a smile. "How are you today?"
 
-3. Maintain the exact sequence order of the text.
-
-4. For character names, use the full name as first introduced, then be consistent.
-
-5. Return ONLY a valid JSON array with this exact structure:
+**Correct Professional Separation:**
 [
   {{
-    "text": "exact text content",
-    "speaker_type": "narrator" or "character",
-    "speaker_name": "narrator" or "Character Full Name",
+    "text": ""Hello there,"",
+    "speaker_type": "character",
+    "speaker_name": "Sarah",
     "sequence_number": 1,
-    "voice_hint": "descriptive voice characteristics",
-    "emotion": "emotional tone or null"
+    "voice_hint": "female, friendly",
+    "emotion": "cheerful",
+    "instruction": "Deliver this greeting with a warm, friendly tone, conveying Sarah's cheerful demeanor."
+  }},
+  {{
+    "text": "said Sarah with a smile.",
+    "speaker_type": "narrator", 
+    "speaker_name": "narrator",
+    "sequence_number": 2,
+    "voice_hint": "neutral, descriptive",
+    "emotion": null,
+    "instruction": "Deliver this dialogue tag with a calm, neutral tone that smoothly transitions between character voices."
+  }},
+  {{
+    "text": ""How are you today?"",
+    "speaker_type": "character",
+    "speaker_name": "Sarah", 
+    "sequence_number": 3,
+    "voice_hint": "female, friendly",
+    "emotion": "curious",
+    "instruction": "Voice this question with genuine curiosity and continued warmth, maintaining Sarah's friendly tone."
   }}
 ]
 
-IMPORTANT: 
-- Include ALL text from the chapter
-- Preserve exact quotes and punctuation
-- Be consistent with character names
-- Return ONLY the JSON array, no other text
+### REASONING STEPS ###
+Before generating output, follow this process:
+1. **Scan for Dialogue**: Identify all quoted speech sections
+2. **Identify Speakers**: Extract character names from dialogue tags and context
+3. **Separate Components**: Split mixed paragraphs into dialogue vs. narrative parts
+4. **Assign Voice Types**: Map each segment to character or narrator
+5. **Add Metadata**: Determine voice hints and emotional context
+6. **Validate Sequence**: Ensure all text is included in correct order
+
+### OUTPUT FORMATTING CONSTRAINTS ###
+Return ONLY a valid JSON array with this exact structure:
+[
+  {{
+    "text": "exact text content",
+    "speaker_type": "narrator" or "character", 
+    "speaker_name": "narrator" or "Character Name",
+    "sequence_number": integer,
+    "voice_hint": "descriptive voice characteristics",
+    "emotion": "emotional tone or null",
+    "instruction": "specific TTS delivery instruction"
+  }}
+]
+
+**Critical Requirements:**
+• speaker_type must be exactly "narrator" or "character"
+• speaker_name must be "narrator" for all narrator segments
+• sequence_number must start at 1 and increment by 1
+• voice_hint should describe gender, age, personality traits
+• emotion can be null or descriptive string
+• No markdown formatting, explanations, or additional text
 """
         return prompt
     
@@ -99,7 +167,8 @@ IMPORTANT:
                         speaker_name=str(seg_data.get('speaker_name', 'narrator')),
                         sequence_number=int(seg_data.get('sequence_number', len(segments) + 1)),
                         voice_hint=seg_data.get('voice_hint'),
-                        emotion=seg_data.get('emotion')
+                        emotion=seg_data.get('emotion'),
+                        instruction=seg_data.get('instruction')
                     )
                     segments.append(segment)
                 except Exception as e:
@@ -111,7 +180,8 @@ IMPORTANT:
                         speaker_name='narrator',
                         sequence_number=len(segments) + 1,
                         voice_hint=None,
-                        emotion=None
+                        emotion=None,
+                        instruction=None
                     )
                     segments.append(segment)
             
