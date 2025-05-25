@@ -345,12 +345,13 @@ Return ONLY a valid JSON array with this exact structure:
                                     output_dir: str = "chapter_data") -> tuple[Chapter, CharacterCatalogue]:
         """Parse chapter and analyze characters, saving all data to structured directory."""
         
-        # Create output directory structure
-        output_path = Path(output_dir) / f"chapter_{chapter_number:02d}"
-        output_path.mkdir(parents=True, exist_ok=True)
+        # Create output directory structure - chapter_data as subdirectory
+        base_output_path = Path(output_dir)
+        chapter_data_path = base_output_path / "chapter_data" / f"chapter_{chapter_number:02d}"
+        chapter_data_path.mkdir(parents=True, exist_ok=True)
         
         # Save raw text
-        text_file = output_path / "text.txt"
+        text_file = chapter_data_path / "text.txt"
         text_file.write_text(chapter_text, encoding='utf-8')
         
         # Initialize or use existing character catalogue
@@ -373,16 +374,16 @@ Return ONLY a valid JSON array with this exact structure:
         chapter = self.parse_chapter_text(chapter_text, chapter_number, title)
         
         # Save parsed segments
-        segments_file = output_path / "segments.json"
+        segments_file = chapter_data_path / "segments.json"
         with segments_file.open("w", encoding="utf-8") as f:
             json.dump(chapter.model_dump(), f, indent=2, ensure_ascii=False)
         
         # Save character catalogue
-        characters_file = output_path / "characters.json"
+        characters_file = chapter_data_path / "characters.json"
         with characters_file.open("w", encoding="utf-8") as f:
             json.dump(character_catalogue.model_dump(), f, indent=2, ensure_ascii=False)
         
-        print(f"💾 Chapter data saved to: {output_path}")
+        print(f"💾 Chapter data saved to: {chapter_data_path}")
         print(f"   📄 Raw text: text.txt")
         print(f"   📊 Segments: segments.json")
         print(f"   🎭 Characters: characters.json")

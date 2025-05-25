@@ -55,7 +55,7 @@ def main():
             chapter_text=chapter_text,
             chapter_number=1,
             title="A Business Meeting",
-            output_dir="chapter_data"
+            output_dir="test_audio_output"
         )
         
         print(f"✅ Parsed Chapter {chapter.chapter_number}: {chapter.title}")
@@ -108,7 +108,7 @@ def main():
         
         print(f"\n🎉 Test Complete!")
         print(f"📂 Check the output:")
-        print(f"   📊 Chapter data: chapter_data/chapter_01/")
+        print(f"   📊 Chapter data: test_audio_output/chapter_data/chapter_01/")
         print(f"   🎵 Complete chapter: test_audio_output/{provider_choice}/chapter_01_complete.mp3")
         print(f"   📁 Individual files: test_audio_output/{provider_choice}/chapter_01/")
         print(f"   📝 Playlist: test_audio_output/{provider_choice}/chapter_01/chapter_01_playlist.m3u")

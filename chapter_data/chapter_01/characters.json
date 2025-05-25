@@ -1,0 +1,16 @@
+{
+  "characters": {
+    "Marcus": {
+      "name": "Marcus",
+      "gender": "male",
+      "description": "Appears to be middle-aged, possibly involved in business or art based on conversation, warm and welcoming",
+      "voice_assignments": {}
+    },
+    "Sarah": {
+      "name": "Sarah",
+      "gender": "female",
+      "description": "Appears to be young to middle-aged, possibly an artist or businessperson, nervous but determined",
+      "voice_assignments": {}
+    }
+  }
+}
