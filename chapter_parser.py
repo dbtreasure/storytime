@@ -2,8 +2,10 @@ import google.generativeai as genai
 import json
 import os
 from typing import List, Optional
-from models import TextSegment, Chapter, SpeakerType
+from models import TextSegment, Chapter, SpeakerType, CharacterCatalogue
+from character_analyzer import CharacterAnalyzer
 from dotenv import load_dotenv
+from pathlib import Path
 
 # Load environment variables
 load_dotenv()
@@ -17,6 +19,7 @@ class ChapterParser:
         
         genai.configure(api_key=self.api_key)
         self.model = genai.GenerativeModel('gemini-1.5-flash')
+        self.character_analyzer = CharacterAnalyzer(api_key=self.api_key)
     
     def create_parsing_prompt(self, chapter_text: str, chapter_number: int) -> str:
         """Create a detailed prompt for Gemini to parse the chapter with professional dialogue separation."""
@@ -335,6 +338,56 @@ Return ONLY a valid JSON array with this exact structure:
             chapter_text = f.read()
         
         return self.parse_chapter_text(chapter_text, chapter_number, title)
+
+    def parse_chapter_with_characters(self, chapter_text: str, chapter_number: int, 
+                                    title: Optional[str] = None, 
+                                    character_catalogue: Optional[CharacterCatalogue] = None,
+                                    output_dir: str = "chapter_data") -> tuple[Chapter, CharacterCatalogue]:
+        """Parse chapter and analyze characters, saving all data to structured directory."""
+        
+        # Create output directory structure
+        output_path = Path(output_dir) / f"chapter_{chapter_number:02d}"
+        output_path.mkdir(parents=True, exist_ok=True)
+        
+        # Save raw text
+        text_file = output_path / "text.txt"
+        text_file.write_text(chapter_text, encoding='utf-8')
+        
+        # Initialize or use existing character catalogue
+        if character_catalogue is None:
+            character_catalogue = CharacterCatalogue()
+        
+        # Analyze characters
+        print(f"🎭 Analyzing characters in chapter {chapter_number}...")
+        existing_character_names = character_catalogue.get_character_names()
+        new_characters = self.character_analyzer.analyze_characters(
+            chapter_text, existing_character_names
+        )
+        
+        # Add new characters to catalogue
+        for character in new_characters:
+            character_catalogue.add_character(character)
+            print(f"   ✅ Found new character: {character.name} ({character.gender})")
+        
+        # Parse chapter segments
+        chapter = self.parse_chapter_text(chapter_text, chapter_number, title)
+        
+        # Save parsed segments
+        segments_file = output_path / "segments.json"
+        with segments_file.open("w", encoding="utf-8") as f:
+            json.dump(chapter.model_dump(), f, indent=2, ensure_ascii=False)
+        
+        # Save character catalogue
+        characters_file = output_path / "characters.json"
+        with characters_file.open("w", encoding="utf-8") as f:
+            json.dump(character_catalogue.model_dump(), f, indent=2, ensure_ascii=False)
+        
+        print(f"💾 Chapter data saved to: {output_path}")
+        print(f"   📄 Raw text: text.txt")
+        print(f"   📊 Segments: segments.json")
+        print(f"   🎭 Characters: characters.json")
+        
+        return chapter, character_catalogue
 
 # Convenience function for quick usage
 def parse_chapter(chapter_text: str, chapter_number: int, title: Optional[str] = None, api_key: Optional[str] = None) -> Chapter:

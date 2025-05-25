@@ -3,7 +3,7 @@ import asyncio
 from typing import List, Optional, Dict, Literal, cast
 from pathlib import Path
 import json
-from models import TextSegment, Chapter, SpeakerType
+from models import TextSegment, Chapter, SpeakerType, CharacterCatalogue
 from dotenv import load_dotenv
 from pydub import AudioSegment, effects
 from pydub.silence import detect_leading_silence
@@ -16,10 +16,12 @@ from tts_providers.base import TTSProvider, Voice
 from tts_providers.openai_provider import OpenAIProvider
 from tts_providers.elevenlabs_provider import ElevenLabsProvider
 from voice_utils import get_voices
+from voice_assigner import VoiceAssigner
 
 class TTSGenerator:
-    def __init__(self, provider: Optional[TTSProvider] = None, output_dir: str = "audio_output"):
-        """Initialize with a pluggable TTS provider (OpenAI by default)."""
+    def __init__(self, provider: Optional[TTSProvider] = None, output_dir: str = "audio_output", 
+                 character_catalogue: Optional[CharacterCatalogue] = None):
+        """Initialize with a pluggable TTS provider and character catalogue."""
 
         # Pick provider
         if provider is None:
@@ -34,56 +36,49 @@ class TTSGenerator:
 
         # Create output directory
         self.output_dir = Path(output_dir) / self.provider_name
-        self.output_dir.mkdir(exist_ok=True)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
         
         # Load voice catalogue (cached)
         self._voices: list[Voice] = get_voices(self.provider)
-
-        self._male_pool   = [v.id for v in self._voices if (v.gender or "").lower() == "male"]
-        self._female_pool = [v.id for v in self._voices if (v.gender or "").lower() == "female"]
-        self._neutral_pool = [v.id for v in self._voices if v.id not in self._male_pool + self._female_pool]
-
-        # Simple round-robin indices
-        self._male_idx = 0
-        self._female_idx = 0
-        self._neutral_idx = 0
+        
+        # Initialize voice assigner
+        self.voice_assigner = VoiceAssigner(self.provider_name, self._voices)
+        
+        # Store character catalogue
+        self.character_catalogue = character_catalogue or CharacterCatalogue()
     
     def select_voice(self, segment: TextSegment) -> str:
-        """Select appropriate voice based on segment metadata."""
-        # Narrator gets the first neutral voice or fallback
+        """Select appropriate voice based on character or narrator."""
+        
+        # Narrator gets consistent narrator voice
         if segment.speaker_type == SpeakerType.NARRATOR:
-            if self._neutral_pool:
-                return self._neutral_pool[0]
-            return (self._male_pool or self._female_pool or [self._voices[0].id])[0]
-
-        # For character dialogue, use voice hints if available
-        hint = (segment.voice_hint or "").lower()
-
-        def _next(pool: list[str], idx_attr: str) -> str | None:
-            if not pool:
-                return None
-            idx = getattr(self, idx_attr)
-            voice_id = pool[idx % len(pool)]
-            setattr(self, idx_attr, idx + 1)
-            return voice_id
-
-        if "female" in hint:
-            v = _next(self._female_pool, "_female_idx")
-            if v:
-                return v
-        if "male" in hint:
-            v = _next(self._male_pool, "_male_idx")
-            if v:
-                return v
-
-        # fallback cycle through neutral then male then female
-        v = _next(self._neutral_pool, "_neutral_idx")
-        if v:
-            return v
-        v = _next(self._male_pool, "_male_idx") or _next(self._female_pool, "_female_idx")
-        if v:
-            return v
-        return self._voices[0].id
+            return self.voice_assigner.get_narrator_voice()
+        
+        # Character gets assigned voice based on character catalogue
+        character = self.character_catalogue.get_character(segment.speaker_name)
+        if character:
+            return self.voice_assigner.assign_voice_to_character(character)
+        
+        # Fallback for unknown characters - create temporary character
+        from models import Character
+        temp_character = Character(
+            name=segment.speaker_name,
+            gender=self._infer_gender_from_hint(segment.voice_hint),
+            description=f"Character from chapter dialogue"
+        )
+        self.character_catalogue.add_character(temp_character)
+        return self.voice_assigner.assign_voice_to_character(temp_character)
+    
+    def _infer_gender_from_hint(self, voice_hint: Optional[str]) -> str:
+        """Infer gender from voice hint."""
+        if not voice_hint:
+            return "unknown"
+        hint_lower = voice_hint.lower()
+        if "female" in hint_lower:
+            return "female"
+        elif "male" in hint_lower:
+            return "male"
+        return "unknown"
     
     def get_chapter_dir(self, chapter_number: int) -> Path:
         """Get the directory path for a specific chapter."""
@@ -98,8 +93,6 @@ class TTSGenerator:
         speaker_safe = speaker_safe.replace(' ', '_')
         
         return f"ch{chapter_number:02d}_{segment.sequence_number:03d}_{speaker_safe}.mp3"
-    
-
     
     def generate_audio_for_segment(self, segment: TextSegment, chapter_number: int, chapter: Chapter,
                                  model: str = "gpt-4o-mini-tts", response_format: Literal['mp3', 'opus', 'aac', 'flac', 'wav', 'pcm'] = "mp3") -> str:

@@ -42,18 +42,30 @@ def main():
         return
     
     try:
-        # Step 1: Parse short test chapter with Gemini
-        print("\n📖 Step 1: Parsing test chapter with Gemini API...")
+        # Step 1: Parse short test chapter with character analysis
+        print("\n📖 Step 1: Parsing test chapter with character analysis...")
         parser = ChapterParser()
-        chapter = parser.parse_chapter_from_file(
-            file_path="test_chapter.txt",
+        
+        # Read chapter text
+        with open("test_chapter.txt", 'r', encoding='utf-8') as f:
+            chapter_text = f.read()
+        
+        # Parse with character analysis
+        chapter, character_catalogue = parser.parse_chapter_with_characters(
+            chapter_text=chapter_text,
             chapter_number=1,
-            title="A Business Meeting"
+            title="A Business Meeting",
+            output_dir="chapter_data"
         )
         
         print(f"✅ Parsed Chapter {chapter.chapter_number}: {chapter.title}")
         print(f"   📊 {len(chapter.segments)} segments")
         print(f"   🎭 Characters: {', '.join(chapter.get_unique_characters())}")
+        
+        # Show character analysis results
+        print(f"\n🎭 Character Analysis Results:")
+        for char_name, character in character_catalogue.characters.items():
+            print(f"   {char_name}: {character.gender} - {character.description}")
         
         # Show what was parsed
         print(f"\n📝 Parsed segments:")
@@ -82,35 +94,31 @@ def main():
             print("❌ Audio generation cancelled by user.")
             return
         
-        # Save parsed JSON results for inspection
-        chapter_data = chapter.model_dump()
-        with open("parsed_test_chapter.json", "w", encoding="utf-8") as f:
-            json.dump(chapter_data, f, indent=2, ensure_ascii=False)
-        
-        print(f"💾 Parsed chapter saved to: parsed_test_chapter.json")
-        
         # Build provider instance
         provider_obj = OpenAIProvider() if provider_choice == "openai" else ElevenLabsProvider()
 
-        # Generate all audio files
+        # Generate all audio files with character catalogue
         print(f"\n🎙️  Generating audio for all {len(chapter.segments)} segments using {provider_choice}...")
-        tts_generator = TTSGenerator(provider=provider_obj, output_dir="test_audio_output")
+        tts_generator = TTSGenerator(
+            provider=provider_obj, 
+            output_dir="test_audio_output",
+            character_catalogue=character_catalogue
+        )
         audio_files = tts_generator.generate_audio_for_chapter(chapter)
         
         print(f"\n🎉 Test Complete!")
         print(f"📂 Check the output:")
-        print(f"   📊 Parsed data: parsed_test_chapter.json")
-        print(f"   🎵 Complete chapter: test_audio_output/chapter_01_complete.mp3")
-        print(f"   📁 Individual files: test_audio_output/chapter_01/")
-        print(f"   📝 Playlist: test_audio_output/chapter_01/chapter_01_playlist.m3u")
+        print(f"   📊 Chapter data: chapter_data/chapter_01/")
+        print(f"   🎵 Complete chapter: test_audio_output/{provider_choice}/chapter_01_complete.mp3")
+        print(f"   📁 Individual files: test_audio_output/{provider_choice}/chapter_01/")
+        print(f"   📝 Playlist: test_audio_output/{provider_choice}/chapter_01/chapter_01_playlist.m3u")
         
-        # Show expected voice assignments
-        print(f"\n🎭 Expected voice assignments:")
-        for segment in chapter.segments:
-            voice = tts_generator.select_voice(segment)
-            speaker_type_str = segment.speaker_type.value if hasattr(segment.speaker_type, 'value') else str(segment.speaker_type)
-            speaker_info = f"{segment.speaker_name}" if speaker_type_str == "character" else "Narrator"
-            print(f"   {speaker_info}: {voice}")
+        # Show voice assignments
+        print(f"\n🎭 Voice assignments for {provider_choice}:")
+        print(f"   Narrator: {tts_generator.voice_assigner.get_narrator_voice()}")
+        for char_name, character in character_catalogue.characters.items():
+            voice_id = character.voice_assignments.get(provider_choice, "Not assigned")
+            print(f"   {char_name} ({character.gender}): {voice_id}")
         
     except FileNotFoundError:
         print("❌ test_chapter.txt not found. Make sure the file exists in the current directory.")

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "male_1",
+    "name": "John",
+    "gender": "male",
+    "description": "Male voice 1"
+  },
+  {
+    "id": "male_2",
+    "name": "Mike",
+    "gender": "male",
+    "description": "Male voice 2"
+  },
+  {
+    "id": "female_1",
+    "name": "Sarah",
+    "gender": "female",
+    "description": "Female voice 1"
+  },
+  {
+    "id": "female_2",
+    "name": "Emma",
+    "gender": "female",
+    "description": "Female voice 2"
+  },
+  {
+    "id": "neutral_1",
+    "name": "Alex",
+    "gender": "neutral",
+    "description": "Neutral voice"
+  }
+]

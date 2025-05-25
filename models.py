@@ -1,10 +1,33 @@
 from pydantic import BaseModel, Field
-from typing import Literal, Optional
+from typing import Literal, Optional, Dict
 from enum import Enum
 
 class SpeakerType(str, Enum):
     NARRATOR = "narrator"
     CHARACTER = "character"
+
+class Character(BaseModel):
+    """Represents a character identified in the text."""
+    name: str = Field(..., description="Character's name as it appears in dialogue tags")
+    gender: Optional[str] = Field(None, description="Character's gender (male/female/other/unknown)")
+    description: Optional[str] = Field(None, description="Brief character description")
+    voice_assignments: Dict[str, str] = Field(default_factory=dict, description="Voice ID per TTS provider")
+
+class CharacterCatalogue(BaseModel):
+    """Collection of all characters identified across chapters."""
+    characters: Dict[str, Character] = Field(default_factory=dict, description="Character name -> Character object")
+    
+    def add_character(self, character: Character) -> None:
+        """Add or update a character in the catalogue."""
+        self.characters[character.name] = character
+    
+    def get_character(self, name: str) -> Optional[Character]:
+        """Get character by name."""
+        return self.characters.get(name)
+    
+    def get_character_names(self) -> list[str]:
+        """Get list of all character names."""
+        return list(self.characters.keys())
 
 class TextSegment(BaseModel):
     """
@@ -50,6 +73,7 @@ class Book(BaseModel):
     title: str = Field(..., description="Book title")
     author: str = Field(..., description="Book author")
     chapters: list[Chapter] = Field(..., description="List of chapters")
+    character_catalogue: CharacterCatalogue = Field(default_factory=CharacterCatalogue, description="All characters in the book")
     
     def get_all_characters(self) -> set[str]:
         """Get all unique characters across all chapters."""
