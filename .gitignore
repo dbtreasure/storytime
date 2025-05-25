@@ -11,9 +11,6 @@
 audio_output/
 test_audio_output/
 
-# Parsed JSON files
-parsed_*.json
-
 # Python
 __pycache__/
 *.py[cod]
