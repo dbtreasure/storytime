@@ -1,57 +1,89 @@
-import openai
 import os
 import asyncio
-from typing import List, Optional, Dict, Literal
+from typing import List, Optional, Dict, Literal, cast
 from pathlib import Path
 import json
 from models import TextSegment, Chapter, SpeakerType
 from dotenv import load_dotenv
-from pydub import AudioSegment
+from pydub import AudioSegment, effects
+from pydub.silence import detect_leading_silence
 
 # Load environment variables
 load_dotenv()
 
+# Provider imports
+from tts_providers.base import TTSProvider, Voice
+from tts_providers.openai_provider import OpenAIProvider
+from tts_providers.elevenlabs_provider import ElevenLabsProvider
+from voice_utils import get_voices
+
 class TTSGenerator:
-    def __init__(self, api_key: Optional[str] = None, output_dir: str = "audio_output"):
-        """Initialize the OpenAI TTS client."""
-        self.api_key = api_key or os.getenv('OPENAI_API_KEY')
-        if not self.api_key:
-            raise ValueError("OpenAI API key is required. Set OPENAI_API_KEY environment variable or pass api_key parameter.")
-        
-        # Set up OpenAI client
-        openai.api_key = self.api_key
-        self.client = openai.OpenAI(api_key=self.api_key)
-        
+    def __init__(self, provider: Optional[TTSProvider] = None, output_dir: str = "audio_output"):
+        """Initialize with a pluggable TTS provider (OpenAI by default)."""
+
+        # Pick provider
+        if provider is None:
+            provider_name = os.getenv("TTS_PROVIDER", "openai").lower()
+            if provider_name == "eleven":
+                provider = ElevenLabsProvider()
+            else:
+                provider = OpenAIProvider()
+
+        self.provider: TTSProvider = provider
+        self.provider_name: str = getattr(provider, "name", "openai")
+
         # Create output directory
-        self.output_dir = Path(output_dir)
+        self.output_dir = Path(output_dir) / self.provider_name
         self.output_dir.mkdir(exist_ok=True)
         
-        # Voice mapping for different character types - using proper literal values
-        self.voice_mapping: Dict[str, Literal['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer']] = {
-            "narrator": "echo",  # Neutral, clear voice for narration
-            "male": "onyx",      # Deep male voice
-            "female": "nova",    # Clear female voice  
-            "elderly": "fable",  # Distinguished voice
-            "default": "alloy"   # Fallback voice
-        }
+        # Load voice catalogue (cached)
+        self._voices: list[Voice] = get_voices(self.provider)
+
+        self._male_pool   = [v.id for v in self._voices if (v.gender or "").lower() == "male"]
+        self._female_pool = [v.id for v in self._voices if (v.gender or "").lower() == "female"]
+        self._neutral_pool = [v.id for v in self._voices if v.id not in self._male_pool + self._female_pool]
+
+        # Simple round-robin indices
+        self._male_idx = 0
+        self._female_idx = 0
+        self._neutral_idx = 0
     
-    def select_voice(self, segment: TextSegment) -> Literal['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer']:
+    def select_voice(self, segment: TextSegment) -> str:
         """Select appropriate voice based on segment metadata."""
+        # Narrator gets the first neutral voice or fallback
         if segment.speaker_type == SpeakerType.NARRATOR:
-            return self.voice_mapping["narrator"]
-        
+            if self._neutral_pool:
+                return self._neutral_pool[0]
+            return (self._male_pool or self._female_pool or [self._voices[0].id])[0]
+
         # For character dialogue, use voice hints if available
-        voice_hint = segment.voice_hint or ""
-        voice_hint_lower = voice_hint.lower()
-        
-        if "male" in voice_hint_lower and "female" not in voice_hint_lower:
-            return self.voice_mapping["male"]
-        elif "female" in voice_hint_lower:
-            return self.voice_mapping["female"]
-        elif any(age_word in voice_hint_lower for age_word in ["elderly", "old", "aged"]):
-            return self.voice_mapping["elderly"]
-        else:
-            return self.voice_mapping["default"]
+        hint = (segment.voice_hint or "").lower()
+
+        def _next(pool: list[str], idx_attr: str) -> str | None:
+            if not pool:
+                return None
+            idx = getattr(self, idx_attr)
+            voice_id = pool[idx % len(pool)]
+            setattr(self, idx_attr, idx + 1)
+            return voice_id
+
+        if "female" in hint:
+            v = _next(self._female_pool, "_female_idx")
+            if v:
+                return v
+        if "male" in hint:
+            v = _next(self._male_pool, "_male_idx")
+            if v:
+                return v
+
+        # fallback cycle through neutral then male then female
+        v = _next(self._neutral_pool, "_neutral_idx")
+        if v:
+            return v
+        v = _next(self._male_pool, "_male_idx") or _next(self._female_pool, "_female_idx")
+        if v:
+            return v
+        return self._voices[0].id
     
     def get_chapter_dir(self, chapter_number: int) -> Path:
         """Get the directory path for a specific chapter."""
@@ -88,18 +120,14 @@ class TTSGenerator:
             print(f"   Voice: {voice} | Text: {segment.text[:100]}{'...' if len(segment.text) > 100 else ''}")
             print(f"   Instructions: {instructions[:150]}{'...' if len(instructions) > 150 else ''}")
             
-            # Call OpenAI TTS API with instructions
-            response = self.client.audio.speech.create(
-                model=model,
+            # Delegate synthesis to the provider
+            self.provider.synth(
+                text=segment.text,
                 voice=voice,
-                input=segment.text,
-                response_format=response_format,
-                instructions=instructions
+                style=instructions,
+                format=response_format,
+                out_path=output_path,
             )
-            
-            # Save audio file
-            with open(output_path, 'wb') as f:
-                f.write(response.content)
             
             print(f"   ✅ Saved: {filename}")
             return str(output_path)
@@ -110,7 +138,7 @@ class TTSGenerator:
     
     def generate_audio_for_chapter(self, chapter: Chapter, 
                                  model: str = "gpt-4o-mini-tts", 
-                                 response_format: str = "mp3",
+                                 response_format: Literal['mp3', 'opus', 'aac', 'flac', 'wav', 'pcm'] = "mp3",
                                  max_concurrent: int = 3) -> Dict[str, str]:
         """Generate audio files for all segments in a chapter."""
         print(f"\n🎵 Generating audio for Chapter {chapter.chapter_number}: {chapter.title}")
@@ -176,20 +204,59 @@ class TTSGenerator:
         """Combine all segment audio files into a single chapter MP3."""
         print(f"\n🔗 Stitching audio segments into single chapter file...")
         
-        # Create the final audio
+        # --------------------------------------------------
+        # Timing parameters (tweak as desired)
+        # --------------------------------------------------
+        lead_in_ms   = 200   # uniform lead-in padding per segment
+        tail_ms      = 400   # uniform tail padding per segment
+        crossfade_ms = 30    # overlap (in ms) when SAME speaker continues
+
+        # Create the final audio container
         combined_audio = AudioSegment.empty()
-        
-        # Add each segment in sequence order
+
+        # Add each segment in sequence order with cleanup
+        last_speaker_name: str | None = None
+
         for segment in chapter.segments:
             segment_key = f"segment_{segment.sequence_number}"
-            if segment_key in audio_files:
-                audio_path = audio_files[segment_key]
-                try:
-                    segment_audio = AudioSegment.from_mp3(audio_path)
-                    combined_audio += segment_audio
-                    print(f"   ✅ Added segment {segment.sequence_number}")
-                except Exception as e:
-                    print(f"   ⚠️  Skipping segment {segment.sequence_number}: {e}")
+            if segment_key not in audio_files:
+                continue
+
+            audio_path = audio_files[segment_key]
+
+            try:
+                # Load
+                seg_audio = AudioSegment.from_mp3(audio_path)
+
+                # 1) Trim stray silence
+                seg_audio = cast(AudioSegment, self.strip_silence(seg_audio, thresh=-40, chunk_size=10))
+
+                # 2) Normalise loudness (LUFS-style)
+                seg_audio = effects.normalize(seg_audio)
+
+                # 3) Pad to uniform lead-in / tail
+                seg_audio = (AudioSegment.silent(duration=lead_in_ms) +
+                             seg_audio +
+                             AudioSegment.silent(duration=tail_ms))
+
+                # 4) Append: cross-fade only if SAME speaker continues
+                if len(combined_audio) == 0:
+                    combined_audio = seg_audio
+                else:
+                    if segment.speaker_name == last_speaker_name:
+                        xf_ms = min(crossfade_ms,
+                                     len(seg_audio) // 2,
+                                     len(combined_audio) // 2)
+                        combined_audio = combined_audio.append(seg_audio, crossfade=xf_ms)
+                    else:
+                        combined_audio += seg_audio  # no overlap, keep silence gap
+
+                last_speaker_name = segment.speaker_name
+
+                print(f"   ✅ Added & processed segment {segment.sequence_number}")
+
+            except Exception as e:
+                print(f"   ⚠️  Skipping segment {segment.sequence_number}: {e}")
         
         # Save the combined audio file
         chapter_filename = f"chapter_{chapter.chapter_number:02d}_complete.mp3"
@@ -200,12 +267,26 @@ class TTSGenerator:
         print(f"🎵 Created complete chapter audio: {chapter_filename}")
         return str(chapter_output_path)
     
+    def strip_silence(self, audio: AudioSegment, thresh: int = -40, chunk_size: int = 10) -> AudioSegment:
+        """Remove leading and trailing silence from an ``AudioSegment``.
+
+        Args:
+            audio: The audio to trim.
+            thresh: Volume threshold (in dBFS) below which the signal is
+                     considered silence.
+            chunk_size: Analysis window in milliseconds.
+
+        Returns:
+            The trimmed ``AudioSegment``.
+        """
+        start_trim = detect_leading_silence(audio, silence_threshold=thresh, chunk_size=chunk_size)
+        end_trim = detect_leading_silence(audio.reverse(), silence_threshold=thresh, chunk_size=chunk_size)
+        duration = len(audio)
+        return cast(AudioSegment, audio[start_trim:duration - end_trim])
 
 
 # Convenience function for quick usage
-def generate_chapter_audio(chapter: Chapter, output_dir: str = "audio_output", 
-                         api_key: Optional[str] = None, model: str = "gpt-4o-mini-tts") -> Dict[str, str]:
-    """Quick function to generate audio for a chapter without creating a generator instance."""
-    generator = TTSGenerator(api_key=api_key, output_dir=output_dir)
-    audio_files = generator.generate_audio_for_chapter(chapter, model=model)
-    return audio_files 
+def generate_chapter_audio(chapter: Chapter, output_dir: str = "audio_output", provider: Optional[TTSProvider] = None) -> Dict[str, str]:
+    """Quick convenience function using default or supplied provider."""
+    generator = TTSGenerator(provider=provider, output_dir=output_dir)
+    return generator.generate_audio_for_chapter(chapter) 

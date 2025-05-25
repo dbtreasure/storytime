@@ -1,18 +1,33 @@
-from chapter_parser import ChapterParser
-from tts_generator import TTSGenerator
+import argparse
 import os
 import json
 
+from chapter_parser import ChapterParser
+from tts_generator import TTSGenerator
+
+# Provider classes
+from tts_providers.openai_provider import OpenAIProvider
+from tts_providers.elevenlabs_provider import ElevenLabsProvider
+
 def main():
+    # ---------------- CLI ----------------
+    argp = argparse.ArgumentParser(description="Run short-chapter TTS pipeline with selectable provider.")
+    argp.add_argument("--tts", choices=["openai", "eleven"], default="openai", help="TTS backend to use")
+    args = argp.parse_args()
+
+    provider_choice: str = args.tts.lower()
+
     print("🧪 Testing Complete Pipeline with Short Chapter")
     print("=" * 50)
     
-    # Check API keys
+    # ---------------- API key checks ----------------
     missing_keys = []
     if not os.getenv('GOOGLE_API_KEY'):
         missing_keys.append('GOOGLE_API_KEY')
-    if not os.getenv('OPENAI_API_KEY'):
+    if provider_choice == "openai" and not os.getenv('OPENAI_API_KEY'):
         missing_keys.append('OPENAI_API_KEY')
+    if provider_choice == "eleven" and not os.getenv("ELEVEN_LABS_API_KEY"):
+        missing_keys.append('ELEVEN_LABS_API_KEY')
     
     if missing_keys:
         print("❌ Missing required API keys:")
@@ -20,7 +35,10 @@ def main():
             print(f"   - {key}")
         print("\nPlease set your environment variables:")
         print("   export GOOGLE_API_KEY='your-google-key'")
-        print("   export OPENAI_API_KEY='your-openai-key'")
+        if provider_choice == "openai":
+            print("   export OPENAI_API_KEY='your-openai-key'")
+        else:
+            print("   export ELEVEN_LABS_API_KEY='your-elevenlabs-key'")
         return
     
     try:
@@ -48,11 +66,15 @@ def main():
             if segment.emotion:
                 print(f"      Emotion: {segment.emotion}")
         
-        # Step 2: Generate audio with OpenAI TTS
-        print(f"\n🎵 Step 2: Generating complete audio with OpenAI TTS...")
+        # Step 2: Generate audio with selected TTS
+        print(f"\n🎵 Step 2: Generating complete audio with {provider_choice.title()} TTS...")
         estimated_chars = sum(len(segment.text) for segment in chapter.segments)
-        estimated_cost = (estimated_chars / 1000) * 0.015
-        print(f"⚠️  Estimated cost: ~${estimated_cost:.3f} ({estimated_chars} characters)")
+        cost_per_1k = 0.015 if provider_choice == "openai" else 0.30  # USD per 1k characters
+        estimated_cost = (estimated_chars / 1000) * cost_per_1k
+        print(
+            f"⚠️  Estimated cost: ~${estimated_cost:.3f} "
+            f"({estimated_chars} characters @ ${cost_per_1k:.3f}/1k)"
+        )
         
         # Ask for confirmation
         response = input("Continue with audio generation? (y/N): ").strip().lower()
@@ -67,9 +89,12 @@ def main():
         
         print(f"💾 Parsed chapter saved to: parsed_test_chapter.json")
         
+        # Build provider instance
+        provider_obj = OpenAIProvider() if provider_choice == "openai" else ElevenLabsProvider()
+
         # Generate all audio files
-        print(f"\n🎙️  Generating audio for all {len(chapter.segments)} segments...")
-        tts_generator = TTSGenerator(output_dir="test_audio_output")
+        print(f"\n🎙️  Generating audio for all {len(chapter.segments)} segments using {provider_choice}...")
+        tts_generator = TTSGenerator(provider=provider_obj, output_dir="test_audio_output")
         audio_files = tts_generator.generate_audio_for_chapter(chapter)
         
         print(f"\n🎉 Test Complete!")

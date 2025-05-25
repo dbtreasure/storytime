@@ -130,8 +130,132 @@ Return ONLY a valid JSON array with this exact structure:
 """
         return prompt
     
+    def split_text_into_chunks(self, text: str, max_chunk_size: int = 3000) -> List[str]:
+        """Split long text into smaller chunks that preserve sentence boundaries."""
+        # Always use a conservative chunk size to prevent response truncation
+        safe_chunk_size = min(max_chunk_size, 800)
+        
+        if len(text) <= safe_chunk_size:
+            return [text]
+        
+        # First try to split by paragraphs
+        paragraphs = text.split('\n\n')
+        if len(paragraphs) > 1:
+            # Multiple paragraphs - use paragraph-based chunking
+            chunks = []
+            current_chunk = ""
+            
+            for paragraph in paragraphs:
+                if len(current_chunk) + len(paragraph) + 2 > safe_chunk_size and current_chunk:
+                    chunks.append(current_chunk.strip())
+                    current_chunk = paragraph
+                else:
+                    if current_chunk:
+                        current_chunk += "\n\n" + paragraph
+                    else:
+                        current_chunk = paragraph
+            
+            if current_chunk:
+                chunks.append(current_chunk.strip())
+            
+            return chunks
+        
+        # Single paragraph - split by sentences
+        sentences = text.split('. ')
+        chunks = []
+        current_chunk = ""
+        
+        for i, sentence in enumerate(sentences):
+            # Add period back except for last sentence
+            if i < len(sentences) - 1:
+                sentence += '. '
+            
+            # If adding this sentence would exceed limit, start new chunk
+            if len(current_chunk) + len(sentence) > safe_chunk_size and current_chunk:
+                chunks.append(current_chunk.strip())
+                current_chunk = sentence
+            else:
+                current_chunk += sentence
+        
+        # Add the last chunk
+        if current_chunk:
+            chunks.append(current_chunk.strip())
+        
+        return chunks
+
+    def parse_long_chapter_text(self, chapter_text: str, chapter_number: int, title: Optional[str] = None) -> Chapter:
+        """Parse a long chapter by splitting into chunks and combining results."""
+        chunks = self.split_text_into_chunks(chapter_text)
+        print(f"   📝 Split into {len(chunks)} chunks")
+        
+        all_segments = []
+        sequence_offset = 0
+        
+        for i, chunk in enumerate(chunks, 1):
+            print(f"   🔄 Processing chunk {i}/{len(chunks)} ({len(chunk)} chars)...")
+            
+            try:
+                # Parse this chunk
+                prompt = self.create_parsing_prompt(chunk, chapter_number)
+                response = self.model.generate_content(prompt)
+                response_text = response.text.strip()
+                
+                # Clean up response
+                if response_text.startswith('```json'):
+                    response_text = response_text[7:]
+                if response_text.endswith('```'):
+                    response_text = response_text[:-3]
+                
+                # Parse JSON
+                chunk_segments_data = json.loads(response_text)
+                
+                # Convert to TextSegment objects and adjust sequence numbers
+                for seg_data in chunk_segments_data:
+                    speaker_type_str = seg_data.get('speaker_type', 'narrator')
+                    speaker_type = SpeakerType.NARRATOR if speaker_type_str == 'narrator' else SpeakerType.CHARACTER
+                    
+                    segment = TextSegment(
+                        text=str(seg_data.get('text', '')),
+                        speaker_type=speaker_type,
+                        speaker_name=str(seg_data.get('speaker_name', 'narrator')),
+                        sequence_number=sequence_offset + int(seg_data.get('sequence_number', 1)),
+                        voice_hint=seg_data.get('voice_hint'),
+                        emotion=seg_data.get('emotion'),
+                        instruction=seg_data.get('instruction')
+                    )
+                    all_segments.append(segment)
+                
+                # Update sequence offset for next chunk
+                sequence_offset = len(all_segments)
+                print(f"      ✅ Chunk {i} processed: {len(chunk_segments_data)} segments")
+                
+            except Exception as e:
+                print(f"      ❌ Error processing chunk {i}: {e}")
+                # Continue with other chunks rather than failing completely
+                continue
+        
+        # Re-number all segments to be sequential
+        for i, segment in enumerate(all_segments, 1):
+            segment.sequence_number = i
+        
+        print(f"   ✅ Combined {len(all_segments)} total segments from all chunks")
+        
+        # Create final Chapter object
+        chapter = Chapter(
+            chapter_number=chapter_number,
+            title=title,
+            segments=all_segments
+        )
+        
+        return chapter
+
     def parse_chapter_text(self, chapter_text: str, chapter_number: int, title: Optional[str] = None) -> Chapter:
         """Parse raw chapter text into a structured Chapter object."""
+        # Check if text is too long and needs chunking
+        if len(chapter_text) > 800:  # Lower threshold to prevent response truncation
+            print(f"📚 Chapter is long ({len(chapter_text)} chars), processing in chunks...")
+            return self.parse_long_chapter_text(chapter_text, chapter_number, title)
+        
         prompt = self.create_parsing_prompt(chapter_text, chapter_number)
         
         try:
@@ -143,6 +267,12 @@ Return ONLY a valid JSON array with this exact structure:
                 response_text = response_text[7:]
             if response_text.endswith('```'):
                 response_text = response_text[:-3]
+            
+            # Check if response is truncated (this shouldn't happen with proper chunking)
+            if not response_text.endswith(']'):
+                print(f"⚠️  ERROR: Response truncated. Length: {len(response_text)} chars")
+                print(f"   Last 100 chars: ...{response_text[-100:]}")
+                raise ValueError("Gemini response was truncated - text too long for single processing. Need to implement chunking.")
             
             # Parse JSON response
             segments_data = json.loads(response_text)
