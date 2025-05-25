@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "storytime"
+version = "0.1.0"
+description = "Audiobook parsing and TTS generation toolkit"
+authors = [{ name = "Storytime" }]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.0.0",
+    "google-generativeai>=0.3.0",
+    "openai>=1.82.0",
+    "python-dotenv>=1.0.0",
+    "pydub>=0.25.1",
+    "requests>=2.31.0",
+    "pytest>=7.0.0",
+]
+
+[project.optional-dependencies]
+development = [
+    "pytest",
+    "black",
+    "isort",
+    "flake8",
+    "mypy",
+    "pre-commit",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.isort]
+profile = "black" 

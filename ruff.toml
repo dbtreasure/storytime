@@ -1,0 +1,16 @@
+# Ruff configuration for the Storytime project
+line-length = 100
+# Set to your minimum supported Python version
+target-version = "py311"
+
+[lint]
+# Enable common error, formatting, and best-practice rules
+select = ["E", "F", "I", "UP", "B"]
+ignore = []
+fixable = ["ALL"]
+unfixable = []
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto" 

@@ -9,8 +9,7 @@ PROVIDERS = {
     "eleven": ElevenLabsProvider,
 }
 
-VOICE_CACHE_DIR = Path("voice_cache")
-VOICE_CACHE_DIR.mkdir(exist_ok=True)
+VOICE_CACHE_DIR = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "voice_cache"
 
 def main():
     parser = argparse.ArgumentParser(
