@@ -1,0 +1,16 @@
+{
+  "characters": {
+    "Sarah": {
+      "name": "Sarah",
+      "gender": "female",
+      "description": "A woman who is nervous but determined, likely involved in a business partnership.",
+      "voice_assignments": {}
+    },
+    "Marcus": {
+      "name": "Marcus",
+      "gender": "male",
+      "description": "A man who seems warm and welcoming, likely involved in a business partnership with Sarah.",
+      "voice_assignments": {}
+    }
+  }
+}

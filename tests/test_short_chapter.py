@@ -19,6 +19,7 @@ def main():
     # ---------------- CLI ----------------
     argp = argparse.ArgumentParser(description="Run short-chapter TTS pipeline with selectable provider.")
     argp.add_argument("--tts", choices=["openai", "eleven"], default="openai", help="TTS backend to use")
+    argp.add_argument("--model", choices=["gpt-4o-mini-tts", "tts-1", "tts-1-hd"], default="gpt-4o-mini-tts", help="TTS model to use (OpenAI: tts-1, tts-1-hd, gpt-4o-mini-tts)")
     args = argp.parse_args()
 
     provider_choice: str = args.tts.lower()
@@ -58,7 +59,10 @@ def main():
             chapter_text = f.read()
         
         # Parse with character analysis
-        output_audio_dir = SCRIPT_DIR.parent / "output"
+        if provider_choice == "openai":
+            output_audio_dir = SCRIPT_DIR.parent / "output" / f"openai-{args.model}"
+        else:
+            output_audio_dir = SCRIPT_DIR.parent / "output"
         chapter, character_catalogue = parser.parse_chapter_with_characters(
             chapter_text=chapter_text,
             chapter_number=1,
@@ -87,7 +91,7 @@ def main():
                 print(f"      Emotion: {segment.emotion}")
         
         # Step 2: Generate audio with selected TTS
-        print(f"\n🎵 Step 2: Generating complete audio with {provider_choice.title()} TTS...")
+        print(f"\n🎵 Step 2: Generating complete audio with {provider_choice.title()} TTS (model: {args.model})...")
         estimated_chars = sum(len(segment.text) for segment in chapter.segments)
         cost_per_1k = 0.015 if provider_choice == "openai" else 0.30  # USD per 1k characters
         estimated_cost = (estimated_chars / 1000) * cost_per_1k
@@ -112,7 +116,7 @@ def main():
             output_dir=str(output_audio_dir),
             character_catalogue=character_catalogue
         )
-        audio_files = tts_generator.generate_audio_for_chapter(chapter)
+        audio_files = tts_generator.generate_audio_for_chapter(chapter, model=args.model)
         
         print(f"\n🎉 Test Complete!")
         print(f"📂 Check the output:")

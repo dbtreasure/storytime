@@ -1,0 +1,16 @@
+{
+  "characters": {
+    "Sarah": {
+      "name": "Sarah",
+      "gender": "female",
+      "description": "Appears to be a young professional, possibly an artist or someone involved in a business partnership.  Shows nervousness and conviction.",
+      "voice_assignments": {}
+    },
+    "Marcus": {
+      "name": "Marcus",
+      "gender": "male",
+      "description": "Appears to be a young professional, possibly involved in a business partnership with Sarah.  Comes across as warm and possibly knowledgeable about art.",
+      "voice_assignments": {}
+    }
+  }
+}
