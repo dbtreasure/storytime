@@ -239,7 +239,9 @@ class TTSGenerator:
                 print(f"   ⚠️  Skipping segment {segment.sequence_number}: {exc}")
                 continue
 
-        output = self.output_dir / f"chapter_{chapter.chapter_number:02d}_complete.mp3"
+        # Save the stitched file alongside individual segment files in the chapter directory
+        chapter_dir = self.get_chapter_dir(chapter.chapter_number)
+        output = chapter_dir / f"chapter_{chapter.chapter_number:02d}_complete.mp3"
         combined.export(str(output), format="mp3")
         print(f"🎵 Created complete chapter audio: {output.name}")
         return str(output)

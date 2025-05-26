@@ -104,4 +104,52 @@ def test_get_characters_no_analysis(sample_text):
     # Try to get characters (should 404)
     resp2 = client.get(f"/api/v1/chapters/{chapter_id}/characters")
     assert resp2.status_code == 404
-    assert resp2.json()["detail"] == "No character analysis for this chapter" 
+    assert resp2.json()["detail"] == "No character analysis for this chapter"
+
+
+def test_generate_tts():
+    resp = client.post("/api/v1/tts/generate", json={"text": "Hello world!", "provider": "openai"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "job_id" in data
+    assert data["status"] == "pending"
+
+
+def test_get_job_status():
+    # Create a job first
+    resp = client.post("/api/v1/tts/generate", json={"text": "Hello world!"})
+    job_id = resp.json()["job_id"]
+    resp2 = client.get(f"/api/v1/tts/jobs/{job_id}")
+    assert resp2.status_code == 200
+    data = resp2.json()
+    assert data["job_id"] == job_id
+    assert data["status"] == "pending"
+
+
+def test_download_job_audio():
+    # Create a job first
+    resp = client.post("/api/v1/tts/generate", json={"text": "Hello world!"})
+    job_id = resp.json()["job_id"]
+    resp2 = client.get(f"/api/v1/tts/jobs/{job_id}/download")
+    assert resp2.status_code == 400
+    assert resp2.json()["detail"] == "Audio not ready"
+
+
+def test_cancel_job():
+    # Create a job first
+    resp = client.post("/api/v1/tts/generate", json={"text": "Hello world!"})
+    job_id = resp.json()["job_id"]
+    resp2 = client.delete(f"/api/v1/tts/jobs/{job_id}")
+    assert resp2.status_code == 200
+    data = resp2.json()
+    assert data["job_id"] == job_id
+    assert data["status"] == "canceled"
+
+
+def test_job_not_found():
+    resp = client.get("/api/v1/tts/jobs/doesnotexist")
+    assert resp.status_code == 404
+    resp2 = client.get("/api/v1/tts/jobs/doesnotexist/download")
+    assert resp2.status_code == 404
+    resp3 = client.delete("/api/v1/tts/jobs/doesnotexist")
+    assert resp3.status_code == 404 
