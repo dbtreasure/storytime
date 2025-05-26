@@ -9,6 +9,10 @@ class Settings(BaseSettings):
 
     env: str = Field("dev", description="Runtime environment, e.g. dev or prod")
     log_level: str = Field("INFO", description="Logging level")
+    google_api_key: str | None = None
+    openai_api_key: str | None = None
+    eleven_labs_api_key: str | None = None
+    figma_api_key: str | None = None
 
     model_config = {
         "env_file": ".env",

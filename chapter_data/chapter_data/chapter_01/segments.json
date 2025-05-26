@@ -1,0 +1,42 @@
+{
+  "chapter_number": 1,
+  "title": null,
+  "segments": [
+    {
+      "text": "\"Hello!\"",
+      "speaker_type": "character",
+      "speaker_name": "Marcus",
+      "sequence_number": 1,
+      "voice_hint": "male, warm",
+      "emotion": "cheerful",
+      "instruction": "Deliver this greeting with a bright and friendly tone."
+    },
+    {
+      "text": "said Marcus.",
+      "speaker_type": "narrator",
+      "speaker_name": "narrator",
+      "sequence_number": 2,
+      "voice_hint": "neutral, descriptive",
+      "emotion": null,
+      "instruction": "Read this dialogue tag with a neutral tone, setting the scene."
+    },
+    {
+      "text": "'Good morning.'",
+      "speaker_type": "character",
+      "speaker_name": "She",
+      "sequence_number": 3,
+      "voice_hint": "female, polite",
+      "emotion": "calm",
+      "instruction": "Deliver this response in a polite and calm tone."
+    },
+    {
+      "text": "The sun was shining.",
+      "speaker_type": "narrator",
+      "speaker_name": "narrator",
+      "sequence_number": 4,
+      "voice_hint": "neutral, descriptive",
+      "emotion": null,
+      "instruction": "Read this description with a peaceful and slightly warm tone."
+    }
+  ]
+}
