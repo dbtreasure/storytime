@@ -3,13 +3,13 @@
   "title": null,
   "segments": [
     {
-      "text": "Hello, this is a test of the TTS system.",
+      "text": "Quick test!",
       "speaker_type": "narrator",
       "speaker_name": "narrator",
       "sequence_number": 1,
       "voice_hint": "neutral, clear",
       "emotion": null,
-      "instruction": "Read this introductory statement with a clear, neutral tone and a moderate pace."
+      "instruction": "Read this as a brief, neutral statement."
     }
   ]
 }
