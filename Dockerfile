@@ -11,7 +11,7 @@ WORKDIR /app
 COPY pyproject.toml /app/
 
 # Install dependencies
-RUN pip install --no-cache-dir fastapi uvicorn[standard] pydantic[email] pydantic-settings
+RUN pip install --no-cache-dir 'fastapi[all]' uvicorn[standard] pydantic[email] pydantic-settings
 
 # Copy application code
 COPY src /app/src
