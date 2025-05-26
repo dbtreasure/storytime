@@ -1,16 +1,3 @@
 {
-  "characters": {
-    "Marcus": {
-      "name": "Marcus",
-      "gender": "male",
-      "description": "Unknown age and personality traits",
-      "voice_assignments": {}
-    },
-    "She": {
-      "name": "She",
-      "gender": "female",
-      "description": "Unknown age and personality traits",
-      "voice_assignments": {}
-    }
-  }
+  "characters": {}
 }
