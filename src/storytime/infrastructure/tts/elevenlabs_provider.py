@@ -18,7 +18,8 @@ class ElevenLabsProvider(TTSProvider):
     name: str = "eleven"
 
     def __init__(self, api_key: str | None = None) -> None:
-        key = api_key or os.getenv("ELEVEN_API_KEY")
+        # Accept both ELEVEN_API_KEY (preferred) and ELEVEN_LABS_API_KEY for compatibility
+        key = api_key or os.getenv("ELEVEN_LABS_API_KEY")
         if not key:
             raise ValueError(
                 "ElevenLabs API key not found. Set ELEVEN_API_KEY or pass api_key."
@@ -48,7 +49,7 @@ class ElevenLabsProvider(TTSProvider):
         if format != "mp3":  # Simplified, actual mapping is more complex
             print(f"Warning: ElevenLabs primarily uses MP3. Format '{format}' may not be optimal.")
 
-        audio_iterator = self.client.generate(
+        audio_iterator = self.client.generate(  # type: ignore[attr-defined]
             text=text,
             voice=voice,  # This is the Voice ID string
             model=model_id,

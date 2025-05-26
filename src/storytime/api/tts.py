@@ -83,10 +83,14 @@ def run_tts_job(job_id: str, request: GenerateRequest):
 
 @router.post("/generate")
 def generate_tts(request: GenerateRequest, background_tasks: BackgroundTasks):
+    # Validate provider
+    provider_name = (request.provider or "openai").lower()
+    if provider_name not in ("openai", "elevenlabs", "eleven"):
+        raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider_name}")
     job_id = str(uuid.uuid4())
     job = TTSJob(job_id=job_id, status=JobStatus.PENDING)
     JOBS[job_id] = job
-    cost = estimate_cost_by_characters(request.chapter_text, request.provider or "openai")
+    cost = estimate_cost_by_characters(request.chapter_text, provider_name)
     background_tasks.add_task(run_tts_job, job_id, request)
     return {"job_id": job_id, "status": job.status, "estimated_cost": cost}
 
