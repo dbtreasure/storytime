@@ -5,7 +5,6 @@ import uuid
 import asyncio
 
 from .auth import get_api_key
-from ..services.chapter_parser import ChapterParser
 from ..services.character_analyzer import CharacterAnalyzer
 from ..workflows.chapter_parsing import workflow as chapter_workflow
 

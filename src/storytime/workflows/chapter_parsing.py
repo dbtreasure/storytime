@@ -1,6 +1,5 @@
 from junjo import BaseState, BaseStore, Node, Graph, Workflow, Edge
 from storytime.models import Chapter, CharacterCatalogue, TextSegment
-from storytime.services.chapter_parser import ChapterParser
 from storytime.services.character_analyzer import CharacterAnalyzer
 from typing import Optional
 from pathlib import Path
@@ -56,12 +55,13 @@ class ParseSegmentsNode(Node[ChapterParsingStore]):
         state = await store.get_state()
         if not state.chapter_text:
             raise ValueError("chapter_text must be loaded before parsing segments.")
-        parser = ChapterParser()
-        chapter = parser.parse_chapter_text(state.chapter_text, state.chapter_number or 1, state.title)
-        await store.set_state({
-            "chapter": chapter,
-            "segments": chapter.segments
-        })
+        # Directly implement the parsing logic here or call the new workflow logic
+        # For now, raise NotImplementedError to signal this needs to be replaced
+        raise NotImplementedError("Parsing logic should be implemented here using Junjo-native approach.")
+        # await store.set_state({
+        #     "chapter": chapter,
+        #     "segments": chapter.segments
+        # })
 
 class SaveResultsNode(Node[ChapterParsingStore]):
     """Node to save parsed results to disk (optional/debug)."""
