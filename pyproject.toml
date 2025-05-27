@@ -24,7 +24,8 @@ dependencies = [
     "elevenlabs>=0.2.27",
     "python-multipart>=0.0.6",
     "httpx>=0.27.0",
-    "numpy>=1.26.0"
+    "numpy>=1.26.0",
+    "junjo>=0.1.0"
 ]
 
 [project.optional-dependencies]
