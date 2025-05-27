@@ -2,10 +2,11 @@ from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, status,
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 import uuid
+import asyncio
 
 from .auth import get_api_key
-from ..services.chapter_parser import ChapterParser
 from ..services.character_analyzer import CharacterAnalyzer
+from ..workflows.chapter_parsing import workflow as chapter_workflow
 
 router = APIRouter(prefix="/api/v1/chapters", tags=["Chapters"])
 
@@ -29,20 +30,32 @@ async def parse_chapter(
     request: ParseRequest,
     api_key: str = Depends(get_api_key),
 ):
-    parser = ChapterParser()
-    chapter = parser.parse_chapter_text(request.text, request.chapter_number or 1)
+    # Set up workflow state
+    await chapter_workflow.store.set_state({
+        "chapter_text": request.text,
+        "chapter_number": request.chapter_number or 1,
+    })
+    await chapter_workflow.execute()
+    state = await chapter_workflow.store.get_state()
+    chapter = state.chapter
     chapter_id = str(uuid.uuid4())
     CHAPTERS[chapter_id] = {"chapter": chapter, "characters": None}
-    return {"chapter_id": chapter_id, "segments": chapter.segments}
+    return {"chapter_id": chapter_id, "segments": chapter.segments if chapter else []}
 
 @router.post("/parse-with-characters", response_model=CharacterResponse)
 async def parse_with_characters(
     request: ParseRequest,
     api_key: str = Depends(get_api_key),
 ):
-    parser = ChapterParser()
-    chapter, character_catalogue = parser.parse_chapter_with_characters(request.text, request.chapter_number or 1)
-    characters = [c.model_dump() for c in character_catalogue.characters.values()]
+    await chapter_workflow.store.set_state({
+        "chapter_text": request.text,
+        "chapter_number": request.chapter_number or 1,
+    })
+    await chapter_workflow.execute()
+    state = await chapter_workflow.store.get_state()
+    chapter = state.chapter
+    catalogue = state.character_catalogue
+    characters = [c.model_dump() for c in catalogue.characters.values()] if catalogue else []
     chapter_id = str(uuid.uuid4())
     CHAPTERS[chapter_id] = {"chapter": chapter, "characters": characters}
     return {"chapter_id": chapter_id, "characters": characters}
@@ -54,11 +67,16 @@ async def parse_chapter_file(
     api_key: str = Depends(get_api_key),
 ):
     text = (await file.read()).decode()
-    parser = ChapterParser()
-    chapter = parser.parse_chapter_text(text, chapter_number or 1)
+    await chapter_workflow.store.set_state({
+        "chapter_text": text,
+        "chapter_number": chapter_number or 1,
+    })
+    await chapter_workflow.execute()
+    state = await chapter_workflow.store.get_state()
+    chapter = state.chapter
     chapter_id = str(uuid.uuid4())
     CHAPTERS[chapter_id] = {"chapter": chapter, "characters": None}
-    return {"chapter_id": chapter_id, "segments": chapter.segments}
+    return {"chapter_id": chapter_id, "segments": chapter.segments if chapter else []}
 
 @router.get("/{chapter_id}")
 async def get_chapter(
@@ -69,7 +87,7 @@ async def get_chapter(
     if not data:
         raise HTTPException(status_code=404, detail="Chapter not found")
     chapter = data["chapter"]
-    return {"chapter_id": chapter_id, "segments": chapter.segments}
+    return {"chapter_id": chapter_id, "segments": chapter.segments if chapter else []}
 
 @router.get("/{chapter_id}/characters")
 async def get_characters(

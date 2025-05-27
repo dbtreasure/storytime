@@ -11,6 +11,7 @@ if str(SRC_DIR) not in sys.path:
 
 from storytime.services import ChapterParser, TTSGenerator
 from storytime.models import Chapter # For type hinting if needed
+from storytime.workflows.chapter_parsing import workflow as chapter_workflow
 
 def main():
     print("🚀 Testing Complete Pipeline: Text → Structured Data → Audio")
@@ -33,14 +34,26 @@ def main():
         return
     
     try:
-        # Step 1: Parse chapter with Gemini
-        print("\n📖 Step 1: Parsing chapter text with Gemini API...")
-        parser = ChapterParser()
-        chapter = parser.parse_chapter_from_file(
-            file_path= SCRIPT_DIR / "chapter_1.txt",
-            chapter_number=1,
-            title="Anna Pavlovna's Salon"
-        )
+        # Step 1: Parse chapter with Junjo workflow
+        print("\n📖 Step 1: Parsing chapter text with Junjo workflow...")
+        file_path = SCRIPT_DIR / "chapter_1.txt"
+        with open(file_path, "r", encoding="utf-8") as f:
+            chapter_text = f.read()
+        import asyncio
+        async def run_workflow():
+            await chapter_workflow.store.set_state({
+                "chapter_text": chapter_text,
+                "chapter_number": 1,
+                "title": "Anna Pavlovna's Salon",
+            })
+            await chapter_workflow.execute()
+            state = await chapter_workflow.store.get_state()
+            return state.chapter
+        chapter = asyncio.run(run_workflow())
+        
+        if not chapter:
+            print("❌ No chapter parsed.")
+            return
         
         print(f"✅ Parsed Chapter {chapter.chapter_number}: {chapter.title}")
         print(f"   📊 {len(chapter.segments)} segments")
@@ -56,7 +69,7 @@ def main():
             print("❌ Audio generation cancelled by user.")
             return
         
-        tts_generator = TTSGenerator(output_dir= SCRIPT_DIR / "audio_output")
+        tts_generator = TTSGenerator(output_dir=str(SCRIPT_DIR / "audio_output"))
         
         # Generate audio for first 3 segments as a test
         print("🧪 Testing with first 3 segments...")

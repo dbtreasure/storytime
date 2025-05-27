@@ -9,8 +9,7 @@ SRC_DIR = SCRIPT_DIR.parent / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from storytime.services import ChapterParser
-from storytime.models import Chapter
+from storytime.workflows.chapter_parsing import workflow as chapter_workflow
 
 def main():
     # Check if API key is set
@@ -21,16 +20,26 @@ def main():
         return
     
     try:
-        # Initialize the parser
-        parser = ChapterParser()
+        # Parse chapter 1 from the file using Junjo workflow
+        print("🚀 Parsing Chapter 1 of War and Peace with Junjo workflow...")
+        file_path = SCRIPT_DIR / "chapter_1.txt"
+        with open(file_path, "r", encoding="utf-8") as f:
+            chapter_text = f.read()
+        import asyncio
+        async def run_workflow():
+            await chapter_workflow.store.set_state({
+                "chapter_text": chapter_text,
+                "chapter_number": 1,
+                "title": "Anna Pavlovna's Salon",
+            })
+            await chapter_workflow.execute()
+            state = await chapter_workflow.store.get_state()
+            return state.chapter
+        chapter = asyncio.run(run_workflow())
         
-        # Parse chapter 1 from the file
-        print("🚀 Parsing Chapter 1 of War and Peace with Gemini...")
-        chapter = parser.parse_chapter_from_file(
-            file_path= SCRIPT_DIR / "chapter_1.txt",
-            chapter_number=1,
-            title="Anna Pavlovna's Salon"
-        )
+        if not chapter:
+            print("❌ No chapter parsed.")
+            return
         
         print(f"✅ Successfully parsed Chapter {chapter.chapter_number}: {chapter.title}")
         print(f"📊 Total segments: {len(chapter.segments)}")

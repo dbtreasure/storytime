@@ -16,6 +16,7 @@ if str(SRC_DIR) not in sys.path:
 
 from storytime.services import ChapterParser, TTSGenerator
 from storytime.models import Chapter # For type hinting
+from storytime.workflows.chapter_parsing import workflow as chapter_workflow
 
 def main():
     print("🏛️  Testing Enhanced TTS Pipeline with War and Peace Chapter 1")
@@ -26,12 +27,24 @@ def main():
         print("\n📖 Step 1: Parsing War and Peace Chapter 1 with Gemini API...")
         print("   Including TTS instruction generation during parsing...")
         
-        parser = ChapterParser()
-        chapter = parser.parse_chapter_from_file(
-            SCRIPT_DIR / "chapter_1.txt", # Path relative to script
-            chapter_number=1, 
-            title="Anna Pávlovna's Reception"
-        )
+        file_path = SCRIPT_DIR / "chapter_1.txt"
+        with open(file_path, "r", encoding="utf-8") as f:
+            chapter_text = f.read()
+        import asyncio
+        async def run_workflow():
+            await chapter_workflow.store.set_state({
+                "chapter_text": chapter_text,
+                "chapter_number": 1,
+                "title": "Anna Pávlovna's Reception",
+            })
+            await chapter_workflow.execute()
+            state = await chapter_workflow.store.get_state()
+            return state.chapter
+        chapter = asyncio.run(run_workflow())
+        
+        if not chapter:
+            print("❌ No chapter parsed.")
+            return
         
         print(f"✅ Parsed Chapter {chapter.chapter_number}: {chapter.title}")
         print(f"   📊 {len(chapter.segments)} segments")
