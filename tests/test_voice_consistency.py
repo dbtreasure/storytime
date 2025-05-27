@@ -5,25 +5,27 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 from typing import Optional, Literal
 
-from models import Character, CharacterCatalogue, TextSegment, Chapter, SpeakerType
-from tts_generator import TTSGenerator
-from tts_providers.base import Voice
-from voice_assigner import VoiceAssigner
+from storytime.models import Character, CharacterCatalogue, TextSegment, Chapter, SpeakerType
+from storytime.services.tts_generator import TTSGenerator
+from storytime.services.voice_assigner import VoiceAssigner
+from storytime.infrastructure.tts import Voice, TTSProvider
 
 
-class MockTTSProvider:
+class MockTTSProvider(TTSProvider):
     """Mock TTS provider for testing."""
     
     def __init__(self, name: str, voices: list[Voice]):
-        self.name = name
+        self._name = name
         self._voices = voices
+    
+    @property
+    def name(self) -> str:
+        return self._name
     
     def list_voices(self) -> list[Voice]:
         return self._voices
     
-    def synth(self, *, text: str, voice: str, style: Optional[str], 
-              format: Literal['mp3', 'wav', 'flac', 'aac', 'opus', 'pcm'], 
-              out_path: Path) -> Path:
+    def synth(self, *, text: str, voice: str, style: str | None, format: str, out_path: Path) -> Path:
         # Create a dummy file to simulate audio generation
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(f"Mock audio for voice {voice}: {text[:50]}")

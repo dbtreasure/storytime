@@ -3,13 +3,13 @@
   "title": null,
   "segments": [
     {
-      "text": "Quick test!",
+      "text": "Hello world!",
       "speaker_type": "narrator",
       "speaker_name": "narrator",
       "sequence_number": 1,
       "voice_hint": "neutral, clear",
       "emotion": null,
-      "instruction": "Read this as a brief, neutral statement."
+      "instruction": "Deliver this with a neutral, clear tone, setting the scene."
     }
   ]
 }
