@@ -49,6 +49,12 @@ class TTSGenerator:
 
         self.character_catalogue = character_catalogue or CharacterCatalogue()
 
+    @staticmethod
+    def get_speaker_type_str(speaker_type) -> str:
+        if hasattr(speaker_type, 'value'):
+            return speaker_type.value
+        return str(speaker_type)
+
     # ------------------------------------------------------------------
     # Public helpers
     # ------------------------------------------------------------------
@@ -66,8 +72,9 @@ class TTSGenerator:
         # Choose voice
         voice = self.select_voice(segment)
 
+        speaker_type_str = self.get_speaker_type_str(segment.speaker_type)
         instructions = segment.instruction or (
-            f"Deliver this {segment.speaker_type.value} text with appropriate tone and emotion."
+            f"Deliver this {speaker_type_str} text with appropriate tone and emotion."
         )
 
         filename = self.get_audio_filename(segment, chapter_number)
@@ -139,7 +146,8 @@ class TTSGenerator:
     def select_voice(self, segment: TextSegment) -> str:  # noqa: D401
         """Return a voice ID for *segment* based on character/narrator logic."""
 
-        if segment.speaker_type == SpeakerType.NARRATOR:
+        speaker_type_str = self.get_speaker_type_str(segment.speaker_type)
+        if speaker_type_str == SpeakerType.NARRATOR.value:
             return self.voice_assigner.get_narrator_voice()
 
         character = self.character_catalogue.get_character(segment.speaker_name)

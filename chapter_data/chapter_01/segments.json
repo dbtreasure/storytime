@@ -1,51 +1,11 @@
-{
-  "chapter_number": 1,
-  "title": null,
-  "segments": [
-    {
-      "text": "\"Hello!\"",
-      "speaker_type": "character",
-      "speaker_name": "Marcus",
-      "sequence_number": 1,
-      "voice_hint": "male, neutral",
-      "emotion": "neutral",
-      "instruction": "Deliver this greeting in a clear, straightforward tone."
-    },
-    {
-      "text": "said Marcus.",
-      "speaker_type": "narrator",
-      "speaker_name": "narrator",
-      "sequence_number": 2,
-      "voice_hint": "neutral, descriptive",
-      "emotion": null,
-      "instruction": "Read this dialogue tag smoothly, setting the scene."
-    },
-    {
-      "text": "\"Good morning.\"",
-      "speaker_type": "character",
-      "speaker_name": "She",
-      "sequence_number": 3,
-      "voice_hint": "female, polite",
-      "emotion": "polite",
-      "instruction": "Deliver this response with a courteous and gentle tone."
-    },
-    {
-      "text": "She replied,",
-      "speaker_type": "narrator",
-      "speaker_name": "narrator",
-      "sequence_number": 4,
-      "voice_hint": "neutral, descriptive",
-      "emotion": null,
-      "instruction": "Read this dialogue tag naturally, connecting the characters' exchange."
-    },
-    {
-      "text": "The sun was shining.",
-      "speaker_type": "narrator",
-      "speaker_name": "narrator",
-      "sequence_number": 5,
-      "voice_hint": "neutral, descriptive",
-      "emotion": null,
-      "instruction": "Deliver this descriptive sentence calmly, setting a peaceful atmosphere."
-    }
-  ]
-}
+[
+  {
+    "text": "Hello world!",
+    "speaker_type": "narrator",
+    "speaker_name": "narrator",
+    "sequence_number": 1,
+    "voice_hint": null,
+    "emotion": null,
+    "instruction": null
+  }
+]
