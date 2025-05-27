@@ -30,13 +30,14 @@ async def parse_chapter(
     request: ParseRequest,
     api_key: str = Depends(get_api_key),
 ):
-    # Set up workflow state
     await chapter_workflow.store.set_state({
         "chapter_text": request.text,
         "chapter_number": request.chapter_number or 1,
     })
     await chapter_workflow.execute()
     state = await chapter_workflow.store.get_state()
+    if getattr(state, "error", None):
+        raise HTTPException(status_code=500, detail=state.error)
     chapter = state.chapter
     chapter_id = str(uuid.uuid4())
     CHAPTERS[chapter_id] = {"chapter": chapter, "characters": None}
@@ -53,6 +54,8 @@ async def parse_with_characters(
     })
     await chapter_workflow.execute()
     state = await chapter_workflow.store.get_state()
+    if getattr(state, "error", None):
+        raise HTTPException(status_code=500, detail=state.error)
     chapter = state.chapter
     catalogue = state.character_catalogue
     characters = [c.model_dump() for c in catalogue.characters.values()] if catalogue else []
@@ -73,6 +76,8 @@ async def parse_chapter_file(
     })
     await chapter_workflow.execute()
     state = await chapter_workflow.store.get_state()
+    if getattr(state, "error", None):
+        raise HTTPException(status_code=500, detail=state.error)
     chapter = state.chapter
     chapter_id = str(uuid.uuid4())
     CHAPTERS[chapter_id] = {"chapter": chapter, "characters": None}

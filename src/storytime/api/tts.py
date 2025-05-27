@@ -7,7 +7,6 @@ from pathlib import Path
 from fastapi.responses import FileResponse
 
 from storytime.services.tts_generator import TTSGenerator
-from storytime.services.chapter_parser import ChapterParser
 from storytime.models import TextSegment, SpeakerType, Chapter, CharacterCatalogue
 from storytime.infrastructure.tts import OpenAIProvider, ElevenLabsProvider
 
@@ -45,18 +44,28 @@ def estimate_cost_by_characters(text: str, provider: str) -> float:
     return round((char_count * rate), 4)
 
 def run_tts_job(job_id: str, request: GenerateRequest):
+    import asyncio
+    from storytime.workflows.chapter_parsing import workflow as chapter_workflow
     job = JOBS.get(job_id)
     if not job or job.status == JobStatus.CANCELED:
         return
     try:
         job.status = JobStatus.RUNNING
-        # Parse chapter and analyze characters
-        parser = ChapterParser()
-        chapter, character_catalogue = parser.parse_chapter_with_characters(
-            chapter_text=request.chapter_text,
-            chapter_number=request.chapter_number or 1,
-            title=request.title,
-        )
+        # Run the Junjo-native chapter parsing pipeline synchronously
+        async def parse_chapter():
+            await chapter_workflow.store.set_state({
+                "chapter_text": request.chapter_text,
+                "chapter_number": request.chapter_number or 1,
+                "title": request.title,
+            })
+            await chapter_workflow.execute()
+            state = await chapter_workflow.store.get_state()
+            return state.chapter, state.character_catalogue
+        chapter, character_catalogue = asyncio.run(parse_chapter())
+        if not chapter:
+            job.status = JobStatus.FAILED
+            job.error = "Failed to parse chapter with Junjo pipeline."
+            return
         # Select provider class
         provider = None
         if request.provider:
@@ -71,7 +80,7 @@ def run_tts_job(job_id: str, request: GenerateRequest):
         result = {
             "audio_files": audio_files,  # dict: segment_key -> file path
             "playlist": str(Path(list(audio_files.values())[0]).parent / f"chapter_{chapter.chapter_number:02d}_playlist.m3u"),
-            "character_catalogue": character_catalogue.model_dump(),
+            "character_catalogue": character_catalogue.model_dump() if character_catalogue else {},
             "chapter_segments": [s.model_dump() for s in chapter.segments],
             "chapter_number": chapter.chapter_number,
         }

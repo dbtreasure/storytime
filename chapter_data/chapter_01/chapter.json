@@ -1,0 +1,15 @@
+{
+  "chapter_number": 1,
+  "title": null,
+  "segments": [
+    {
+      "text": "Hello world!",
+      "speaker_type": "narrator",
+      "speaker_name": "narrator",
+      "sequence_number": 1,
+      "voice_hint": null,
+      "emotion": null,
+      "instruction": null
+    }
+  ]
+}
