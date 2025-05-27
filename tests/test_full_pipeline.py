@@ -1,7 +1,13 @@
 import os
+print("OTEL_EXPORTER_OTLP_HEADERS:", repr(os.getenv("OTEL_EXPORTER_OTLP_HEADERS")))
 import json
 import sys
+import logging
 from pathlib import Path
+
+# Setup logging
+logging.basicConfig(level=logging.DEBUG, format='[%(levelname)s] %(message)s')
+logger = logging.getLogger(__name__)
 
 # Add src to path to allow running this script directly before proper packaging
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -9,11 +15,14 @@ SRC_DIR = SCRIPT_DIR.parent / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from storytime.services import ChapterParser, TTSGenerator
+from storytime.services import TTSGenerator
 from storytime.models import Chapter # For type hinting if needed
 from storytime.workflows.chapter_parsing import workflow as chapter_workflow
 
+CHAPTER_PATH = Path(__file__).parent / "fixtures" / "chapter_1.txt"
+
 def main():
+    logger.info("🚀 Testing Complete Pipeline: Text → Structured Data → Audio")
     print("🚀 Testing Complete Pipeline: Text → Structured Data → Audio")
     print("=" * 60)
     
@@ -25,6 +34,7 @@ def main():
         missing_keys.append('OPENAI_API_KEY')
     
     if missing_keys:
+        logger.error(f"Missing required API keys: {missing_keys}")
         print("❌ Missing required API keys:")
         for key in missing_keys:
             print(f"   - {key}")
@@ -35,9 +45,9 @@ def main():
     
     try:
         # Step 1: Parse chapter with Junjo workflow
+        logger.info("Step 1: Parsing chapter text with Junjo workflow...")
         print("\n📖 Step 1: Parsing chapter text with Junjo workflow...")
-        file_path = SCRIPT_DIR / "chapter_1.txt"
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(CHAPTER_PATH, "r", encoding="utf-8") as f:
             chapter_text = f.read()
         import asyncio
         async def run_workflow():
@@ -52,6 +62,7 @@ def main():
         chapter = asyncio.run(run_workflow())
         
         if not chapter:
+            logger.error("No chapter parsed.")
             print("❌ No chapter parsed.")
             return
         
@@ -60,23 +71,29 @@ def main():
         print(f"   🎭 Characters: {', '.join(chapter.get_unique_characters())}")
         
         # Step 2: Generate audio with OpenAI TTS
+        logger.info("Step 2: Generating audio with OpenAI TTS...")
         print(f"\n🎵 Step 2: Generating audio with OpenAI TTS...")
         print("⚠️  This will use OpenAI credits - estimated cost: ~$0.50-1.00")
         
         # Ask for confirmation
+        logger.debug("Prompting user for audio generation confirmation...")
         response = input("Continue with audio generation? (y/N): ").strip().lower()
+        logger.debug(f"User input: {response}")
         if response != 'y':
+            logger.info("Audio generation cancelled by user.")
             print("❌ Audio generation cancelled by user.")
             return
         
         tts_generator = TTSGenerator(output_dir=str(SCRIPT_DIR / "audio_output"))
         
         # Generate audio for first 3 segments as a test
+        logger.info("Testing with first 3 segments...")
         print("🧪 Testing with first 3 segments...")
         test_segments = chapter.segments[:3]
         
         audio_files = {}
         for i, segment in enumerate(test_segments, 1):
+            logger.info(f"Generating audio {i}/3 for segment {segment.sequence_number}")
             print(f"\n🎙️  Generating audio {i}/3...")
             try:
                 audio_path = tts_generator.generate_audio_for_segment(
@@ -87,9 +104,11 @@ def main():
                 audio_files[f"segment_{segment.sequence_number}"] = audio_path
                 print(f"   ✅ Created: {os.path.basename(audio_path)}")
             except Exception as e:
+                logger.error(f"Error generating audio for segment {segment.sequence_number}: {e}")
                 print(f"   ❌ Error: {e}")
         
         # Create summary
+        logger.info(f"Audio files created: {len(audio_files)}")
         print(f"\n📋 Test Summary:")
         print(f"   📁 Audio files created: {len(audio_files)}")
         print(f"   📂 Output directory: audio_output/")
@@ -101,7 +120,7 @@ def main():
             
             print(f"\n💡 To generate the full chapter audio:")
             print(f"   generator.generate_audio_for_chapter(chapter)")
-            
+        
         # Save test results
         test_results = {
             "chapter_info": {
@@ -124,12 +143,14 @@ def main():
         print(f"\n💾 Test results saved to: {test_results_path.name}")
         
     except FileNotFoundError as e:
+        logger.error(f"File not found: {e}")
         # Make file not found more specific if possible
         if "chapter_1.txt" in str(e):
-            print(f"❌ {SCRIPT_DIR / 'chapter_1.txt'} not found. Make sure the file exists.")
+            print(f"❌ {CHAPTER_PATH} not found. Make sure the file exists.")
         else:
             print(f"❌ File not found: {e}")
     except Exception as e:
+        logger.exception(f"Unexpected error: {e}")
         print(f"❌ Error: {e}")
 
 if __name__ == "__main__":
