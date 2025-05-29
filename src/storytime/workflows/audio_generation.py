@@ -27,6 +27,7 @@ from junjo import BaseState, BaseStore, Edge, Graph, Node, Workflow  # type: ign
 from opentelemetry import trace
 from storytime.models import Chapter, TextSegment
 from storytime.services.tts_generator import TTSGenerator
+from pydantic import Field
 
 tracer = trace.get_tracer(__name__)
 
@@ -36,12 +37,12 @@ tracer = trace.get_tracer(__name__)
 
 class AudioGenerationState(BaseState):
     chapter: Chapter | None = None
-    tts_generator: TTSGenerator | None = None
-    # segment_key -> audio path
     audio_paths: Dict[str, str] | None = None
     stitched_path: str | None = None
     playlist_path: str | None = None
     error: str | None = None
+    
+    model_config = {'arbitrary_types_allowed': True}
 
 
 class AudioGenerationStore(BaseStore[AudioGenerationState]):
@@ -53,19 +54,17 @@ class AudioGenerationStore(BaseStore[AudioGenerationState]):
 # ---------------------------------------------------------------------------
 
 class InitAudioNode(Node[AudioGenerationStore]):
-    """Store the Chapter and TTSGenerator in state so fan-out nodes can use them."""
+    """Store the Chapter in state so fan-out nodes can use them. TTSGenerator is passed directly to nodes."""
 
-    def __init__(self, chapter: Chapter, tts: TTSGenerator):
+    def __init__(self, chapter: Chapter):
         super().__init__()
         self._chapter = chapter
-        self._tts = tts
 
     async def service(self, store: AudioGenerationStore) -> None:  # noqa: D401
         start = time.perf_counter()
         with tracer.start_as_current_span("InitAudioNode") as span:
             await store.set_state({
                 "chapter": self._chapter,
-                "tts_generator": self._tts,
                 "audio_paths": {},
             })
             span.set_attribute("braintrust.output", json.dumps({
@@ -82,9 +81,10 @@ class GenerateSegmentAudioNode(Node[AudioGenerationStore]):
     _executor: ThreadPoolExecutor | None = None  # shared across instances
     _sem: asyncio.Semaphore | None = None
 
-    def __init__(self, segment: TextSegment, max_concurrency: int):
+    def __init__(self, segment: TextSegment, tts_generator: TTSGenerator, max_concurrency: int):
         super().__init__()
         self.segment = segment
+        self.tts_generator = tts_generator
         if GenerateSegmentAudioNode._executor is None:
             GenerateSegmentAudioNode._executor = ThreadPoolExecutor(max_workers=max_concurrency)
             GenerateSegmentAudioNode._sem = asyncio.Semaphore(max_concurrency)
@@ -98,8 +98,8 @@ class GenerateSegmentAudioNode(Node[AudioGenerationStore]):
                     "speaker": self.segment.speaker_name,
                 }))
                 state = await store.get_state()
-                if not state.chapter or not state.tts_generator:
-                    err = "Chapter or TTSGenerator missing in state"
+                if not state.chapter:
+                    err = "Chapter missing in state"
                     span.set_attribute("error", err)
                     await store.set_state({"error": err})
                     raise RuntimeError(err)
@@ -108,7 +108,7 @@ class GenerateSegmentAudioNode(Node[AudioGenerationStore]):
                 try:
                     path: str = await loop.run_in_executor(
                         GenerateSegmentAudioNode._executor,
-                        lambda: state.tts_generator.generate_audio_for_segment(
+                        lambda: self.tts_generator.generate_audio_for_segment(
                             self.segment,
                             chapter_number=state.chapter.chapter_number,
                             chapter=state.chapter,
@@ -131,18 +131,22 @@ class GenerateSegmentAudioNode(Node[AudioGenerationStore]):
 class StitchChapterNode(Node[AudioGenerationStore]):
     """After all segment audio is done, stitch and create playlist."""
 
+    def __init__(self, tts_generator: TTSGenerator):
+        super().__init__()
+        self.tts_generator = tts_generator
+
     async def service(self, store: AudioGenerationStore) -> None:
         start = time.perf_counter()
         with tracer.start_as_current_span("StitchChapterNode") as span:
             state = await store.get_state()
-            if not state.chapter or not state.tts_generator:
+            if not state.chapter:
                 err = "State incomplete before stitching"
                 span.set_attribute("error", err)
                 await store.set_state({"error": err})
                 raise RuntimeError(err)
 
-            stitched = state.tts_generator.stitch_chapter_audio(state.chapter, state.audio_paths or {})
-            playlist = state.tts_generator.create_playlist(state.chapter, state.audio_paths or {})
+            stitched = self.tts_generator.stitch_chapter_audio(state.chapter, state.audio_paths or {})
+            playlist = self.tts_generator.create_playlist(state.chapter, state.audio_paths or {})
 
             await store.set_state({
                 "stitched_path": stitched,
@@ -168,14 +172,14 @@ def build_audio_workflow(
 ) -> Workflow[AudioGenerationState, AudioGenerationStore]:
     """Return a Junjo workflow that fan-outs segment audio generation."""
 
-    init_node = InitAudioNode(chapter, tts_generator)
+    init_node = InitAudioNode(chapter)
 
     # One node per segment
     seg_nodes: List[GenerateSegmentAudioNode] = [
-        GenerateSegmentAudioNode(seg, max_concurrency=max_concurrency) for seg in chapter.segments
+        GenerateSegmentAudioNode(seg, tts_generator, max_concurrency=max_concurrency) for seg in chapter.segments
     ]
 
-    stitch_node = StitchChapterNode()
+    stitch_node = StitchChapterNode(tts_generator)
 
     edges: List[Edge] = []
     # init -> each segment node
