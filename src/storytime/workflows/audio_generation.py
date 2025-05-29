@@ -21,6 +21,7 @@ import json
 import os
 from pathlib import Path
 from typing import Any, Dict, List
+import time
 
 from junjo import BaseState, BaseStore, Edge, Graph, Node, Workflow  # type: ignore
 from opentelemetry import trace
@@ -60,6 +61,7 @@ class InitAudioNode(Node[AudioGenerationStore]):
         self._tts = tts
 
     async def service(self, store: AudioGenerationStore) -> None:  # noqa: D401
+        start = time.perf_counter()
         with tracer.start_as_current_span("InitAudioNode") as span:
             await store.set_state({
                 "chapter": self._chapter,
@@ -70,6 +72,8 @@ class InitAudioNode(Node[AudioGenerationStore]):
                 "segments": len(self._chapter.segments),
                 "chapter_number": self._chapter.chapter_number,
             }))
+            elapsed = time.perf_counter() - start
+            span.set_attribute("braintrust.metrics", json.dumps({"duration_s": elapsed}))
 
 
 class GenerateSegmentAudioNode(Node[AudioGenerationStore]):
@@ -86,6 +90,7 @@ class GenerateSegmentAudioNode(Node[AudioGenerationStore]):
             GenerateSegmentAudioNode._sem = asyncio.Semaphore(max_concurrency)
 
     async def service(self, store: AudioGenerationStore) -> None:
+        start = time.perf_counter()
         async with GenerateSegmentAudioNode._sem:  # throttle
             with tracer.start_as_current_span("GenerateSegmentAudioNode") as span:
                 span.set_attribute("braintrust.input", json.dumps({
@@ -119,12 +124,15 @@ class GenerateSegmentAudioNode(Node[AudioGenerationStore]):
                     span.set_attribute("error", err_msg)
                     await store.set_state({"error": err_msg})
                     raise
+                elapsed = time.perf_counter() - start
+                span.set_attribute("braintrust.metrics", json.dumps({"duration_s": elapsed}))
 
 
 class StitchChapterNode(Node[AudioGenerationStore]):
     """After all segment audio is done, stitch and create playlist."""
 
     async def service(self, store: AudioGenerationStore) -> None:
+        start = time.perf_counter()
         with tracer.start_as_current_span("StitchChapterNode") as span:
             state = await store.get_state()
             if not state.chapter or not state.tts_generator:
@@ -144,6 +152,8 @@ class StitchChapterNode(Node[AudioGenerationStore]):
                 "stitched_path": stitched,
                 "playlist_path": playlist,
             }))
+            elapsed = time.perf_counter() - start
+            span.set_attribute("braintrust.metrics", json.dumps({"duration_s": elapsed}))
 
 
 # ---------------------------------------------------------------------------

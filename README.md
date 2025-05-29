@@ -225,3 +225,54 @@ MIT License - See LICENSE file for details
 ---
 
 **Ready to bring classic literature to life? Start with `python test_full_pipeline.py`!** 🎧📚
+
+## Junjo-Native Pipeline Overview
+
+- **Chapter parsing** and **audio generation** are orchestrated with [Junjo](https://junjo.ai), enabling modular, observable, and testable workflows.
+- **Parallelism:**
+  - Gemini API calls (for parsing) are fully async.
+  - Audio synthesis for each segment is run in parallel using a Junjo fan-out workflow and a thread pool.
+  - Concurrency is tunable via the `TTS_MAX_CONCURRENCY` environment variable (default: 8).
+- **Observability:**
+  - All workflow nodes log their inputs, outputs, errors, and timing metrics to OpenTelemetry/Braintrust.
+  - Per-segment and per-node timings are visible in the Braintrust UI.
+- **Error Handling:**
+  - TTS synthesis is retried up to 3 times with exponential backoff.
+  - Errors are surfaced in API job status and Braintrust traces.
+
+## Key Environment Variables
+
+| Variable                      | Description                                    | Default        |
+| ----------------------------- | ---------------------------------------------- | -------------- |
+| `TTS_PROVIDER`                | Which TTS provider to use (`openai`, `eleven`) | openai         |
+| `TTS_MAX_CONCURRENCY`         | Max parallel audio jobs (int)                  | 8              |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OpenTelemetry/Braintrust endpoint              |                |
+| `GOOGLE_API_KEY`              | Gemini API key                                 |                |
+| `GEMINI_MODEL`                | Gemini model name                              | gemini-1.5-pro |
+| `CHAPTER_OUTPUT_DIR`          | Where to write chapter data                    | chapter_data   |
+
+## Usage Example
+
+```python
+from storytime.workflows.audio_generation import build_audio_workflow
+from storytime.services.tts_generator import TTSGenerator
+
+# ...parse chapter as before...
+tts = TTSGenerator()
+wf = build_audio_workflow(chapter, tts, max_concurrency=8)
+await wf.execute()
+state = await wf.get_state_json()
+print("Stitched file:", state["stitched_path"])
+```
+
+## Features
+
+- Modular, testable Junjo workflows for parsing and audio
+- Parallel audio generation for fast chapter synthesis
+- Full observability with Braintrust/OTEL (inputs, outputs, errors, timings)
+- Configurable concurrency and provider selection
+- Robust error handling and retries for TTS
+
+---
+
+For more, see the code and docstrings in `src/storytime/workflows/` and `src/storytime/services/`.
