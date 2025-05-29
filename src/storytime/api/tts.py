@@ -1,14 +1,18 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from pydantic import BaseModel
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Any
 import uuid
 import time
 from pathlib import Path
 from fastapi.responses import FileResponse
+import os
+import asyncio
 
 from storytime.services.tts_generator import TTSGenerator
 from storytime.models import TextSegment, SpeakerType, Chapter, CharacterCatalogue
 from storytime.infrastructure.tts import OpenAIProvider, ElevenLabsProvider
+from storytime.workflows.audio_generation import build_audio_workflow
+from storytime.workflows.chapter_parsing import workflow as chapter_workflow
 
 router = APIRouter(prefix="/api/v1/tts", tags=["TTS"])
 
@@ -44,8 +48,6 @@ def estimate_cost_by_characters(text: str, provider: str) -> float:
     return round((char_count * rate), 4)
 
 def run_tts_job(job_id: str, request: GenerateRequest):
-    import asyncio
-    from storytime.workflows.chapter_parsing import workflow as chapter_workflow
     job = JOBS.get(job_id)
     if not job or job.status == JobStatus.CANCELED:
         return
@@ -73,13 +75,28 @@ def run_tts_job(job_id: str, request: GenerateRequest):
                 provider = ElevenLabsProvider()
             else:
                 provider = OpenAIProvider()
-        # Generate audio for all segments
+        # --- Parallel audio generation via Junjo ---
         tts = TTSGenerator(provider=provider, character_catalogue=character_catalogue)
-        audio_files = tts.generate_audio_for_chapter(chapter)
+
+        async def run_audio_workflow() -> dict[str, Any]:
+            # Build & execute workflow with concurrency from env
+            max_con = int(os.getenv("TTS_MAX_CONCURRENCY", "8"))
+            wf = build_audio_workflow(chapter, tts, max_concurrency=max_con)
+            await wf.execute()
+            st = await wf.store.get_state()
+            return {
+                "audio_files": st.audio_paths or {},
+                "playlist": st.playlist_path,
+                "stitched": st.stitched_path,
+            }
+
+        audio_state = asyncio.run(run_audio_workflow())
+
         # Compose result dict
         result = {
-            "audio_files": audio_files,  # dict: segment_key -> file path
-            "playlist": str(Path(list(audio_files.values())[0]).parent / f"chapter_{chapter.chapter_number:02d}_playlist.m3u"),
+            "audio_files": audio_state["audio_files"],
+            "playlist": audio_state["playlist"],
+            "stitched_path": audio_state["stitched"],
             "character_catalogue": character_catalogue.model_dump() if character_catalogue else {},
             "chapter_segments": [s.model_dump() for s in chapter.segments],
             "chapter_number": chapter.chapter_number,

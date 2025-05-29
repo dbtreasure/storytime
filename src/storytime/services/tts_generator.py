@@ -67,43 +67,60 @@ class TTSGenerator:
         model: str = "gpt-4o-mini-tts",
         response_format: Literal["mp3", "opus", "aac", "flac", "wav", "pcm"] = "mp3",
     ) -> str:
-        """Generate audio for a *single* `segment` and return the output path."""
+        """Generate audio for a *single* `segment` and return the output path. With retry/backoff."""
 
-        # Choose voice
-        voice = self.select_voice(segment)
+        import time
+        max_attempts = 3
+        delay = 1.0
+        last_exc = None
+        for attempt in range(1, max_attempts + 1):
+            try:
+                # Choose voice
+                voice = self.select_voice(segment)
 
-        speaker_type_str = self.get_speaker_type_str(segment.speaker_type)
-        instructions = segment.instruction or (
-            f"Deliver this {speaker_type_str} text with appropriate tone and emotion."
-        )
+                speaker_type_str = self.get_speaker_type_str(segment.speaker_type)
+                instructions = segment.instruction or (
+                    f"Deliver this {speaker_type_str} text with appropriate tone and emotion."
+                )
 
-        filename = self.get_audio_filename(segment, chapter_number)
-        chapter_dir = self.get_chapter_dir(chapter_number)
-        output_path = chapter_dir / filename
+                filename = self.get_audio_filename(segment, chapter_number)
+                chapter_dir = self.get_chapter_dir(chapter_number)
+                output_path = chapter_dir / filename
 
-        print(
-            f"🎙️  Generating audio for segment {segment.sequence_number}: "
-            f"[{segment.speaker_name}]"
-        )
-        print(
-            f"   Voice: {voice} | Text: {segment.text[:100]}"
-            f"{'...' if len(segment.text) > 100 else ''}"
-        )
-        print(
-            f"   Instructions: {instructions[:150]}"
-            f"{'...' if len(instructions) > 150 else ''}"
-        )
+                print(
+                    f"🎙️  Generating audio for segment {segment.sequence_number}: "
+                    f"[{segment.speaker_name}]"
+                )
+                print(
+                    f"   Voice: {voice} | Text: {segment.text[:100]}"
+                    f"{'...' if len(segment.text) > 100 else ''}"
+                )
+                print(
+                    f"   Instructions: {instructions[:150]}"
+                    f"{'...' if len(instructions) > 150 else ''}"
+                )
 
-        self.provider.synth(
-            text=segment.text,
-            voice=voice,
-            style=instructions,
-            format=response_format,
-            out_path=output_path,
-        )
+                self.provider.synth(
+                    text=segment.text,
+                    voice=voice,
+                    style=instructions,
+                    format=response_format,
+                    out_path=output_path,
+                )
 
-        print(f"   ✅ Saved: {filename}")
-        return str(output_path)
+                print(f"   ✅ Saved: {filename}")
+                return str(output_path)
+            except Exception as exc:
+                print(f"   ⚠️  Error on attempt {attempt} for segment {segment.sequence_number}: {exc}")
+                last_exc = exc
+                if attempt < max_attempts:
+                    time.sleep(delay)
+                    delay *= 2
+                else:
+                    print(f"   ❌ Failed after {max_attempts} attempts for segment {segment.sequence_number}")
+                    raise last_exc
+        # Defensive: should never reach here
+        raise RuntimeError(f"generate_audio_for_segment failed for segment {segment.sequence_number} with no exception.")
 
     def generate_audio_for_chapter(
         self,

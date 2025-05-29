@@ -1,0 +1,26 @@
+{
+  "chapter_info": {
+    "number": 1,
+    "title": "Anna Pavlovna's Salon",
+    "total_segments": 85,
+    "characters": [
+      "Anna Pavlovna",
+      "prince",
+      "Prince",
+      "Anna Pávlovna",
+      "He",
+      "Prince Vasíli",
+      "character name",
+      "man of importance"
+    ]
+  },
+  "audio_test": {
+    "segments_tested": 3,
+    "audio_files_created": 3,
+    "audio_files": {
+      "segment_1": "/Users/dan/Development/storytime/tests/audio_output/openai/chapter_01/ch01_001_Anna_Pavlovna.mp3",
+      "segment_2": "/Users/dan/Development/storytime/tests/audio_output/openai/chapter_01/ch01_002_narrator.mp3",
+      "segment_3": "/Users/dan/Development/storytime/tests/audio_output/openai/chapter_01/ch01_003_narrator.mp3"
+    }
+  }
+}
