@@ -2,16 +2,16 @@
   "chapter_info": {
     "number": 1,
     "title": "Anna Pavlovna's Salon",
-    "total_segments": 76,
+    "total_segments": 85,
     "characters": [
       "Anna Pavlovna",
       "prince",
+      "Prince",
+      "Anna Pávlovna",
+      "He",
       "Prince Vasíli",
       "character name",
-      "man of importance",
-      "Prince",
-      "He",
-      "Anna Pávlovna"
+      "man of importance"
     ]
   },
   "audio_test": {

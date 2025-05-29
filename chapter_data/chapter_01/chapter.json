@@ -363,7 +363,7 @@
       "instruction": null
     },
     {
-      "text": "“Baron Funke has been recommended to the Dowager Empress by her sister,” was all she said, in a dry and mournful tone.",
+      "text": "“Baron Funke has been recommended to the Dowager Empress by her sister,”",
       "speaker_type": "character",
       "speaker_name": "Anna Pávlovna",
       "sequence_number": 41,
@@ -372,7 +372,7 @@
       "instruction": null
     },
     {
-      "text": "As she named the Empress, Anna Pávlovna’s face suddenly assumed an expression of profound and sincere devotion and respect mingled with sadness, and this occurred every time she mentioned her illustrious patroness.",
+      "text": "was all she said, in a dry and mournful tone. As she named the Empress, Anna Pávlovna’s face suddenly assumed an expression of profound and sincere devotion and respect mingled with sadness, and this occurred every time she mentioned her illustrious patroness.",
       "speaker_type": "narrator",
       "speaker_name": "narrator",
       "sequence_number": 42,
@@ -390,7 +390,7 @@
       "instruction": null
     },
     {
-      "text": "The prince was silent and looked indifferent. But, with the womanly and courtierlike quickness and tact habitual to her, Anna Pávlovna wished both to rebuke him (for daring to speak as he had done of a man recommended to the Empress) and at the same time to console him, so she said:",
+      "text": "The prince was silent and looked indifferent.",
       "speaker_type": "narrator",
       "speaker_name": "narrator",
       "sequence_number": 44,
@@ -399,19 +399,28 @@
       "instruction": null
     },
     {
-      "text": "Now about your family.",
-      "speaker_type": "character",
-      "speaker_name": "Anna Pávlovna",
+      "text": "But, with the womanly and courtierlike quickness and tact habitual to her, Anna Pávlovna wished both to rebuke him (for daring to speak as he had done of a man recommended to the Empress) and at the same time to console him, so she said:",
+      "speaker_type": "narrator",
+      "speaker_name": "narrator",
       "sequence_number": 45,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
     },
     {
-      "text": "Do you know that since your daughter came out everyone has been enraptured by her? They say she is amazingly beautiful.”",
+      "text": "Now about your family.",
+      "speaker_type": "character",
+      "speaker_name": "Anna Pávlovna",
+      "sequence_number": 46,
+      "voice_hint": null,
+      "emotion": null,
+      "instruction": null
+    },
+    {
+      "text": "Do you know that since your daughter came out everyone has been enraptured by her? They say she is amazingly beautiful.",
       "speaker_type": "character",
       "speaker_name": "character name",
-      "sequence_number": 46,
+      "sequence_number": 47,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
@@ -420,7 +429,7 @@
       "text": "The prince bowed to signify his respect and gratitude.",
       "speaker_type": "narrator",
       "speaker_name": "narrator",
-      "sequence_number": 47,
+      "sequence_number": 48,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
@@ -429,7 +438,7 @@
       "text": "I often think",
       "speaker_type": "character",
       "speaker_name": "character name",
-      "sequence_number": 48,
+      "sequence_number": 49,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
@@ -438,16 +447,16 @@
       "text": "she continued after a short pause, drawing nearer to the prince and smiling amiably at him as if to show that political and social topics were ended and the time had come for intimate conversation",
       "speaker_type": "narrator",
       "speaker_name": "narrator",
-      "sequence_number": 49,
+      "sequence_number": 50,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
     },
     {
-      "text": "I often think how unfairly sometimes the joys of life are distributed. Why has fate given you two such splendid children? I don’t speak of Anatole, your youngest. I don’t like him",
+      "text": "I often think how unfairly sometimes the joys of life are distributed. Why has fate given you two such splendid children? I don’t speak of Anatole, your youngest. I don’t like him,",
       "speaker_type": "character",
       "speaker_name": "character name",
-      "sequence_number": 50,
+      "sequence_number": 51,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
@@ -456,7 +465,7 @@
       "text": "she added in a tone admitting of no rejoinder and raising her eyebrows.",
       "speaker_type": "narrator",
       "speaker_name": "narrator",
-      "sequence_number": 51,
+      "sequence_number": 52,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
@@ -465,7 +474,7 @@
       "text": "Two such charming children.",
       "speaker_type": "character",
       "speaker_name": "character name",
-      "sequence_number": 52,
+      "sequence_number": 53,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
@@ -474,7 +483,7 @@
       "text": "And really you appreciate them less than anyone, and so you don’t deserve to have them.”",
       "speaker_type": "narrator",
       "speaker_name": "narrator",
-      "sequence_number": 53,
+      "sequence_number": 54,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
@@ -483,22 +492,13 @@
       "text": "And she smiled her ecstatic smile.",
       "speaker_type": "narrator",
       "speaker_name": "narrator",
-      "sequence_number": 54,
-      "voice_hint": null,
-      "emotion": null,
-      "instruction": null
-    },
-    {
-      "text": "I can’t help it.”",
-      "speaker_type": "character",
-      "speaker_name": "prince",
       "sequence_number": 55,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
     },
     {
-      "text": "Lavater would have said I lack the bump of paternity.”",
+      "text": "“I can’t help it,”",
       "speaker_type": "character",
       "speaker_name": "prince",
       "sequence_number": 56,
@@ -507,16 +507,16 @@
       "instruction": null
     },
     {
-      "text": "“Don’t joke; I mean to have a serious talk with you. Do you know I am dissatisfied with your younger son? Between ourselves”",
-      "speaker_type": "narrator",
-      "speaker_name": "narrator",
+      "text": "“Lavater would have said I lack the bump of paternity.”",
+      "speaker_type": "character",
+      "speaker_name": "prince",
       "sequence_number": 57,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
     },
     {
-      "text": "(and her face assumed its melancholy expression)",
+      "text": "“Don’t joke; I mean to have a serious talk with you. Do you know I am dissatisfied with your younger son? Between ourselves”",
       "speaker_type": "narrator",
       "speaker_name": "narrator",
       "sequence_number": 58,
@@ -525,7 +525,7 @@
       "instruction": null
     },
     {
-      "text": ", “he was mentioned at Her Majesty’s and you were pitied....”",
+      "text": "(and her face assumed its melancholy expression)",
       "speaker_type": "narrator",
       "speaker_name": "narrator",
       "sequence_number": 59,
@@ -534,7 +534,7 @@
       "instruction": null
     },
     {
-      "text": "The prince answered nothing, but she looked at him significantly, awaiting a reply. He frowned.",
+      "text": "“he was mentioned at Her Majesty’s and you were pitied....”",
       "speaker_type": "narrator",
       "speaker_name": "narrator",
       "sequence_number": 60,
@@ -543,16 +543,16 @@
       "instruction": null
     },
     {
-      "text": "What would you have me do?”",
-      "speaker_type": "character",
-      "speaker_name": "prince",
+      "text": "The prince answered nothing, but she looked at him significantly, awaiting a reply. He frowned.",
+      "speaker_type": "narrator",
+      "speaker_name": "narrator",
       "sequence_number": 61,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
     },
     {
-      "text": "You know I did all a father could for their education, and they have both turned out fools. Hippolyte is at least a quiet fool, but Anatole is an active one.",
+      "text": "“What would you have me do?”",
       "speaker_type": "character",
       "speaker_name": "prince",
       "sequence_number": 62,
@@ -561,10 +561,28 @@
       "instruction": null
     },
     {
-      "text": "That is the only difference between them.” He said this smiling in a way more natural and animated than usual, so that the wrinkles round his mouth very clearly revealed something unexpectedly coarse and unpleasant.",
+      "text": "“You know I did all a father could for their education, and they have both turned out fools. Hippolyte is at least a quiet fool, but Anatole is an active one.",
+      "speaker_type": "character",
+      "speaker_name": "prince",
+      "sequence_number": 63,
+      "voice_hint": null,
+      "emotion": null,
+      "instruction": null
+    },
+    {
+      "text": "That is the only difference between them.”",
       "speaker_type": "narrator",
       "speaker_name": "narrator",
-      "sequence_number": 63,
+      "sequence_number": 64,
+      "voice_hint": null,
+      "emotion": null,
+      "instruction": null
+    },
+    {
+      "text": "He said this smiling in a way more natural and animated than usual, so that the wrinkles round his mouth very clearly revealed something unexpectedly coarse and unpleasant.",
+      "speaker_type": "character",
+      "speaker_name": "He",
+      "sequence_number": 65,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
@@ -573,7 +591,7 @@
       "text": "And why are children born to such men as you? If you were not a father there would be nothing I could reproach you with,”",
       "speaker_type": "character",
       "speaker_name": "Anna Pávlovna",
-      "sequence_number": 64,
+      "sequence_number": 66,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
@@ -582,7 +600,7 @@
       "text": "said Anna Pávlovna, looking up pensively.",
       "speaker_type": "narrator",
       "speaker_name": "narrator",
-      "sequence_number": 65,
+      "sequence_number": 67,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
@@ -591,7 +609,7 @@
       "text": "I am your faithful slave and to you alone I can confess that my children are the bane of my life. It is the cross I have to bear. That is how I explain it to myself. It can’t be helped!",
       "speaker_type": "character",
       "speaker_name": "He",
-      "sequence_number": 66,
+      "sequence_number": 68,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
@@ -600,16 +618,25 @@
       "text": "He said no more, but expressed his resignation to cruel fate by a gesture. Anna Pávlovna meditated.",
       "speaker_type": "narrator",
       "speaker_name": "narrator",
-      "sequence_number": 67,
+      "sequence_number": 69,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
     },
     {
-      "text": "Have you never thought of marrying your prodigal son Anatole?",
+      "text": "Have you never thought of marrying your prodigal son Anatole?”",
       "speaker_type": "character",
       "speaker_name": "Anna Pávlovna",
-      "sequence_number": 68,
+      "sequence_number": 70,
+      "voice_hint": null,
+      "emotion": null,
+      "instruction": null
+    },
+    {
+      "text": "she asked.",
+      "speaker_type": "narrator",
+      "speaker_name": "narrator",
+      "sequence_number": 71,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
@@ -618,7 +645,16 @@
       "text": "“They say old maids have a mania for matchmaking, and though I don’t feel that weakness in myself as yet, I know a little person who is very unhappy with her father. She is a relation of yours, Princess Mary Bolkónskaya.”",
       "speaker_type": "narrator",
       "speaker_name": "narrator",
-      "sequence_number": 69,
+      "sequence_number": 72,
+      "voice_hint": null,
+      "emotion": null,
+      "instruction": null
+    },
+    {
+      "text": "Prince Vasíli did not reply, though, with the quickness of memory and perception befitting a man of the world, he indicated by a movement of the head that he was considering this information.",
+      "speaker_type": "narrator",
+      "speaker_name": "narrator",
+      "sequence_number": 73,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
@@ -627,16 +663,16 @@
       "text": "“Do you know,” he said at last, evidently unable to check the sad current of his thoughts, “that Anatole is costing me forty thousand rubles a year? And,” he went on after a pause, “what will it be in five years, if he goes on like this?”",
       "speaker_type": "character",
       "speaker_name": "Prince Vasíli",
-      "sequence_number": 70,
+      "sequence_number": 74,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
     },
     {
-      "text": "“That’s what we fathers have to put up with.... Is this princess of yours rich?”",
+      "text": "Presently he added: “That’s what we fathers have to put up with.... Is this princess of yours rich?”",
       "speaker_type": "character",
       "speaker_name": "Prince Vasíli",
-      "sequence_number": 71,
+      "sequence_number": 75,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
@@ -645,16 +681,52 @@
       "text": "“Her father is very rich and stingy.",
       "speaker_type": "narrator",
       "speaker_name": "narrator",
-      "sequence_number": 72,
+      "sequence_number": 76,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
     },
     {
-      "text": "She is rich and of good family and that’s all I want.",
+      "text": "He lives in the country. He is the well-known Prince Bolkónski who had to retire from the army under the late Emperor, and was nicknamed ‘the King of Prussia.’ He is very clever but eccentric, and a bore. The poor girl is very unhappy. She has a brother; I think you know him, he married Lise Meinen lately. He is an aide-de-camp of Kutúzov’s and will be here tonight.",
+      "speaker_type": "narrator",
+      "speaker_name": "narrator",
+      "sequence_number": 77,
+      "voice_hint": null,
+      "emotion": null,
+      "instruction": null
+    },
+    {
+      "text": "Listen, dear Annette,",
+      "speaker_type": "character",
+      "speaker_name": "Prince",
+      "sequence_number": 78,
+      "voice_hint": null,
+      "emotion": null,
+      "instruction": null
+    },
+    {
+      "text": "said the prince, suddenly taking Anna Pávlovna’s hand and for some reason drawing it downwards.",
+      "speaker_type": "narrator",
+      "speaker_name": "narrator",
+      "sequence_number": 79,
+      "voice_hint": null,
+      "emotion": null,
+      "instruction": null
+    },
+    {
+      "text": "Arrange that affair for me and I shall always be your most devoted slave-slafe with an f, as a village elder of mine writes in his reports.",
+      "speaker_type": "character",
+      "speaker_name": "Prince",
+      "sequence_number": 80,
+      "voice_hint": null,
+      "emotion": null,
+      "instruction": null
+    },
+    {
+      "text": "She is rich and of good family and that’s all I want.”",
       "speaker_type": "character",
       "speaker_name": "character name",
-      "sequence_number": 73,
+      "sequence_number": 81,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
@@ -663,7 +735,7 @@
       "text": "And with the familiarity and easy grace peculiar to him, he raised the maid of honor’s hand to his lips, kissed it, and swung it to and fro as he lay back in his armchair, looking in another direction.",
       "speaker_type": "narrator",
       "speaker_name": "narrator",
-      "sequence_number": 74,
+      "sequence_number": 82,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
@@ -672,16 +744,25 @@
       "text": "Attendez,",
       "speaker_type": "character",
       "speaker_name": "character name",
-      "sequence_number": 75,
+      "sequence_number": 83,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
     },
     {
-      "text": "said Anna Pávlovna, reflecting, “I’ll speak to Lise, young Bolkónski’s wife, this very evening, and perhaps the thing can be arranged. It shall be on your family’s behalf that I’ll start my apprenticeship as old maid.”",
+      "text": "said Anna Pávlovna, reflecting,",
+      "speaker_type": "narrator",
+      "speaker_name": "narrator",
+      "sequence_number": 84,
+      "voice_hint": null,
+      "emotion": null,
+      "instruction": null
+    },
+    {
+      "text": "I’ll speak to Lise, young Bolkónski’s wife, this very evening, and perhaps the thing can be arranged. It shall be on your family’s behalf that I’ll start my apprenticeship as old maid.”",
       "speaker_type": "character",
       "speaker_name": "character name",
-      "sequence_number": 76,
+      "sequence_number": 85,
       "voice_hint": null,
       "emotion": null,
       "instruction": null
