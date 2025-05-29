@@ -276,3 +276,5 @@ print("Stitched file:", state["stitched_path"])
 ---
 
 For more, see the code and docstrings in `src/storytime/workflows/` and `src/storytime/services/`.
+
+> **Note:** The old imperative ChapterParser pipeline is now fully deprecated. All chapter parsing in the API and CLI uses the Junjo workflow for modularity, observability, and maintainability.

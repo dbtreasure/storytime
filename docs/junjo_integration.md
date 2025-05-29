@@ -37,7 +37,7 @@ LoadTextNode → AnalyzeCharactersNode → ParseSegmentsNode → SaveResultsNode
 
 - **LoadTextNode**: Loads chapter text from a file or state.
 - **AnalyzeCharactersNode**: Analyzes characters using the existing `CharacterAnalyzer`.
-- **ParseSegmentsNode**: Parses chapter text into segments and builds the `Chapter` object using `ChapterParser`.
+- **ParseSegmentsNode**: Parses chapter text into segments and builds the `Chapter` object using Junjo-native logic. The old `ChapterParser` is no longer used.
 - **SaveResultsNode**: Saves results (text, segments, character catalogue) to disk for debugging/observability.
 
 #### State Model (`ChapterParsingState`)
@@ -117,3 +117,5 @@ if __name__ == "__main__":
 
 - [Junjo Official Docs](https://junjo.ai)
 - [Junjo Python API Reference](https://python-api.junjo.ai/api)
+
+> **Migration Note:** The legacy ChapterParser pipeline has been fully replaced by the Junjo workflow. All chapter parsing, both in the API and CLI, is now handled by Junjo nodes for full observability and modularity.

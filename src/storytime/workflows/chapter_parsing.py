@@ -66,6 +66,8 @@ class LoadTextNode(Node[ChapterParsingStore]):
                     node_outputs["text_loaded_from_state"] = True
                     node_outputs["text_summary"] = str(state.chapter_text[:200] + "..." if state.chapter_text and len(state.chapter_text) > 200 else state.chapter_text or "")
                     span.set_attribute("braintrust.output", json.dumps(node_outputs))
+                    # Log state transition
+                    span.add_event("state_transition", {"set": "chapter_text (from state)"})
                     return
 
                 if state.file_path:
@@ -73,6 +75,8 @@ class LoadTextNode(Node[ChapterParsingStore]):
                     await store.set_state({"chapter_text": text}) 
                     node_outputs["text_loaded_from_file"] = True
                     node_outputs["text_summary"] = str(text[:200] + "..." if len(text) > 200 else text)
+                    # Log state transition
+                    span.add_event("state_transition", {"set": "chapter_text (from file)"})
                 else:
                     raise ValueError("No chapter_text or file_path provided in state.")
                 
@@ -83,6 +87,8 @@ class LoadTextNode(Node[ChapterParsingStore]):
                 node_outputs["error"] = error_message
                 span.set_attribute("error", error_message) 
                 await store.set_state({"error": error_message})
+                # Log error state transition
+                span.add_event("state_transition", {"set": "error", "value": error_message})
                 span.set_attribute("braintrust.output", json.dumps(node_outputs))
                 raise
 
@@ -137,6 +143,8 @@ class ChunkTextNode(Node[ChapterParsingStore]):
                     node_outputs["first_chunk_summary"] = str(chunks[0][:200] + "..." if len(chunks[0]) > 200 else chunks[0])
                 
                 await store.set_state({"chunks": chunks})
+                # Log state transition
+                span.add_event("state_transition", {"set": "chunks", "num_chunks": len(chunks)})
                 span.set_attribute("braintrust.output", json.dumps(node_outputs))
 
             except Exception as e:
@@ -144,6 +152,8 @@ class ChunkTextNode(Node[ChapterParsingStore]):
                 node_outputs["error"] = error_message
                 span.set_attribute("error", error_message)
                 await store.set_state({"error": error_message})
+                # Log error state transition
+                span.add_event("state_transition", {"set": "error", "value": error_message})
                 span.set_attribute("braintrust.output", json.dumps(node_outputs))
                 raise
 
@@ -190,6 +200,8 @@ Title: {state.title or ''}
                     node_outputs["first_prompt_summary"] = str(prompts[0][:200] + "..." if prompts[0] and len(prompts[0]) > 200 else prompts[0] or "")
                 
                 await store.set_state({"prompts": prompts})
+                # Log state transition
+                span.add_event("state_transition", {"set": "prompts", "num_prompts": len(prompts)})
                 span.set_attribute("braintrust.output", json.dumps(node_outputs))
 
             except Exception as e:
@@ -197,6 +209,8 @@ Title: {state.title or ''}
                 node_outputs["error"] = error_message
                 span.set_attribute("error", error_message)
                 await store.set_state({"error": error_message})
+                # Log error state transition
+                span.add_event("state_transition", {"set": "error", "value": error_message})
                 span.set_attribute("braintrust.output", json.dumps(node_outputs))
                 raise
 
@@ -245,6 +259,8 @@ class GeminiApiNode(Node[ChapterParsingStore]):
                     node_outputs["first_response_summary"] = str(str(raw_responses[0])[:200] + "..." if raw_responses[0] and len(str(raw_responses[0])) > 200 else str(raw_responses[0]) or "")
                 
                 await store.set_state({"raw_responses": raw_responses})
+                # Log state transition
+                span.add_event("state_transition", {"set": "raw_responses", "num_responses": len(raw_responses)})
                 span.set_attribute("braintrust.output", json.dumps(node_outputs))
 
             except Exception as e:
@@ -252,6 +268,8 @@ class GeminiApiNode(Node[ChapterParsingStore]):
                 node_outputs["error"] = error_message
                 span.set_attribute("error", error_message)
                 await store.set_state({"error": error_message}) # Ensure error is in store
+                # Log error state transition
+                span.add_event("state_transition", {"set": "error", "value": error_message})
                 span.set_attribute("braintrust.output", json.dumps(node_outputs))
                 raise
 
@@ -356,6 +374,8 @@ class ParseSegmentsNode(Node[ChapterParsingStore]):
                         node_outputs["first_segment_summary_error"] = str(e_dump)
                 
                 await store.set_state({"segments": all_segments})
+                # Log state transition
+                span.add_event("state_transition", {"set": "segments", "num_segments": len(all_segments)})
                 span.set_attribute("braintrust.output", json.dumps(node_outputs))
 
             except Exception as e:
@@ -364,6 +384,8 @@ class ParseSegmentsNode(Node[ChapterParsingStore]):
                 node_outputs["num_segments_before_error"] = len(all_segments) # Log how many were processed
                 span.set_attribute("error", error_message)
                 await store.set_state({"error": error_message, "segments": all_segments}) # Save partial if any
+                # Log error state transition
+                span.add_event("state_transition", {"set": "error", "value": error_message})
                 span.set_attribute("braintrust.output", json.dumps(node_outputs))
                 raise
 
@@ -395,6 +417,8 @@ class MergeSegmentsNode(Node[ChapterParsingStore]):
                     segments=state.segments
                 )
                 await store.set_state({"chapter": chapter})
+                # Log state transition
+                span.add_event("state_transition", {"set": "chapter"})
                 
                 node_outputs["chapter_number"] = chapter.chapter_number
                 node_outputs["chapter_title"] = str(chapter.title or "")
@@ -406,6 +430,8 @@ class MergeSegmentsNode(Node[ChapterParsingStore]):
                 node_outputs["error"] = error_message
                 span.set_attribute("error", error_message)
                 await store.set_state({"error": error_message})
+                # Log error state transition
+                span.add_event("state_transition", {"set": "error", "value": error_message})
                 span.set_attribute("braintrust.output", json.dumps(node_outputs))
                 raise
 
@@ -423,6 +449,8 @@ class ErrorHandlingNode(Node[ChapterParsingStore]):
                 span.set_attribute("error", str(state.error)) # Standard way to flag error in span
                 print(f"[Junjo ErrorHandlingNode] Error in workflow: {state.error}")
                 node_outputs["status"] = "Error processed"
+                # Log error state transition
+                span.add_event("state_transition", {"set": "error", "value": str(state.error)})
             else:
                 node_outputs["status"] = "No error to process"
             
@@ -471,6 +499,8 @@ class SaveResultsNode(Node[ChapterParsingStore]):
                     files_saved.append("characters.json")
                 
                 node_outputs["files_saved"] = files_saved if files_saved else [] # Ensure it's a list
+                # Log state transition
+                span.add_event("state_transition", {"set": "files_saved", "files": files_saved})
                 span.set_attribute("braintrust.output", json.dumps(node_outputs))
 
             except Exception as e:
@@ -478,6 +508,8 @@ class SaveResultsNode(Node[ChapterParsingStore]):
                 node_outputs["error"] = error_message
                 span.set_attribute("error", error_message)
                 # No store.set_state for error here as this is a sink node, but log it in output
+                # Log error state transition
+                span.add_event("state_transition", {"set": "error", "value": error_message})
                 span.set_attribute("braintrust.output", json.dumps(node_outputs))
                 # Optionally re-raise if saving is critical, or just log
                 print(f"Error during SaveResultsNode: {error_message}")
