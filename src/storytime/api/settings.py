@@ -2,6 +2,7 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings
 from pydantic import Field
+import logging
 
 
 class Settings(BaseSettings):
@@ -14,6 +15,10 @@ class Settings(BaseSettings):
     eleven_labs_api_key: str | None = None
     figma_api_key: str | None = None
 
+    # New: DB and Redis URLs
+    database_url: str | None = Field(default=None, description="Database URL", alias="DATABASE_URL")
+    redis_url: str | None = Field(default=None, description="Redis URL", alias="REDIS_URL")
+
     # Observability/Tracing fields
     braintrust_api_key: str | None = None
     otel_exporter_otlp_endpoint: str | None = None
@@ -22,11 +27,15 @@ class Settings(BaseSettings):
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
+        "populate_by_name": True,
     }
 
 
 @lru_cache()
 def get_settings() -> Settings:  # pragma: no cover
     """Return a cached instance of Settings."""
-
-    return Settings() 
+    s = Settings()
+    logging.basicConfig(level=s.log_level)
+    logging.getLogger(__name__).info(f"Loaded DATABASE_URL: {getattr(s, 'database_url', None)}")
+    logging.getLogger(__name__).info(f"Loaded REDIS_URL: {getattr(s, 'redis_url', None)}")
+    return s 
