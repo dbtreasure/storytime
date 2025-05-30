@@ -15,7 +15,14 @@ services:
       - redis
   worker:
     build: .
-    command: ["sleep", "infinity"] # Placeholder, will run Celery later
+    command:
+      [
+        "celery",
+        "-A",
+        "storytime.worker.celery_app:celery_app",
+        "worker",
+        "--loglevel=info",
+      ]
     environment:
       - ENV=dev
     env_file:
@@ -25,6 +32,7 @@ services:
     depends_on:
       - db
       - redis
+    working_dir: /app/src
   db:
     image: postgres:16
     restart: unless-stopped
