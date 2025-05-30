@@ -8,3 +8,38 @@ services:
       - ENV=dev
     env_file:
       - .env
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - redis
+  worker:
+    build: .
+    command: ["sleep", "infinity"] # Placeholder, will run Celery later
+    environment:
+      - ENV=dev
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - redis
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: storytime
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+volumes:
+  pgdata:
