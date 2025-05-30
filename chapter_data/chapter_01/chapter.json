@@ -1,9 +1,9 @@
 {
   "chapter_number": 1,
-  "title": null,
+  "title": "Test Book Debug",
   "segments": [
     {
-      "text": "Hello world!",
+      "text": "This is a test book for debugging.",
       "speaker_type": "narrator",
       "speaker_name": "narrator",
       "sequence_number": 1,
