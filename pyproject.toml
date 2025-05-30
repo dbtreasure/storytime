@@ -28,7 +28,11 @@ dependencies = [
     "junjo>=0.45.0",
     "opentelemetry-sdk>=1.33.0",
     "opentelemetry-exporter-otlp>=1.33.0",
-    "opentelemetry-exporter-otlp-proto-http>=1.33.0"
+    "opentelemetry-exporter-otlp-proto-http>=1.33.0",
+    "celery[redis]",
+    "psycopg2-binary",
+    "asyncpg",
+    "sqlalchemy"
 ]
 
 [project.optional-dependencies]
