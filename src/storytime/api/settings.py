@@ -17,7 +17,15 @@ class Settings(BaseSettings):
 
     # New: DB and Redis URLs
     database_url: str | None = Field(default=None, description="Database URL", alias="DATABASE_URL")
+    alembic_database_url: str | None = Field(default=None, description="Alembic sync DB URL (for migrations)", alias="ALEMBIC_DATABASE_URL")
     redis_url: str | None = Field(default=None, description="Redis URL", alias="REDIS_URL")
+
+    # DigitalOcean Spaces
+    do_spaces_key: str | None = None
+    do_spaces_secret: str | None = None
+    do_spaces_region: str | None = None
+    do_spaces_bucket: str | None = None
+    do_spaces_endpoint: str | None = None
 
     # Observability/Tracing fields
     braintrust_api_key: str | None = None
