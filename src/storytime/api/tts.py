@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse
 import os
 import asyncio
 import logging
+import tempfile
 
 from storytime.services.tts_generator import TTSGenerator
 from storytime.models import TextSegment, SpeakerType, Chapter, CharacterCatalogue
@@ -18,6 +19,7 @@ from storytime.worker.celery_app import celery_app
 from storytime.database import AsyncSessionLocal, BookStatus
 from storytime.database import Book as DBBook
 from sqlalchemy import text
+from storytime.infrastructure.spaces import upload_file
 
 router = APIRouter(prefix="/api/v1/tts", tags=["TTS"])
 
@@ -42,7 +44,22 @@ async def generate_tts(request: GenerateRequest, background_tasks: BackgroundTas
     if provider_name not in ("openai", "elevenlabs", "eleven"):
         raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider_name}")
     job_id = str(uuid.uuid4())
-    
+    text_key = f"uploads/{job_id}.txt"
+
+    # Save chapter_text to a temp file and upload to Spaces
+    try:
+        with tempfile.NamedTemporaryFile("w", delete=False, suffix=".txt") as tmp:
+            tmp.write(request.chapter_text)
+            tmp_path = tmp.name
+        logging.info(f"[Spaces] Uploading book text for job_id={job_id} to Spaces as {text_key}")
+        upload_success = upload_file(tmp_path, text_key, content_type="text/plain")
+        if not upload_success:
+            logging.error(f"[Spaces] Upload failed for job_id={job_id}")
+            # Optionally: set error_msg in DB here
+    except Exception as e:
+        logging.error(f"[Spaces] Exception during upload for job_id={job_id}: {e}")
+        # Optionally: set error_msg in DB here
+
     # Persist Book row with comprehensive logging
     logging.info(f"Starting database transaction for book_id={job_id}")
     try:
@@ -54,34 +71,29 @@ async def generate_tts(request: GenerateRequest, background_tasks: BackgroundTas
                 status=BookStatus.UPLOADED,
                 progress_pct=0,
                 error_msg=None,
+                text_key=text_key,
             )
-            logging.info(f"DBBook object created: {new_book.id}, {new_book.title}, {new_book.status}")
-            
+            logging.info(f"DBBook object created: {new_book.id}, {new_book.title}, {new_book.status}, {text_key}")
             session.add(new_book)
             logging.info(f"Book added to session, attempting commit for job_id={job_id}")
-            
             await session.commit()
             logging.info(f"Session committed successfully for job_id={job_id}")
-            
-            # Verify the book was persisted
             await session.refresh(new_book)
             logging.info(f"Book verified in database: {new_book.id}, status={new_book.status}")
-            
     except Exception as e:
         logging.error(f"Database error for job_id={job_id}: {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
-    
+
     cost = estimate_cost_by_characters(request.chapter_text, provider_name)
-    
+
     # Enqueue Celery task (only in Docker/prod)
     if os.getenv("ENV") == "docker":
         celery_app.send_task("storytime.worker.tasks.generate_tts", args=[job_id])
         logging.info(f"Enqueued Celery TTS task for book_id={job_id}")
     else:
-        # For local/dev/test, fallback to background task
         background_tasks.add_task(lambda: None)  # No-op for now
         logging.info(f"(Dev) Would enqueue Celery TTS task for book_id={job_id}")
-    
+
     return {"job_id": job_id, "status": "UPLOADED", "estimated_cost": cost}
 
 

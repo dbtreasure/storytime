@@ -32,7 +32,9 @@ dependencies = [
     "celery[redis]",
     "psycopg2-binary",
     "asyncpg",
-    "sqlalchemy"
+    "sqlalchemy",
+    "boto3>=1.34.0",
+    "greenlet (>=3.2.2,<4.0.0)"
 ]
 
 [project.optional-dependencies]
@@ -43,6 +45,7 @@ development = [
     "flake8",
     "mypy",
     "pre-commit",
+    "alembic>=1.13.0"
 ]
 
 [tool.setuptools.packages.find]
@@ -50,6 +53,6 @@ where = ["src"]
 
 [tool.isort]
 profile = "black"
+[tool.poetry.group.dev.dependencies]
+alembic = "^1.16.1"
 
-[tool.poetry.dependencies]
-elevenlabs = ">=2.1.0" 
