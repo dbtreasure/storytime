@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status, Depends
 from pydantic import BaseModel
 from typing import Dict, Optional, List, Any
 import uuid
@@ -7,30 +7,19 @@ from pathlib import Path
 from fastapi.responses import FileResponse
 import os
 import asyncio
+import logging
 
 from storytime.services.tts_generator import TTSGenerator
 from storytime.models import TextSegment, SpeakerType, Chapter, CharacterCatalogue
 from storytime.infrastructure.tts import OpenAIProvider, ElevenLabsProvider
 from storytime.workflows.audio_generation import build_audio_workflow
 from storytime.workflows.chapter_parsing import workflow as chapter_workflow
+from storytime.worker.celery_app import celery_app
+from storytime.database import AsyncSessionLocal, BookStatus
+from storytime.database import Book as DBBook
+from sqlalchemy import text
 
 router = APIRouter(prefix="/api/v1/tts", tags=["TTS"])
-
-# In-memory job store (MVP)
-class JobStatus(str):
-    PENDING = "pending"
-    RUNNING = "running"
-    DONE = "done"
-    FAILED = "failed"
-    CANCELED = "canceled"
-
-class TTSJob(BaseModel):
-    job_id: str
-    status: str
-    result: Optional[dict] = None  # Dict with audio files, playlist, etc.
-    error: Optional[str] = None
-
-JOBS: Dict[str, TTSJob] = {}
 
 class GenerateRequest(BaseModel):
     chapter_text: str
@@ -47,113 +36,111 @@ def estimate_cost_by_characters(text: str, provider: str) -> float:
         rate = 0.000015  # Example: $0.000015 per character
     return round((char_count * rate), 4)
 
-def run_tts_job(job_id: str, request: GenerateRequest):
-    job = JOBS.get(job_id)
-    if not job or job.status == JobStatus.CANCELED:
-        return
-    try:
-        job.status = JobStatus.RUNNING
-        # Run the Junjo-native chapter parsing pipeline synchronously
-        async def parse_chapter():
-            await chapter_workflow.store.set_state({
-                "chapter_text": request.chapter_text,
-                "chapter_number": request.chapter_number or 1,
-                "title": request.title,
-            })
-            await chapter_workflow.execute()
-            state = await chapter_workflow.store.get_state()
-            return state.chapter, state.character_catalogue
-        chapter, character_catalogue = asyncio.run(parse_chapter())
-        if not chapter:
-            job.status = JobStatus.FAILED
-            job.error = "Failed to parse chapter with Junjo pipeline."
-            return
-        # Select provider class
-        provider = None
-        if request.provider:
-            if request.provider.lower() in ("elevenlabs", "eleven"):
-                provider = ElevenLabsProvider()
-            else:
-                provider = OpenAIProvider()
-        # --- Parallel audio generation via Junjo ---
-        tts = TTSGenerator(provider=provider, character_catalogue=character_catalogue)
-
-        async def run_audio_workflow() -> dict[str, Any]:
-            # Build & execute workflow with concurrency from env
-            max_con = int(os.getenv("TTS_MAX_CONCURRENCY", "8"))
-            wf = build_audio_workflow(chapter, tts, max_concurrency=max_con)
-            await wf.execute()
-            st = await wf.store.get_state()
-            return {
-                "audio_files": st.audio_paths or {},
-                "playlist": st.playlist_path,
-                "stitched": st.stitched_path,
-            }
-
-        audio_state = asyncio.run(run_audio_workflow())
-
-        # Compose result dict
-        result = {
-            "audio_files": audio_state["audio_files"],
-            "playlist": audio_state["playlist"],
-            "stitched_path": audio_state["stitched"],
-            "character_catalogue": character_catalogue.model_dump() if character_catalogue else {},
-            "chapter_segments": [s.model_dump() for s in chapter.segments],
-            "chapter_number": chapter.chapter_number,
-        }
-        job.result = result
-        job.status = JobStatus.DONE
-    except Exception as e:
-        job.status = JobStatus.FAILED
-        job.error = str(e)
-
 @router.post("/generate")
-def generate_tts(request: GenerateRequest, background_tasks: BackgroundTasks):
-    # Validate provider
+async def generate_tts(request: GenerateRequest, background_tasks: BackgroundTasks):
     provider_name = (request.provider or "openai").lower()
     if provider_name not in ("openai", "elevenlabs", "eleven"):
         raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider_name}")
     job_id = str(uuid.uuid4())
-    job = TTSJob(job_id=job_id, status=JobStatus.PENDING)
-    JOBS[job_id] = job
+    
+    # Persist Book row with comprehensive logging
+    logging.info(f"Starting database transaction for book_id={job_id}")
+    try:
+        async with AsyncSessionLocal() as session:
+            logging.info(f"Session created, creating DBBook object for job_id={job_id}")
+            new_book = DBBook(
+                id=job_id,
+                title=request.title or f"Book {job_id[:8]}",
+                status=BookStatus.UPLOADED,
+                progress_pct=0,
+                error_msg=None,
+            )
+            logging.info(f"DBBook object created: {new_book.id}, {new_book.title}, {new_book.status}")
+            
+            session.add(new_book)
+            logging.info(f"Book added to session, attempting commit for job_id={job_id}")
+            
+            await session.commit()
+            logging.info(f"Session committed successfully for job_id={job_id}")
+            
+            # Verify the book was persisted
+            await session.refresh(new_book)
+            logging.info(f"Book verified in database: {new_book.id}, status={new_book.status}")
+            
+    except Exception as e:
+        logging.error(f"Database error for job_id={job_id}: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    
     cost = estimate_cost_by_characters(request.chapter_text, provider_name)
-    background_tasks.add_task(run_tts_job, job_id, request)
-    return {"job_id": job_id, "status": job.status, "estimated_cost": cost}
+    
+    # Enqueue Celery task (only in Docker/prod)
+    if os.getenv("ENV") == "docker":
+        celery_app.send_task("storytime.worker.tasks.generate_tts", args=[job_id])
+        logging.info(f"Enqueued Celery TTS task for book_id={job_id}")
+    else:
+        # For local/dev/test, fallback to background task
+        background_tasks.add_task(lambda: None)  # No-op for now
+        logging.info(f"(Dev) Would enqueue Celery TTS task for book_id={job_id}")
+    
+    return {"job_id": job_id, "status": "UPLOADED", "estimated_cost": cost}
 
-@router.get("/jobs/{job_id}")
-def get_job_status(job_id: str):
-    job = JOBS.get(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-    return job
 
-@router.get("/jobs/{job_id}/download")
-def download_job_audio(job_id: str):
-    job = JOBS.get(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-    if job.status != JobStatus.DONE or not job.result:
-        raise HTTPException(status_code=400, detail="Audio not ready")
-    # Try to serve the stitched/complete chapter audio file if it exists
-    audio_files = job.result.get("audio_files")
-    if audio_files:
-        # Determine chapter directory (same as first segment)
-        first_audio_path = Path(list(audio_files.values())[0])
-        chapter_number = job.result.get("chapter_number", 1)
-        complete_path = first_audio_path.parent / f"chapter_{chapter_number:02d}_complete.mp3"
-
-        if complete_path.exists():
-            return FileResponse(str(complete_path), media_type="audio/mpeg", filename=complete_path.name)
-
-        # Fallback: return the first segment audio file
-        if first_audio_path.exists():
-            return FileResponse(str(first_audio_path), media_type="audio/mpeg", filename=first_audio_path.name)
-    raise HTTPException(status_code=404, detail="Audio file not found")
-
-@router.delete("/jobs/{job_id}")
-def cancel_job(job_id: str):
-    job = JOBS.get(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-    job.status = JobStatus.CANCELED
-    return {"job_id": job_id, "status": job.status} 
+@router.get("/debug/db-test")
+async def test_database_connection():
+    """Debug endpoint to test database connectivity and manual insert."""
+    test_id = str(uuid.uuid4())
+    
+    try:
+        async with AsyncSessionLocal() as session:
+            # Test 1: Basic connectivity
+            result = await session.execute(text("SELECT 1 as test"))
+            test_result = result.scalar()
+            logging.info(f"Database connectivity test: {test_result}")
+            
+            # Test 2: Check if book table exists
+            table_check = await session.execute(
+                text("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name='book')")
+            )
+            table_exists = table_check.scalar()
+            logging.info(f"Book table exists: {table_exists}")
+            
+            # Test 3: Manual insert via raw SQL
+            await session.execute(
+                text("INSERT INTO book (id, title, status, progress_pct) VALUES (:id, :title, :status, :progress)"),
+                {"id": test_id, "title": "Test Book SQL", "status": "UPLOADED", "progress": 0}
+            )
+            await session.commit()
+            logging.info(f"Manual SQL insert successful: {test_id}")
+            
+            # Test 4: Verify the insert
+            verify_result = await session.execute(
+                text("SELECT id, title, status FROM book WHERE id = :id"),
+                {"id": test_id}
+            )
+            row = verify_result.fetchone()
+            logging.info(f"Verification result: {row}")
+            
+            # Test 5: Try SQLAlchemy ORM insert
+            orm_id = str(uuid.uuid4())
+            orm_book = DBBook(
+                id=orm_id,
+                title="Test Book ORM",
+                status=BookStatus.UPLOADED,
+                progress_pct=0
+            )
+            session.add(orm_book)
+            await session.commit()
+            await session.refresh(orm_book)
+            logging.info(f"ORM insert successful: {orm_book.id}")
+            
+            return {
+                "connectivity": test_result == 1,
+                "table_exists": table_exists,
+                "manual_insert_id": test_id,
+                "orm_insert_id": orm_id,
+                "status": "success"
+            }
+            
+    except Exception as e:
+        logging.error(f"Database test failed: {type(e).__name__}: {e}")
+        return {"error": str(e), "status": "failed"} 
