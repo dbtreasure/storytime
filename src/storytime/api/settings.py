@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     redis_url: str | None = Field(default=None, description="Redis URL", alias="REDIS_URL")
 
     # JWT Authentication
-    jwt_secret_key: str = Field(default="your-secret-key-here-change-in-production", description="JWT Secret Key")
+    jwt_secret_key: str = Field(..., description="JWT Secret Key")
     
     # DigitalOcean Spaces
     do_spaces_key: str | None = None
