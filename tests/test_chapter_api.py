@@ -12,14 +12,20 @@ if str(SRC_DIR) not in sys.path:
 
 from storytime.api.main import app
 
-# --- Mock API key dependency ---
+# --- Mock JWT auth dependency ---
 from fastapi import status
 from storytime.api import auth
+from storytime.database import User
 
-def always_valid_api_key():
-    return "test-api-key"
+def mock_current_user():
+    # Return a mock user for testing
+    return User(
+        id="test-user-id",
+        email="test@example.com", 
+        hashed_password="test-hash"
+    )
 
-app.dependency_overrides[auth.get_api_key] = always_valid_api_key
+app.dependency_overrides[auth.get_current_user] = mock_current_user
 
 client = TestClient(app)
 

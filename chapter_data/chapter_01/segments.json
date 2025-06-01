@@ -1,9 +1,27 @@
 [
   {
-    "text": "This is a test book for debugging.",
+    "text": "Hello world, said Alice.",
     "speaker_type": "narrator",
     "speaker_name": "narrator",
     "sequence_number": 1,
+    "voice_hint": null,
+    "emotion": null,
+    "instruction": null
+  },
+  {
+    "text": "How are you?",
+    "speaker_type": "character",
+    "speaker_name": "Alice",
+    "sequence_number": 2,
+    "voice_hint": null,
+    "emotion": null,
+    "instruction": null
+  },
+  {
+    "text": "asked Bob.",
+    "speaker_type": "character",
+    "speaker_name": "Bob",
+    "sequence_number": 3,
     "voice_hint": null,
     "emotion": null,
     "instruction": null

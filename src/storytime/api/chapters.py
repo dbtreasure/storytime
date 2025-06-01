@@ -4,7 +4,8 @@ from typing import List, Dict, Optional
 import uuid
 import asyncio
 
-from .auth import get_api_key
+from .auth import get_current_user
+from ..database import User
 from ..services.character_analyzer import CharacterAnalyzer
 from ..workflows.chapter_parsing import workflow as chapter_workflow
 
@@ -28,7 +29,7 @@ class CharacterResponse(BaseModel):
 @router.post("/parse", response_model=ParseResponse)
 async def parse_chapter(
     request: ParseRequest,
-    api_key: str = Depends(get_api_key),
+    current_user: User = Depends(get_current_user),
 ):
     await chapter_workflow.store.set_state({
         "chapter_text": request.text,
@@ -46,7 +47,7 @@ async def parse_chapter(
 @router.post("/parse-with-characters", response_model=CharacterResponse)
 async def parse_with_characters(
     request: ParseRequest,
-    api_key: str = Depends(get_api_key),
+    current_user: User = Depends(get_current_user),
 ):
     await chapter_workflow.store.set_state({
         "chapter_text": request.text,
@@ -67,7 +68,7 @@ async def parse_with_characters(
 async def parse_chapter_file(
     file: UploadFile = File(...),
     chapter_number: Optional[int] = Form(None),
-    api_key: str = Depends(get_api_key),
+    current_user: User = Depends(get_current_user),
 ):
     text = (await file.read()).decode()
     await chapter_workflow.store.set_state({
@@ -86,7 +87,7 @@ async def parse_chapter_file(
 @router.get("/{chapter_id}")
 async def get_chapter(
     chapter_id: str,
-    api_key: str = Depends(get_api_key),
+    current_user: User = Depends(get_current_user),
 ):
     data = CHAPTERS.get(chapter_id)
     if not data:
@@ -97,7 +98,7 @@ async def get_chapter(
 @router.get("/{chapter_id}/characters")
 async def get_characters(
     chapter_id: str,
-    api_key: str = Depends(get_api_key),
+    current_user: User = Depends(get_current_user),
 ):
     data = CHAPTERS.get(chapter_id)
     if not data:
