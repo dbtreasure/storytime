@@ -4,10 +4,10 @@ import logging
 import asyncio
 
 from .settings import get_settings
-from .auth import get_api_key
 from .middleware import LoggingMiddleware
 from .chapters import router as chapters_router
 from .tts import router as tts_router
+from .auth import router as auth_router
 from storytime.api import voice_management
 from storytime.database import create_all
 
@@ -40,12 +40,12 @@ async def on_startup():
     except Exception as e:
         logging.getLogger(__name__).error(f"DB bootstrap failed: {e}")
 
+app.include_router(auth_router)
 app.include_router(chapters_router)
 app.include_router(tts_router)
 app.include_router(voice_management.router)
 
 @app.get("/health", tags=["Utility"])
-async def health(api_key: str = Depends(get_api_key)) -> dict[str, str]:
-    """Return basic service health status. Requires API key."""
-    logger.debug(f"Health check invoked by key: {api_key}")
+async def health() -> dict[str, str]:
+    """Return basic service health status."""
     return {"status": "ok"} 

@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     alembic_database_url: str | None = Field(default=None, description="Alembic sync DB URL (for migrations)", alias="ALEMBIC_DATABASE_URL")
     redis_url: str | None = Field(default=None, description="Redis URL", alias="REDIS_URL")
 
+    # JWT Authentication
+    jwt_secret_key: str = Field(..., description="JWT Secret Key")
+    
     # DigitalOcean Spaces
     do_spaces_key: str | None = None
     do_spaces_secret: str | None = None
