@@ -1,19 +1,83 @@
 """Content analysis service for automatic job type detection and text processing."""
 
-import re
+import asyncio
+import json
 import logging
-from typing import Any
+import os
+import re
+
+import google.generativeai as genai
+from google.generativeai.types import GenerationConfig
+from pydantic import BaseModel, Field
 
 from storytime.models import ContentAnalysisResult, JobType, SourceType
 
 logger = logging.getLogger(__name__)
 
 
+class GeminiContentAnalysis(BaseModel):
+    """Schema for Gemini's structured content analysis output."""
+    
+    # Core dialogue metrics
+    has_dialogue: bool = Field(..., description="Whether the text contains dialogue between characters")
+    dialogue_percentage: float = Field(
+        ..., ge=0.0, le=1.0, description="Percentage of content that is dialogue (0.0 to 1.0)"
+    )
+    estimated_speakers: int = Field(..., ge=0, description="Number of distinct speakers/characters detected")
+    identified_characters: list[str] = Field(
+        default_factory=list, description="List of character names found in dialogue"
+    )
+    
+    # Content structure
+    has_chapter_structure: bool = Field(..., description="Whether the text has clear chapter divisions")
+    chapter_count: int = Field(..., ge=0, description="Number of chapters detected")
+    is_technical_content: bool = Field(..., description="Whether this is technical documentation or code")
+    is_fiction: bool = Field(..., description="Whether this appears to be fictional narrative")
+    
+    # Job type recommendation
+    recommended_job_type: str = Field(
+        ..., description="Recommended processing type: SINGLE_VOICE, MULTI_VOICE, CHAPTER_PARSING, or BOOK_PROCESSING"
+    )
+    confidence_score: float = Field(
+        ..., ge=0.0, le=1.0, description="Confidence in the recommendation (0.0 to 1.0)"
+    )
+    reasoning: list[str] = Field(
+        default_factory=list, description="List of reasons for the recommendation"
+    )
+    
+    # Additional insights
+    narrative_complexity: str = Field(..., description="LOW, MEDIUM, or HIGH narrative complexity")
+    primary_genre: str = Field(
+        ..., description="Primary genre detected (fiction, non-fiction, technical, academic, etc.)"
+    )
+
+
 class ContentAnalyzer:
     """Service for analyzing content and determining appropriate processing strategies."""
     
     def __init__(self):
-        # Patterns for detecting dialogue and character speech
+        # Initialize Gemini API
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            logger.warning("GOOGLE_API_KEY not set - falling back to regex-based analysis")
+            self.use_gemini = False
+        else:
+            try:
+                genai.configure(api_key=api_key)
+                self.model = genai.GenerativeModel(
+                    model_name=os.getenv("GEMINI_MODEL", "gemini-1.5-flash-latest"),
+                    generation_config=GenerationConfig(
+                        response_mime_type="application/json",
+                        temperature=0.0  # Consistent results
+                    )
+                )
+                self.use_gemini = True
+                logger.info("Initialized Gemini for content analysis")
+            except Exception as e:
+                logger.error(f"Failed to initialize Gemini: {e}")
+                self.use_gemini = False
+        
+        # Fallback patterns for when Gemini is unavailable
         self.dialogue_patterns = [
             r'"[^"]*"',  # Double quoted speech
             r"'[^']*'",  # Single quoted speech  
@@ -41,6 +105,43 @@ class ContentAnalyzer:
         """Analyze content and suggest appropriate job type."""
         logger.info(f"Analyzing content of length {len(content)} with source_type {source_type}")
         
+        if self.use_gemini:
+            try:
+                # Use Gemini for intelligent content analysis
+                analysis = await self._analyze_with_gemini(content, source_type)
+                
+                # Convert Gemini analysis to ContentAnalysisResult
+                features = {
+                    "length": str(len(content)),
+                    "word_count": str(len(content.split())),
+                    "has_dialogue": str(analysis.has_dialogue),
+                    "dialogue_percentage": str(analysis.dialogue_percentage),
+                    "estimated_speakers": str(analysis.estimated_speakers),
+                    "identified_characters": json.dumps(analysis.identified_characters),
+                    "has_chapter_structure": str(analysis.has_chapter_structure),
+                    "chapter_count": str(analysis.chapter_count),
+                    "is_technical_content": str(analysis.is_technical_content),
+                    "is_fiction": str(analysis.is_fiction),
+                    "narrative_complexity": analysis.narrative_complexity,
+                    "primary_genre": analysis.primary_genre
+                }
+                
+                # Map Gemini's recommendation to JobType enum
+                job_type = JobType(analysis.recommended_job_type)
+                estimated_time = await self._estimate_processing_time(content, job_type)
+                
+                return ContentAnalysisResult(
+                    suggested_job_type=job_type,
+                    confidence=analysis.confidence_score,
+                    reasons=analysis.reasoning,
+                    detected_features=features,
+                    estimated_processing_time=estimated_time
+                )
+                
+            except Exception as e:
+                logger.error(f"Gemini analysis failed, falling back to regex: {e}")
+        
+        # Fallback to regex-based analysis
         features = await self._extract_features(content)
         suggested_type, confidence, reasons = await self._determine_job_type(features, source_type)
         estimated_time = await self._estimate_processing_time(content, suggested_type)
@@ -52,6 +153,96 @@ class ContentAnalyzer:
             detected_features=features,
             estimated_processing_time=estimated_time
         )
+    
+    async def _analyze_with_gemini(self, content: str, source_type: SourceType) -> GeminiContentAnalysis:
+        """Use Gemini to analyze content with structured output."""
+        # Sample content for efficiency (first 3000 chars)
+        content_sample = content[:3000] if len(content) > 3000 else content
+        
+        prompt = f"""Analyze this text content and provide a detailed analysis to determine the best processing approach for audiobook generation.
+
+IMPORTANT: You must respond with valid JSON matching this exact schema:
+{{
+    "has_dialogue": boolean,
+    "dialogue_percentage": number (0.0 to 1.0),
+    "estimated_speakers": integer,
+    "identified_characters": array of strings,
+    "has_chapter_structure": boolean,
+    "chapter_count": integer,
+    "is_technical_content": boolean,
+    "is_fiction": boolean,
+    "recommended_job_type": string (one of: SINGLE_VOICE, MULTI_VOICE, CHAPTER_PARSING, BOOK_PROCESSING),
+    "confidence_score": number (0.0 to 1.0),
+    "reasoning": array of strings,
+    "narrative_complexity": string (one of: LOW, MEDIUM, HIGH),
+    "primary_genre": string
+}}
+
+Analysis criteria:
+1. Dialogue Detection: Look for quoted speech, dialogue tags (said, asked, replied), and conversational patterns
+2. Character Identification: Find character names mentioned in dialogue attribution
+3. Content Structure: Detect chapter markers, sections, or natural divisions
+4. Genre Detection: Identify if it's fiction, non-fiction, technical documentation, academic text, etc.
+
+Job type recommendations:
+- SINGLE_VOICE: For content with no dialogue, technical docs, or single narrator 
+  (news articles, documentation, essays)
+- MULTI_VOICE: For content with multiple characters speaking 
+  (fiction with dialogue, plays, interviews)
+- CHAPTER_PARSING: For analyzing chapter structure only (when just parsing is needed)
+- BOOK_PROCESSING: For full books/novels with multiple chapters that need to be split first 
+  (content >10,000 words with chapter structure)
+
+Source type context: {source_type.value}
+Total content length: {len(content)} characters
+
+Content to analyze:
+{content_sample}"""
+
+        try:
+            # Run Gemini API call in executor to avoid blocking
+            loop = asyncio.get_running_loop()
+            response = await loop.run_in_executor(
+                None,
+                lambda: self.model.generate_content(prompt)
+            )
+            
+            # Parse JSON response
+            response_text = response.text.strip()
+            
+            # Clean up common JSON issues from LLMs
+            if response_text.startswith("```json"):
+                response_text = response_text[7:]
+            if response_text.endswith("```"):
+                response_text = response_text[:-3]
+            response_text = response_text.strip()
+            
+            # Parse and validate with Pydantic
+            analysis_data = json.loads(response_text)
+            return GeminiContentAnalysis(**analysis_data)
+            
+        except Exception as e:
+            logger.error(f"Error in Gemini analysis: {e}")
+            # Return a sensible default based on basic heuristics
+            has_quotes = bool(re.search(r'[""].*?[""]', content_sample))
+            
+            return GeminiContentAnalysis(
+                has_dialogue=has_quotes,
+                dialogue_percentage=0.1 if has_quotes else 0.0,
+                estimated_speakers=2 if has_quotes else 1,
+                identified_characters=[],
+                has_chapter_structure=bool(re.search(r'chapter\s+\d+', content_sample, re.IGNORECASE)),
+                chapter_count=0,
+                is_technical_content=bool(re.search(r'```|def\s+|class\s+|function\s+', content_sample)),
+                is_fiction=has_quotes and not bool(re.search(r'```|def\s+|class\s+', content_sample)),
+                recommended_job_type=(
+                    JobType.MULTI_VOICE.value if has_quotes else JobType.SINGLE_VOICE.value
+                ),
+                confidence_score=0.5,
+                reasoning=["Fallback analysis due to Gemini error"],
+                narrative_complexity="MEDIUM",
+                primary_genre="unknown"
+            )
     
     async def split_book_into_chapters(self, content: str) -> list[str]:
         """Split book content into individual chapters."""
@@ -170,7 +361,9 @@ class ContentAnalyzer:
         
         # High dialogue content -> MULTI_VOICE
         if dialogue_count > 10 and dialogue_ratio > 0.1:
-            reasons.append(f"High dialogue content ({dialogue_count} instances, {dialogue_ratio:.1%} ratio)")
+            reasons.append(
+                f"High dialogue content ({dialogue_count} instances, {dialogue_ratio:.1%} ratio)"
+            )
             confidence += 0.3
             
         if potential_characters > 5:
