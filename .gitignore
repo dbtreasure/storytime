@@ -95,3 +95,4 @@ Desktop.ini
 *.key
 api_keys.txt
 secrets.txt 
+.aider*
