@@ -32,7 +32,11 @@ class TestContentAnalyzer:
         
         assert result.suggested_job_type == JobType.SINGLE_VOICE
         assert result.confidence > 0.5
-        assert "Short content" in result.reasons[0]
+        # Gemini provides different reasons than regex, so be more flexible
+        assert len(result.reasons) > 0
+        # Check that it mentions short content or single voice somewhere
+        reasons_text = " ".join(result.reasons).lower()
+        assert any(term in reasons_text for term in ["short", "single", "no dialogue", "simple"])
     
     @pytest.mark.asyncio
     async def test_analyze_dialogue_content(self, analyzer):
@@ -79,17 +83,27 @@ class TestContentAnalyzer:
     @pytest.mark.asyncio
     async def test_split_book_into_chapters(self, analyzer):
         """Test book splitting functionality."""
-        content = '''
-        Chapter 1
-        This is the first chapter content.
-        It has multiple paragraphs.
+        # Make chapters longer to meet minimum length requirement
+        chapter_content = """
+        This is chapter content with multiple paragraphs to ensure it meets the minimum
+        length requirement for chapter splitting. The content analyzer requires chapters
+        to be at least 1000 characters long to be considered valid chapters.
         
-        Chapter 2
-        This is the second chapter.
-        With its own content.
+        We need to add enough text here to make sure each chapter is substantial enough
+        to pass the validation checks. This includes multiple sentences and paragraphs
+        that would be typical of a real book chapter.
         
-        Chapter 3
-        Final chapter here.
+        The story continues with interesting developments and character interactions.
+        There are plot points that need to be developed across multiple paragraphs
+        to create a complete narrative experience for the reader.
+        """ * 2  # Double it to ensure length
+        
+        content = f'''
+        Chapter 1{chapter_content}
+        
+        Chapter 2{chapter_content}
+        
+        Chapter 3{chapter_content}
         '''
         
         chapters = await analyzer.split_book_into_chapters(content)
