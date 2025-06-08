@@ -6,6 +6,7 @@ from typing import Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func, and_
 from sqlalchemy.orm import selectinload
@@ -314,10 +315,14 @@ async def get_job_audio(
         raise HTTPException(status_code=500, detail=f"Failed to get job audio: {str(e)}")
 
 
+class ContentAnalysisRequest(BaseModel):
+    content: str = Field(..., description="Text content to analyze")
+    source_type: SourceType = Field(SourceType.TEXT, description="Type of content source")
+
+
 @router.post("/analyze-content", response_model=ContentAnalysisResult)
 async def analyze_content(
-    content: str,
-    source_type: SourceType = SourceType.TEXT,
+    request: ContentAnalysisRequest,
     current_user: User = Depends(get_current_user)
 ) -> ContentAnalysisResult:
     """Analyze content and suggest appropriate job type without creating a job."""
@@ -325,7 +330,7 @@ async def analyze_content(
     
     try:
         content_analyzer = ContentAnalyzer()
-        result = await content_analyzer.analyze_content(content, source_type)
+        result = await content_analyzer.analyze_content(request.content, request.source_type)
         return result
         
     except Exception as e:

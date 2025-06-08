@@ -7,7 +7,14 @@ import asyncio
 from .auth import get_current_user
 from ..database import User
 from ..services.character_analyzer import CharacterAnalyzer
-from ..workflows.chapter_parsing import workflow as chapter_workflow
+# Import workflow conditionally to avoid initialization issues
+try:
+    from ..workflows.chapter_parsing import workflow as chapter_workflow
+    CHAPTER_WORKFLOW_AVAILABLE = True
+except Exception as e:
+    chapter_workflow = None
+    CHAPTER_WORKFLOW_AVAILABLE = False
+    print(f"Warning: Chapter workflow not available: {e}")
 
 router = APIRouter(prefix="/api/v1/chapters", tags=["Chapters"])
 
@@ -31,6 +38,12 @@ async def parse_chapter(
     request: ParseRequest,
     current_user: User = Depends(get_current_user),
 ):
+    if not CHAPTER_WORKFLOW_AVAILABLE:
+        raise HTTPException(
+            status_code=503, 
+            detail="Chapter parsing workflow is not available due to system configuration issues"
+        )
+    
     await chapter_workflow.store.set_state({
         "chapter_text": request.text,
         "chapter_number": request.chapter_number or 1,
@@ -49,6 +62,12 @@ async def parse_with_characters(
     request: ParseRequest,
     current_user: User = Depends(get_current_user),
 ):
+    if not CHAPTER_WORKFLOW_AVAILABLE:
+        raise HTTPException(
+            status_code=503, 
+            detail="Chapter parsing workflow is not available due to system configuration issues"
+        )
+    
     await chapter_workflow.store.set_state({
         "chapter_text": request.text,
         "chapter_number": request.chapter_number or 1,
@@ -70,6 +89,12 @@ async def parse_chapter_file(
     chapter_number: Optional[int] = Form(None),
     current_user: User = Depends(get_current_user),
 ):
+    if not CHAPTER_WORKFLOW_AVAILABLE:
+        raise HTTPException(
+            status_code=503, 
+            detail="Chapter parsing workflow is not available due to system configuration issues"
+        )
+    
     text = (await file.read()).decode()
     await chapter_workflow.store.set_state({
         "chapter_text": text,

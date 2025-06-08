@@ -122,6 +122,27 @@ audio_output/provider/chapter_XX/
 - **ElevenLabs 2.1+**: Alternative TTS provider
 - **Pydub**: Audio processing (requires ffmpeg)
 
+## Project Management (Linear)
+
+### Linear Workspace Information
+- **Team ID**: `f8b5f9b8-ae25-42e8-8a4a-cc36fa1923e4` (core team)
+- **Team Name**: "core"
+- **Primary Project**: "MVP Story Book Launch" 
+- **Project ID**: `713a09ee-dceb-4a37-909b-5395c01a68ba`
+- **Workspace**: Leviathan LAM (`https://linear.app/leviathan-lam`)
+
+### Issue Management Guidelines
+- **Prefix**: All issues use `CORE-XX` identifier format
+- **Priority Levels**: 1 (Urgent), 2 (High), 3 (Medium), 4 (Low)
+- **Default Priority**: Medium (3) for most feature work
+- **Git Branches**: Auto-generated as `dbtreasure/core-XX-issue-title-kebab-case`
+
+### Current Focus Areas
+- Unified job management system (CORE-48)
+- Content analyzer improvements (CORE-52)
+- Junjo workflow integration and observability
+- TTS pipeline optimization and multi-voice processing
+
 ## Important Notes
 
 - **Audio Requirements**: ffmpeg must be installed for audio processing
