@@ -40,59 +40,71 @@ def estimate_cost_by_characters(text: str, provider: str) -> float:
 
 @router.post("/generate")
 async def generate_tts(request: GenerateRequest, background_tasks: BackgroundTasks):
+    """Legacy TTS endpoint - routes through new job system for backward compatibility."""
     provider_name = (request.provider or "openai").lower()
     if provider_name not in ("openai", "elevenlabs", "eleven"):
         raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider_name}")
+    
+    # Create a job using the new unified system
+    from storytime.models import CreateJobRequest, JobType, SourceType, VoiceConfig
+    from storytime.database import Job, JobStatus
+    from storytime.worker.tasks import process_job
+    
     job_id = str(uuid.uuid4())
-    text_key = f"uploads/{job_id}.txt"
-
-    # Save chapter_text to a temp file and upload to Spaces
-    try:
-        with tempfile.NamedTemporaryFile("w", delete=False, suffix=".txt") as tmp:
-            tmp.write(request.chapter_text)
-            tmp_path = tmp.name
-        logging.info(f"[Spaces] Uploading book text for job_id={job_id} to Spaces as {text_key}")
-        upload_success = upload_file(tmp_path, text_key, content_type="text/plain")
-        if not upload_success:
-            logging.error(f"[Spaces] Upload failed for job_id={job_id}")
-            # Optionally: set error_msg in DB here
-    except Exception as e:
-        logging.error(f"[Spaces] Exception during upload for job_id={job_id}: {e}")
-        # Optionally: set error_msg in DB here
-
-    # Persist Book row with comprehensive logging
-    logging.info(f"Starting database transaction for book_id={job_id}")
+    
     try:
         async with AsyncSessionLocal() as session:
-            logging.info(f"Session created, creating DBBook object for job_id={job_id}")
+            # Create job record
+            job = Job(
+                id=job_id,
+                user_id="anonymous",  # For backward compatibility - no auth required
+                job_type=JobType.SINGLE_VOICE,
+                source_type=SourceType.TEXT,
+                title=request.title or f"TTS Job {job_id[:8]}",
+                description="Legacy TTS job via /generate endpoint",
+                status=JobStatus.PENDING,
+                progress=0.0,
+                config={
+                    "content": request.chapter_text,
+                    "voice_config": {
+                        "provider": provider_name
+                    }
+                }
+            )
+            
+            session.add(job)
+            await session.commit()
+            await session.refresh(job)
+            
+            # Also create legacy book record for compatibility
             new_book = DBBook(
                 id=job_id,
                 title=request.title or f"Book {job_id[:8]}",
                 status=BookStatus.UPLOADED,
                 progress_pct=0,
                 error_msg=None,
-                text_key=text_key,
+                text_key=f"jobs/{job_id}/input.txt",  # Will be created by job processor
             )
-            logging.info(f"DBBook object created: {new_book.id}, {new_book.title}, {new_book.status}, {text_key}")
             session.add(new_book)
-            logging.info(f"Book added to session, attempting commit for job_id={job_id}")
             await session.commit()
-            logging.info(f"Session committed successfully for job_id={job_id}")
-            await session.refresh(new_book)
-            logging.info(f"Book verified in database: {new_book.id}, status={new_book.status}")
+            
     except Exception as e:
         logging.error(f"Database error for job_id={job_id}: {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
 
     cost = estimate_cost_by_characters(request.chapter_text, provider_name)
 
-    # Enqueue Celery task (only in Docker/prod)
+    # Enqueue unified job task
     if os.getenv("ENV") == "docker":
-        celery_app.send_task("storytime.worker.tasks.generate_tts", args=[job_id])
-        logging.info(f"Enqueued Celery TTS task for book_id={job_id}")
+        process_job.delay(job_id)
+        logging.info(f"Enqueued unified job task for job_id={job_id}")
     else:
-        background_tasks.add_task(lambda: None)  # No-op for now
-        logging.info(f"(Dev) Would enqueue Celery TTS task for book_id={job_id}")
+        # In development, still use Celery if available
+        try:
+            process_job.delay(job_id)
+            logging.info(f"(Dev) Enqueued unified job task for job_id={job_id}")
+        except Exception:
+            logging.info(f"(Dev) Celery not available, job {job_id} created but not processed")
 
     return {"job_id": job_id, "status": "UPLOADED", "estimated_cost": cost}
 

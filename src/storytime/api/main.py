@@ -8,6 +8,7 @@ from .middleware import LoggingMiddleware
 from .chapters import router as chapters_router
 from .tts import router as tts_router
 from .auth import router as auth_router
+from .jobs import router as jobs_router
 from storytime.api import voice_management
 from storytime.database import create_all
 
@@ -43,6 +44,7 @@ async def on_startup():
 app.include_router(auth_router)
 app.include_router(chapters_router)
 app.include_router(tts_router)
+app.include_router(jobs_router)
 app.include_router(voice_management.router)
 
 @app.get("/health", tags=["Utility"])

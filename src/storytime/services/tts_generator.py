@@ -55,6 +55,40 @@ class TTSGenerator:
             return speaker_type.value
         return str(speaker_type)
 
+    async def generate_simple_audio(
+        self,
+        text: str,
+        voice_config: dict[str, any] | None = None
+    ) -> bytes:
+        """Generate simple single-voice audio for unified job system."""
+        voice_config = voice_config or {}
+        
+        # Use specified voice or default narrator voice
+        voice_id = voice_config.get("voice_id")
+        if not voice_id:
+            voice_id = self.voice_assigner.get_narrator_voice()
+        
+        # Generate audio using provider
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as tmp_file:
+            self.provider.synth(
+                text=text,
+                voice=voice_id,
+                style="Generate clear, natural speech.",
+                format="mp3",
+                out_path=tmp_file.name,
+            )
+            
+            # Read audio data
+            with open(tmp_file.name, 'rb') as f:
+                audio_data = f.read()
+            
+            # Clean up temp file
+            import os
+            os.unlink(tmp_file.name)
+            
+            return audio_data
+
     # ------------------------------------------------------------------
     # Public helpers
     # ------------------------------------------------------------------
