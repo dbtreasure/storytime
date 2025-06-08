@@ -34,6 +34,7 @@ tracer = trace.get_tracer(__name__)
 # State / Store
 # ---------------------------------------------------------------------------
 
+
 class AudioGenerationState(BaseState):
     chapter: Chapter | None = None
     audio_paths: dict[str, str] | None = None
@@ -41,7 +42,7 @@ class AudioGenerationState(BaseState):
     playlist_path: str | None = None
     error: str | None = None
 
-    model_config = {'arbitrary_types_allowed': True}
+    model_config = {"arbitrary_types_allowed": True}
 
 
 class AudioGenerationStore(BaseStore[AudioGenerationState]):
@@ -51,6 +52,7 @@ class AudioGenerationStore(BaseStore[AudioGenerationState]):
 # ---------------------------------------------------------------------------
 # Nodes
 # ---------------------------------------------------------------------------
+
 
 class InitAudioNode(Node[AudioGenerationStore]):
     """Store the Chapter in state so fan-out nodes can use them. TTSGenerator is passed directly to nodes."""
@@ -62,14 +64,21 @@ class InitAudioNode(Node[AudioGenerationStore]):
     async def service(self, store: AudioGenerationStore) -> None:
         start = time.perf_counter()
         with tracer.start_as_current_span("InitAudioNode") as span:
-            await store.set_state({
-                "chapter": self._chapter,
-                "audio_paths": {},
-            })
-            span.set_attribute("braintrust.output", json.dumps({
-                "segments": len(self._chapter.segments),
-                "chapter_number": self._chapter.chapter_number,
-            }))
+            await store.set_state(
+                {
+                    "chapter": self._chapter,
+                    "audio_paths": {},
+                }
+            )
+            span.set_attribute(
+                "braintrust.output",
+                json.dumps(
+                    {
+                        "segments": len(self._chapter.segments),
+                        "chapter_number": self._chapter.chapter_number,
+                    }
+                ),
+            )
             elapsed = time.perf_counter() - start
             span.set_attribute("braintrust.metrics", json.dumps({"duration_s": elapsed}))
 
@@ -92,10 +101,15 @@ class GenerateSegmentAudioNode(Node[AudioGenerationStore]):
         start = time.perf_counter()
         async with GenerateSegmentAudioNode._sem:  # throttle
             with tracer.start_as_current_span("GenerateSegmentAudioNode") as span:
-                span.set_attribute("braintrust.input", json.dumps({
-                    "segment_number": self.segment.sequence_number,
-                    "speaker": self.segment.speaker_name,
-                }))
+                span.set_attribute(
+                    "braintrust.input",
+                    json.dumps(
+                        {
+                            "segment_number": self.segment.sequence_number,
+                            "speaker": self.segment.speaker_name,
+                        }
+                    ),
+                )
                 state = await store.get_state()
                 if not state.chapter:
                     err = "Chapter missing in state"
@@ -144,17 +158,26 @@ class StitchChapterNode(Node[AudioGenerationStore]):
                 await store.set_state({"error": err})
                 raise RuntimeError(err)
 
-            stitched = self.tts_generator.stitch_chapter_audio(state.chapter, state.audio_paths or {})
+            stitched = self.tts_generator.stitch_chapter_audio(
+                state.chapter, state.audio_paths or {}
+            )
             playlist = self.tts_generator.create_playlist(state.chapter, state.audio_paths or {})
 
-            await store.set_state({
-                "stitched_path": stitched,
-                "playlist_path": playlist,
-            })
-            span.set_attribute("braintrust.output", json.dumps({
-                "stitched_path": stitched,
-                "playlist_path": playlist,
-            }))
+            await store.set_state(
+                {
+                    "stitched_path": stitched,
+                    "playlist_path": playlist,
+                }
+            )
+            span.set_attribute(
+                "braintrust.output",
+                json.dumps(
+                    {
+                        "stitched_path": stitched,
+                        "playlist_path": playlist,
+                    }
+                ),
+            )
             elapsed = time.perf_counter() - start
             span.set_attribute("braintrust.metrics", json.dumps({"duration_s": elapsed}))
 
@@ -162,6 +185,7 @@ class StitchChapterNode(Node[AudioGenerationStore]):
 # ---------------------------------------------------------------------------
 # Builder helper
 # ---------------------------------------------------------------------------
+
 
 def build_audio_workflow(
     chapter: Chapter,
@@ -175,7 +199,8 @@ def build_audio_workflow(
 
     # One node per segment
     seg_nodes: list[GenerateSegmentAudioNode] = [
-        GenerateSegmentAudioNode(seg, tts_generator, max_concurrency=max_concurrency) for seg in chapter.segments
+        GenerateSegmentAudioNode(seg, tts_generator, max_concurrency=max_concurrency)
+        for seg in chapter.segments
     ]
 
     stitch_node = StitchChapterNode(tts_generator)
@@ -191,12 +216,9 @@ def build_audio_workflow(
 
     # Create workflow without store parameter to avoid initialization issues
     try:
-        wf = Workflow(
-            name="Chapter Audio Generation Pipeline",
-            graph=graph
-        )
+        wf = Workflow(name="Chapter Audio Generation Pipeline", graph=graph)
         # Set the store separately if possible
-        if hasattr(wf, 'store'):
+        if hasattr(wf, "store"):
             wf.store = AudioGenerationStore(initial_state=AudioGenerationState())
     except Exception:
         # Fallback: create a minimal workflow object
@@ -207,7 +229,9 @@ def build_audio_workflow(
                 self.store = AudioGenerationStore(initial_state=AudioGenerationState())
 
             async def execute(self):
-                raise NotImplementedError("Workflow execution not available due to Junjo version incompatibility")
+                raise NotImplementedError(
+                    "Workflow execution not available due to Junjo version incompatibility"
+                )
 
         wf = MockWorkflow()
     return wf
@@ -225,7 +249,7 @@ class AudioGenerationWorkflow:
         chapter_data: dict[str, Any],
         voice_config: dict[str, Any] | None = None,
         job_id: str | None = None,
-        progress_callback: Callable[[float], Awaitable[None]] | None = None
+        progress_callback: Callable[[float], Awaitable[None]] | None = None,
     ) -> dict[str, Any]:
         """Run the audio generation workflow and return results."""
         try:
@@ -238,11 +262,7 @@ class AudioGenerationWorkflow:
             else:
                 # Create chapter from segments
                 segments = [TextSegment(**seg) for seg in chapter_data.get("segments", [])]
-                chapter = Chapter(
-                    chapter_number=1,
-                    title="Chapter 1",
-                    segments=segments
-                )
+                chapter = Chapter(chapter_number=1, title="Chapter 1", segments=segments)
 
             # Create TTS generator
             if not self.tts_generator:
@@ -261,7 +281,7 @@ class AudioGenerationWorkflow:
                     "audio_data": b"dummy_audio_data",  # In real implementation, get from final_state
                     "segment_files": final_state.segment_files or {},
                     "chapter_file": final_state.chapter_file,
-                    "error": final_state.error
+                    "error": final_state.error,
                 }
 
             except Exception:
@@ -279,20 +299,20 @@ class AudioGenerationWorkflow:
                 "audio_data": b"dummy_audio_data",
                 "segment_files": {},
                 "chapter_file": None,
-                "error": str(e)
+                "error": str(e),
             }
 
     async def _simple_audio_generation(
-        self,
-        chapter: Chapter,
-        voice_config: dict[str, Any] | None = None
+        self, chapter: Chapter, voice_config: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """Simple fallback audio generation."""
         # In a real implementation, this would generate audio using TTS generator
         # For now, return a placeholder result
         return {
             "audio_data": b"dummy_audio_data",
-            "segment_files": {f"segment_{i}": f"dummy_path_{i}.mp3" for i in range(len(chapter.segments))},
+            "segment_files": {
+                f"segment_{i}": f"dummy_path_{i}.mp3" for i in range(len(chapter.segments))
+            },
             "chapter_file": "dummy_chapter.mp3",
-            "error": None
+            "error": None,
         }

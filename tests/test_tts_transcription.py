@@ -21,6 +21,7 @@ pytestmark = pytest.mark.skipif(not OPENAI_API_KEY, reason="Requires OpenAI API 
 
 if OPENAI_API_KEY:
     import openai
+
     openai_client = openai.OpenAI(api_key=OPENAI_API_KEY)
 else:
     openai_client = None
@@ -40,7 +41,11 @@ if GOOGLE_API_KEY:
             def embed(text: str):
                 resp = genai.embed_content(model="models/embedding-001", content=text)  # type: ignore[attr-defined]
                 # `resp` may be dict or object with .embedding
-                embedding = resp.get("embedding") if isinstance(resp, dict) else getattr(resp, "embedding", None)
+                embedding = (
+                    resp.get("embedding")
+                    if isinstance(resp, dict)
+                    else getattr(resp, "embedding", None)
+                )
                 if embedding is None:
                     raise ValueError("Failed to get embedding from Gemini response")
                 return np.array(embedding, dtype=float)
@@ -56,6 +61,7 @@ if GOOGLE_API_KEY:
         _gemini_embed_model = None
 else:
     _gemini_embed_model = None
+
 
 def wait_for_job(job_id, timeout=60):
     for _ in range(timeout):
@@ -76,7 +82,9 @@ def test_tts_to_transcription():
     with open(chapter_path, encoding="utf-8") as f:
         text = f.read().strip()
     # Submit TTS job
-    resp = requests.post(f"{BASE_URL}/api/v1/tts/generate", json={"chapter_text": text, "provider": "openai"})
+    resp = requests.post(
+        f"{BASE_URL}/api/v1/tts/generate", json={"chapter_text": text, "provider": "openai"}
+    )
     assert resp.status_code == 200
     job_id = resp.json()["job_id"]
     # Wait for job to complete
@@ -90,12 +98,10 @@ def test_tts_to_transcription():
         f.write(resp2.content)
     # Transcribe with OpenAI
     with open(audio_path, "rb") as f:
-        transcript = openai_client.audio.transcriptions.create(
-            model="whisper-1",
-            file=f
-        )
+        transcript = openai_client.audio.transcriptions.create(model="whisper-1", file=f)
     # Check transcription
     transcribed_text = transcript.text.strip().lower()
+
     # Allow for minor differences in whitespace and punctuation
     def normalize(s: str) -> str:
         """Lowercase, remove punctuation/extra whitespace, strip accents."""

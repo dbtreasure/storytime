@@ -10,7 +10,9 @@ from storytime.infrastructure.tts.base import TTSProvider, Voice
 # Sensible default for user-level config/cache, not inside `src`
 CACHE_DIR_NAME = ".storytime_cache"
 HOME_CACHE_DIR = Path.home() / CACHE_DIR_NAME / "voice_cache"
-TEST_CACHE_DIR = Path(__file__).resolve().parent.parent.parent.parent / "tests" / "fixtures" / "voice_cache"
+TEST_CACHE_DIR = (
+    Path(__file__).resolve().parent.parent.parent.parent / "tests" / "fixtures" / "voice_cache"
+)
 
 
 def get_voices(provider: TTSProvider) -> list[Voice]:

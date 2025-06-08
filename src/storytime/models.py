@@ -18,9 +18,7 @@ class Character(BaseModel):
     """Represents a character identified in the text."""
 
     name: str = Field(..., description="Character's name as it appears in dialogue tags")
-    gender: str | None = Field(
-        None, description="Character's gender (male/female/other/unknown)"
-    )
+    gender: str | None = Field(None, description="Character's gender (male/female/other/unknown)")
     description: str | None = Field(None, description="Brief character description")
     voice_assignments: dict[str, str] = Field(
         default_factory=dict, description="Voice ID per TTS provider"
@@ -58,9 +56,7 @@ class TextSegment(BaseModel):
 
     text: str = Field(..., description="The actual text content to be spoken")
     speaker_type: SpeakerType = Field(..., description="Narrator or character dialogue")
-    speaker_name: str = Field(
-        ..., description="'narrator' for narration, or the character name"
-    )
+    speaker_name: str = Field(..., description="'narrator' for narration, or the character name")
     sequence_number: int = Field(..., description="Order of this segment in the chapter")
 
     # Optional metadata for TTS processing
@@ -95,11 +91,7 @@ class Chapter(BaseModel):
     def get_unique_characters(self) -> set[str]:
         """Return the set of unique character names in the chapter."""
 
-        return {
-            s.speaker_name
-            for s in self.segments
-            if s.speaker_type == SpeakerType.CHARACTER
-        }
+        return {s.speaker_name for s in self.segments if s.speaker_type == SpeakerType.CHARACTER}
 
 
 class Book(BaseModel):
@@ -129,8 +121,10 @@ class Book(BaseModel):
 # Unified Job Management Models
 # =============================================================================
 
+
 class JobType(str, Enum):
     """Types of jobs that can be processed."""
+
     SINGLE_VOICE = "SINGLE_VOICE"
     MULTI_VOICE = "MULTI_VOICE"
     BOOK_PROCESSING = "BOOK_PROCESSING"
@@ -139,6 +133,7 @@ class JobType(str, Enum):
 
 class SourceType(str, Enum):
     """Source content types for jobs."""
+
     BOOK = "BOOK"
     CHAPTER = "CHAPTER"
     TEXT = "TEXT"
@@ -146,6 +141,7 @@ class SourceType(str, Enum):
 
 class JobStatus(str, Enum):
     """Job processing states."""
+
     PENDING = "PENDING"
     PROCESSING = "PROCESSING"
     COMPLETED = "COMPLETED"
@@ -155,6 +151,7 @@ class JobStatus(str, Enum):
 
 class StepStatus(str, Enum):
     """Individual step processing states."""
+
     PENDING = "PENDING"
     RUNNING = "RUNNING"
     COMPLETED = "COMPLETED"
@@ -163,6 +160,7 @@ class StepStatus(str, Enum):
 
 class VoiceConfig(BaseModel):
     """Voice configuration for TTS generation."""
+
     provider: str = Field(..., description="TTS provider (openai, elevenlabs)")
     voice_id: str | None = Field(None, description="Specific voice ID")
     voice_settings: dict[str, str] = Field(
@@ -172,6 +170,7 @@ class VoiceConfig(BaseModel):
 
 class ProcessingConfig(BaseModel):
     """Processing configuration for jobs."""
+
     max_concurrency: int = Field(8, description="Maximum parallel operations")
     chunk_size: int = Field(1000, description="Text chunk size for processing")
     retry_attempts: int = Field(3, description="Number of retry attempts")
@@ -180,6 +179,7 @@ class ProcessingConfig(BaseModel):
 
 class CreateJobRequest(BaseModel):
     """Request model for creating a new job."""
+
     title: str = Field(..., description="Job title")
     description: str | None = Field(None, description="Job description")
     content: str | None = Field(None, description="Text content (for TEXT source)")
@@ -195,6 +195,7 @@ class CreateJobRequest(BaseModel):
 
 class JobStepResponse(BaseModel):
     """Response model for job steps."""
+
     id: str
     step_name: str
     step_order: int
@@ -211,6 +212,7 @@ class JobStepResponse(BaseModel):
 
 class JobResponse(BaseModel):
     """Response model for jobs."""
+
     id: str
     user_id: str
     book_id: str | None = None
@@ -247,6 +249,7 @@ class JobResponse(BaseModel):
 
 class JobListResponse(BaseModel):
     """Response model for paginated job lists."""
+
     jobs: list[JobResponse]
     total: int
     page: int
@@ -256,6 +259,7 @@ class JobListResponse(BaseModel):
 
 class JobFilters(BaseModel):
     """Filters for job listing."""
+
     status: JobStatus | None = None
     job_type: JobType | None = None
     source_type: SourceType | None = None
@@ -266,6 +270,7 @@ class JobFilters(BaseModel):
 
 class ContentAnalysisResult(BaseModel):
     """Result of content analysis for job type detection."""
+
     suggested_job_type: JobType
     confidence: float = Field(..., ge=0.0, le=1.0)
     reasons: list[str] = Field(default_factory=list)

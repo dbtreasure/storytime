@@ -24,6 +24,7 @@ from storytime.services.content_analyzer import ContentAnalyzer
 # Import JobProcessor conditionally to avoid workflow initialization issues
 try:
     from storytime.services.job_processor import JobProcessor
+
     JOB_PROCESSOR_AVAILABLE = True
 except Exception as e:
     print(f"Warning: JobProcessor not available due to workflow dependencies: {e}")
@@ -39,7 +40,7 @@ router = APIRouter(prefix="/api/v1/jobs", tags=["Jobs"])
 async def create_job(
     request: CreateJobRequest,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ) -> JobResponse:
     """Create a new job with automatic type detection."""
     logger.info(f"Creating job for user {current_user.id}: {request.title}")
@@ -47,7 +48,9 @@ async def create_job(
     try:
         # Validate input
         if not request.content and not request.file_key:
-            raise HTTPException(status_code=400, detail="Either content or file_key must be provided")
+            raise HTTPException(
+                status_code=400, detail="Either content or file_key must be provided"
+            )
 
         # Auto-detect job type if not specified
         job_type = request.job_type
@@ -83,9 +86,11 @@ async def create_job(
             config={
                 "content": request.content,
                 "voice_config": request.voice_config.dict() if request.voice_config else {},
-                "processing_config": request.processing_config.dict() if request.processing_config else {}
+                "processing_config": request.processing_config.dict()
+                if request.processing_config
+                else {},
             },
-            input_file_key=request.file_key
+            input_file_key=request.file_key,
         )
 
         db.add(job)
@@ -95,6 +100,7 @@ async def create_job(
         # Schedule job processing in Celery (if available)
         try:
             from storytime.worker.tasks import process_job
+
             process_job.delay(job.id)
             logger.info(f"Job {job.id} scheduled for processing")
         except Exception as e:
@@ -118,7 +124,7 @@ async def list_jobs(
     source_type: SourceType | None = Query(None, description="Filter by source type"),
     book_id: str | None = Query(None, description="Filter by book ID"),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ) -> JobListResponse:
     """List jobs for the current user with filtering and pagination."""
     logger.info(f"Listing jobs for user {current_user.id}")
@@ -158,11 +164,7 @@ async def list_jobs(
         total_pages = (total + page_size - 1) // page_size
 
         return JobListResponse(
-            jobs=job_responses,
-            total=total,
-            page=page,
-            page_size=page_size,
-            total_pages=total_pages
+            jobs=job_responses, total=total, page=page, page_size=page_size, total_pages=total_pages
         )
 
     except Exception as e:
@@ -172,9 +174,7 @@ async def list_jobs(
 
 @router.get("/{job_id}", response_model=JobResponse)
 async def get_job(
-    job_id: str,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    job_id: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ) -> JobResponse:
     """Get detailed job information including steps."""
     logger.info(f"Getting job {job_id} for user {current_user.id}")
@@ -193,9 +193,7 @@ async def get_job(
 
 @router.delete("/{job_id}")
 async def cancel_job(
-    job_id: str,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    job_id: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ) -> dict[str, str]:
     """Cancel a job."""
     logger.info(f"Cancelling job {job_id} for user {current_user.id}")
@@ -207,8 +205,7 @@ async def cancel_job(
         # Only allow cancellation of pending or processing jobs
         if job.status not in [JobStatus.PENDING, JobStatus.PROCESSING]:
             raise HTTPException(
-                status_code=400,
-                detail=f"Cannot cancel job with status {job.status}"
+                status_code=400, detail=f"Cannot cancel job with status {job.status}"
             )
 
         # Update job status to cancelled
@@ -218,7 +215,7 @@ async def cancel_job(
             .values(
                 status=JobStatus.CANCELLED,
                 updated_at=datetime.utcnow(),
-                completed_at=datetime.utcnow()
+                completed_at=datetime.utcnow(),
             )
         )
         await db.commit()
@@ -236,9 +233,7 @@ async def cancel_job(
 
 @router.get("/{job_id}/steps", response_model=list[JobStepResponse])
 async def get_job_steps(
-    job_id: str,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    job_id: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ) -> list[JobStepResponse]:
     """Get detailed step information for a job."""
     logger.info(f"Getting steps for job {job_id} for user {current_user.id}")
@@ -266,7 +261,7 @@ async def get_job_steps(
                 updated_at=step.updated_at,
                 started_at=step.started_at,
                 completed_at=step.completed_at,
-                duration=step.duration
+                duration=step.duration,
             )
             for step in steps
         ]
@@ -280,9 +275,7 @@ async def get_job_steps(
 
 @router.get("/{job_id}/audio")
 async def get_job_audio(
-    job_id: str,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    job_id: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     """Download or stream the audio result from a completed job."""
     logger.info(f"Getting audio for job {job_id} for user {current_user.id}")
@@ -294,8 +287,7 @@ async def get_job_audio(
         # Check if job is completed and has audio output
         if job.status != JobStatus.COMPLETED:
             raise HTTPException(
-                status_code=400,
-                detail=f"Job is not completed (status: {job.status})"
+                status_code=400, detail=f"Job is not completed (status: {job.status})"
             )
 
         if not job.output_file_key:
@@ -323,8 +315,7 @@ class ContentAnalysisRequest(BaseModel):
 
 @router.post("/analyze-content", response_model=ContentAnalysisResult)
 async def analyze_content(
-    request: ContentAnalysisRequest,
-    current_user: User = Depends(get_current_user)
+    request: ContentAnalysisRequest, current_user: User = Depends(get_current_user)
 ) -> ContentAnalysisResult:
     """Analyze content and suggest appropriate job type without creating a job."""
     logger.info(f"Analyzing content for user {current_user.id}")
@@ -341,11 +332,10 @@ async def analyze_content(
 
 # Helper functions
 
+
 async def _get_user_job(job_id: str, user_id: str, db: AsyncSession) -> Job:
     """Get job and verify it belongs to the user."""
-    result = await db.execute(
-        select(Job).where(and_(Job.id == job_id, Job.user_id == user_id))
-    )
+    result = await db.execute(select(Job).where(and_(Job.id == job_id, Job.user_id == user_id)))
     job = result.scalar_one_or_none()
 
     if not job:
@@ -357,9 +347,7 @@ async def _get_user_job(job_id: str, user_id: str, db: AsyncSession) -> Job:
 async def _get_job_response(job_id: str, db: AsyncSession) -> JobResponse:
     """Get job with steps as response model."""
     # Get job
-    result = await db.execute(
-        select(Job).where(Job.id == job_id)
-    )
+    result = await db.execute(select(Job).where(Job.id == job_id))
     job = result.scalar_one_or_none()
 
     if not job:
@@ -384,7 +372,7 @@ async def _get_job_response(job_id: str, db: AsyncSession) -> JobResponse:
             updated_at=step.updated_at,
             started_at=step.started_at,
             completed_at=step.completed_at,
-            duration=step.duration
+            duration=step.duration,
         )
         for step in steps
     ]
@@ -409,7 +397,5 @@ async def _get_job_response(job_id: str, db: AsyncSession) -> JobResponse:
         started_at=job.started_at,
         completed_at=job.completed_at,
         duration=job.duration,
-        steps=step_responses
+        steps=step_responses,
     )
-
-

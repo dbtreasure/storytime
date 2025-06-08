@@ -16,7 +16,9 @@ class VoiceAssigner:
 
         # Pre-sort voices by gender for faster lookup
         self.male_voices: list[Voice] = [v for v in voices if (v.gender or "").lower() == "male"]
-        self.female_voices: list[Voice] = [v for v in voices if (v.gender or "").lower() == "female"]
+        self.female_voices: list[Voice] = [
+            v for v in voices if (v.gender or "").lower() == "female"
+        ]
         self.neutral_voices: list[Voice] = [
             v for v in voices if v not in self.male_voices + self.female_voices
         ]

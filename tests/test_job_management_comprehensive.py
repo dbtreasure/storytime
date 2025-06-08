@@ -13,12 +13,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 # Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # Set test environment
-os.environ['DATABASE_URL'] = 'postgresql+asyncpg://postgres:postgres@localhost:5432/storytime'
-os.environ['GOOGLE_API_KEY'] = 'test-key'
-os.environ['OPENAI_API_KEY'] = 'test-key'
+os.environ["DATABASE_URL"] = "postgresql+asyncpg://postgres:postgres@localhost:5432/storytime"
+os.environ["GOOGLE_API_KEY"] = "test-key"
+os.environ["OPENAI_API_KEY"] = "test-key"
 
 from storytime.database import Job, JobStep, User
 from storytime.models import (
@@ -44,8 +44,7 @@ def event_loop():
 async def test_engine():
     """Create test database engine."""
     engine = create_async_engine(
-        "postgresql+asyncpg://postgres:postgres@localhost:5432/storytime",
-        echo=False
+        "postgresql+asyncpg://postgres:postgres@localhost:5432/storytime", echo=False
     )
     yield engine
     await engine.dispose()
@@ -62,11 +61,7 @@ async def test_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
 @pytest.fixture
 async def test_user(test_session: AsyncSession) -> User:
     """Create a test user."""
-    user = User(
-        id="test-user-123",
-        email="test@example.com",
-        hashed_password="fake-hash"
-    )
+    user = User(id="test-user-123", email="test@example.com", hashed_password="fake-hash")
     test_session.add(user)
     await test_session.commit()
     await test_session.refresh(user)
@@ -103,7 +98,7 @@ class TestJobManagementSystem:
             description="A test job",
             status=JobStatus.PENDING,
             progress=0.0,
-            config={"test": "config"}
+            config={"test": "config"},
         )
 
         test_session.add(job)
@@ -122,7 +117,7 @@ class TestJobManagementSystem:
             step_name="content_analysis",
             step_order=1,
             status=StepStatus.COMPLETED,
-            progress=1.0
+            progress=1.0,
         )
 
         step2 = JobStep(
@@ -131,7 +126,7 @@ class TestJobManagementSystem:
             step_name="audio_generation",
             step_order=2,
             status=StepStatus.RUNNING,
-            progress=0.5
+            progress=0.5,
         )
 
         test_session.add_all([step1, step2])
@@ -165,12 +160,12 @@ class TestJobManagementSystem:
         assert len(result.reasoning) > 0
 
         # Test dialogue text
-        dialogue_text = '''
+        dialogue_text = """
         "Hello there," said John.
         "Hi John," replied Mary.
         The narrator continued with the story.
         "How are you today?" John asked.
-        '''
+        """
 
         result = await analyzer.analyze_content(dialogue_text, SourceType.TEXT)
 
@@ -187,14 +182,8 @@ class TestJobManagementSystem:
             description="Test description",
             content="Test content",
             source_type=SourceType.TEXT,
-            voice_config=VoiceConfig(
-                provider="openai",
-                voice_id="alloy"
-            ),
-            processing_config=ProcessingConfig(
-                max_concurrency=4,
-                enable_caching=True
-            )
+            voice_config=VoiceConfig(provider="openai", voice_id="alloy"),
+            processing_config=ProcessingConfig(max_concurrency=4, enable_caching=True),
         )
 
         assert request.title == "Test Job"
@@ -206,7 +195,7 @@ class TestJobManagementSystem:
         with pytest.raises(ValueError):
             CreateJobRequest(
                 title="",  # Empty title should fail
-                content="test"
+                content="test",
             )
 
     async def test_job_api_models_integration(self):
@@ -217,7 +206,7 @@ class TestJobManagementSystem:
         # For now, just test that the import works
         assert _get_job_response is not None
 
-    @patch('storytime.services.content_analyzer.ContentAnalyzer.analyze_content')
+    @patch("storytime.services.content_analyzer.ContentAnalyzer.analyze_content")
     async def test_job_creation_flow(self, mock_analyze):
         """Test the job creation flow with mocked dependencies."""
         from storytime.models import ContentAnalysisResult
@@ -228,11 +217,12 @@ class TestJobManagementSystem:
             confidence=0.8,
             reasoning=["Short text content", "No dialogue detected"],
             estimated_duration=120,
-            complexity_score=0.3
+            complexity_score=0.3,
         )
 
         # Test content analysis
         from storytime.services.content_analyzer import ContentAnalyzer
+
         analyzer = ContentAnalyzer()
 
         result = await analyzer.analyze_content("Test content", SourceType.TEXT)
@@ -271,9 +261,7 @@ class TestJobManagementSystem:
 @pytest.mark.asyncio
 async def test_database_connection():
     """Test that we can connect to the database."""
-    engine = create_async_engine(
-        "postgresql+asyncpg://postgres:postgres@localhost:5432/storytime"
-    )
+    engine = create_async_engine("postgresql+asyncpg://postgres:postgres@localhost:5432/storytime")
 
     async with engine.begin() as conn:
         result = await conn.execute("SELECT 1")

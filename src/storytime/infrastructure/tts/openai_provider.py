@@ -20,9 +20,7 @@ class OpenAIProvider(TTSProvider):
     def __init__(self, api_key: str | None = None) -> None:
         key = api_key or os.getenv("OPENAI_API_KEY")
         if not key:
-            raise ValueError(
-                "OpenAI API key not found. Set OPENAI_API_KEY or pass api_key."
-            )
+            raise ValueError("OpenAI API key not found. Set OPENAI_API_KEY or pass api_key.")
         self.client = OpenAI(api_key=key)
 
     def list_voices(self) -> list[Voice]:
@@ -31,12 +29,32 @@ class OpenAIProvider(TTSProvider):
         # These are standard OpenAI TTS voice names as of late 2023 / early 2024
         # Descriptions are subjective interpretations for voice selection.
         return [
-            Voice(id="alloy", name="Alloy", gender="neutral", description="Versatile, balanced neutral voice."),
+            Voice(
+                id="alloy",
+                name="Alloy",
+                gender="neutral",
+                description="Versatile, balanced neutral voice.",
+            ),
             Voice(id="echo", name="Echo", gender="male", description="Warm, engaging male voice."),
-            Voice(id="fable", name="Fable", gender="male", description="Storyteller, classic male narrator voice."),
+            Voice(
+                id="fable",
+                name="Fable",
+                gender="male",
+                description="Storyteller, classic male narrator voice.",
+            ),
             Voice(id="onyx", name="Onyx", gender="male", description="Deep, resonant male voice."),
-            Voice(id="nova", name="Nova", gender="female", description="Bright, expressive female voice."),
-            Voice(id="shimmer", name="Shimmer", gender="female", description="Clear, gentle female voice."),
+            Voice(
+                id="nova",
+                name="Nova",
+                gender="female",
+                description="Bright, expressive female voice.",
+            ),
+            Voice(
+                id="shimmer",
+                name="Shimmer",
+                gender="female",
+                description="Clear, gentle female voice.",
+            ),
         ]
 
     def synth(

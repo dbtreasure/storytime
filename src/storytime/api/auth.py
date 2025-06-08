@@ -15,26 +15,32 @@ from storytime.database import AsyncSessionLocal, User
 # Security scheme
 security = HTTPBearer()
 
+
 # Pydantic models for API
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
 
+
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
 
 class UserResponse(BaseModel):
     id: str
     email: str
     created_at: datetime
 
+
 class Token(BaseModel):
     access_token: str
     token_type: str
 
+
 # JWT utilities
 settings = get_settings()
+
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     """Create a JWT access token."""
@@ -48,9 +54,10 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     encoded_jwt = jwt.encode(to_encode, settings.jwt_secret_key, algorithm="HS256")
     return encoded_jwt
 
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncSession = Depends(lambda: AsyncSessionLocal())
+    db: AsyncSession = Depends(lambda: AsyncSessionLocal()),
 ) -> User:
     """Get the current authenticated user from JWT token."""
     credentials_exception = HTTPException(
@@ -77,6 +84,7 @@ async def get_current_user(
 
     return user
 
+
 async def get_db() -> AsyncSession:
     """Database dependency."""
     async with AsyncSessionLocal() as session:
@@ -85,8 +93,10 @@ async def get_db() -> AsyncSession:
         finally:
             await session.close()
 
+
 # Router
 router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
+
 
 @router.post("/register", response_model=UserResponse)
 async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
@@ -98,27 +108,19 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
 
     if existing_user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
         )
 
     # Create new user
     hashed_password = User.hash_password(user_data.password)
-    new_user = User(
-        id=str(uuid.uuid4()),
-        email=user_data.email,
-        hashed_password=hashed_password
-    )
+    new_user = User(id=str(uuid.uuid4()), email=user_data.email, hashed_password=hashed_password)
 
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
 
-    return UserResponse(
-        id=new_user.id,
-        email=new_user.email,
-        created_at=new_user.created_at
-    )
+    return UserResponse(id=new_user.id, email=new_user.email, created_at=new_user.created_at)
+
 
 @router.post("/login", response_model=Token)
 async def login(user_data: UserLogin, db: AsyncSession = Depends(get_db)):
@@ -140,11 +142,10 @@ async def login(user_data: UserLogin, db: AsyncSession = Depends(get_db)):
 
     return Token(access_token=access_token, token_type="bearer")
 
+
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)):
     """Get current user information."""
     return UserResponse(
-        id=current_user.id,
-        email=current_user.email,
-        created_at=current_user.created_at
+        id=current_user.id, email=current_user.email, created_at=current_user.created_at
     )

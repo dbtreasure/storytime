@@ -14,12 +14,12 @@ from storytime.models import Chapter, SpeakerType, TextSegment
 def create_sample_chapter():
     segments = [
         TextSegment(
-            text='"Well, Prince, so Genoa and Lucca are now just family estates of the Buonapartes. But I warn you, if you don\'t tell me that this means war, if you still try to defend the infamies and horrors perpetrated by that Antichrist—I really believe he is Antichrist—I will have nothing more to do with you and you are no longer my friend, no longer my \'faithful slave,\' as you call yourself! But how do you do? I see I have frightened you—sit down and tell me all the news."',
+            text="\"Well, Prince, so Genoa and Lucca are now just family estates of the Buonapartes. But I warn you, if you don't tell me that this means war, if you still try to defend the infamies and horrors perpetrated by that Antichrist—I really believe he is Antichrist—I will have nothing more to do with you and you are no longer my friend, no longer my 'faithful slave,' as you call yourself! But how do you do? I see I have frightened you—sit down and tell me all the news.\"",
             speaker_type=SpeakerType.CHARACTER,
             speaker_name="Anna Pavlovna Scherer",
             sequence_number=1,
             voice_hint="female, aristocratic",
-            emotion="passionate, dramatic"
+            emotion="passionate, dramatic",
         ),
         TextSegment(
             text="It was in July, 1805, and the speaker was the well-known Anna Pávlovna Schérer, maid of honor and favorite of the Empress Márya Fëdorovna. With these words she greeted Prince Vasíli Kurágin, a man of high rank and importance, who was the first to arrive at her reception.",
@@ -27,7 +27,7 @@ def create_sample_chapter():
             speaker_name="narrator",
             sequence_number=2,
             voice_hint="neutral, authoritative",
-            emotion=None
+            emotion=None,
         ),
         TextSegment(
             text='"Heavens! what a virulent attack!" replied the prince, not in the least disconcerted by this reception.',
@@ -35,7 +35,7 @@ def create_sample_chapter():
             speaker_name="Prince Vasili Kuragin",
             sequence_number=3,
             voice_hint="male, elderly, refined",
-            emotion="amused, calm"
+            emotion="amused, calm",
         ),
         TextSegment(
             text="He had just entered, wearing an embroidered court uniform, knee breeches, and shoes, and had stars on his breast and a serene expression on his flat face.",
@@ -43,17 +43,14 @@ def create_sample_chapter():
             speaker_name="narrator",
             sequence_number=4,
             voice_hint="neutral, descriptive",
-            emotion=None
-        )
+            emotion=None,
+        ),
     ]
 
-    chapter = Chapter(
-        chapter_number=1,
-        title="Anna Pavlovna's Salon",
-        segments=segments
-    )
+    chapter = Chapter(chapter_number=1, title="Anna Pavlovna's Salon", segments=segments)
 
     return chapter
+
 
 # Example usage
 if __name__ == "__main__":
@@ -65,7 +62,11 @@ if __name__ == "__main__":
 
     print("\n--- Segments ---")
     for segment in chapter_1.segments:
-        speaker_info = f"[{segment.speaker_name}]" if segment.speaker_type == SpeakerType.CHARACTER else "[NARRATOR]"
+        speaker_info = (
+            f"[{segment.speaker_name}]"
+            if segment.speaker_type == SpeakerType.CHARACTER
+            else "[NARRATOR]"
+        )
         print(f"{segment.sequence_number}. {speaker_info}: {segment.text[:100]}...")
         if segment.emotion:
             print(f"   Emotion: {segment.emotion}")

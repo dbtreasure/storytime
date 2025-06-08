@@ -7,10 +7,10 @@ import sys
 import pytest
 
 # Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # Set test environment
-os.environ['DATABASE_URL'] = 'postgresql+asyncpg://postgres:postgres@localhost:5432/storytime'
+os.environ["DATABASE_URL"] = "postgresql+asyncpg://postgres:postgres@localhost:5432/storytime"
 
 from storytime.models import (
     ContentAnalysisResult,
@@ -49,11 +49,7 @@ class TestJobSystemIntegration:
     def test_pydantic_models(self):
         """Test Pydantic model creation and validation."""
         # Test VoiceConfig
-        voice_config = VoiceConfig(
-            provider="openai",
-            voice_id="alloy",
-            model="tts-1"
-        )
+        voice_config = VoiceConfig(provider="openai", voice_id="alloy", model="tts-1")
         assert voice_config.provider == "openai"
         assert voice_config.voice_id == "alloy"
 
@@ -63,7 +59,7 @@ class TestJobSystemIntegration:
             description="A test job",
             content="Some test content here",
             source_type=SourceType.TEXT,
-            voice_config=voice_config
+            voice_config=voice_config,
         )
 
         assert request.title == "Test Job"
@@ -91,12 +87,12 @@ class TestJobSystemIntegration:
         assert len(result.reasoning) > 0
 
         # Test dialogue-heavy text
-        dialogue_text = '''
+        dialogue_text = """
         "Hello," said Alice.
         "Hi there," Bob replied.
         "How are you today?" Alice continued.
         "I'm doing well, thanks for asking," Bob answered.
-        '''
+        """
 
         result = await analyzer.analyze_content(dialogue_text, SourceType.TEXT)
 
@@ -119,23 +115,27 @@ class TestJobSystemIntegration:
             assert result.scalar() == 1
 
             # Test that our tables exist
-            result = await conn.execute(text("""
+            result = await conn.execute(
+                text("""
                 SELECT table_name FROM information_schema.tables 
                 WHERE table_schema = 'public' AND table_name IN ('jobs', 'job_steps')
                 ORDER BY table_name
-            """))
+            """)
+            )
             tables = [row[0] for row in result.fetchall()]
-            assert 'jobs' in tables
-            assert 'job_steps' in tables
+            assert "jobs" in tables
+            assert "job_steps" in tables
 
             # Test that our enums exist
-            result = await conn.execute(text("""
+            result = await conn.execute(
+                text("""
                 SELECT typname FROM pg_type WHERE typtype = 'e' AND typname LIKE '%job%'
                 ORDER BY typname
-            """))
+            """)
+            )
             enums = [row[0] for row in result.fetchall()]
-            assert 'jobstatus' in enums
-            assert 'jobtype' in enums
+            assert "jobstatus" in enums
+            assert "jobtype" in enums
 
         await engine.dispose()
 
@@ -155,16 +155,14 @@ class TestJobSystemIntegration:
             # Create a test user if not exists
             from sqlalchemy import select
 
-            result = await session.execute(
-                select(User).where(User.email == "test@integration.com")
-            )
+            result = await session.execute(select(User).where(User.email == "test@integration.com"))
             user = result.scalar_one_or_none()
 
             if not user:
                 user = User(
                     id="test-integration-user",
                     email="test@integration.com",
-                    hashed_password="fake-hash"
+                    hashed_password="fake-hash",
                 )
                 session.add(user)
                 await session.commit()
@@ -180,7 +178,7 @@ class TestJobSystemIntegration:
                 description="A job created during integration testing",
                 status=JobStatus.PENDING,
                 progress=0.0,
-                config={"test": "integration"}
+                config={"test": "integration"},
             )
 
             session.add(job)
@@ -199,7 +197,7 @@ class TestJobSystemIntegration:
                 step_name="content_analysis",
                 step_order=1,
                 status="PENDING",  # Use string value for enum
-                progress=0.0
+                progress=0.0,
             )
 
             session.add(step)
@@ -216,9 +214,11 @@ class TestJobSystemIntegration:
         """Test that API modules can be imported."""
         try:
             from storytime.api.jobs import router
+
             assert router is not None
 
             from storytime.models import JobListResponse, JobResponse
+
             assert JobResponse is not None
             assert JobListResponse is not None
 
@@ -232,6 +232,7 @@ class TestJobSystemIntegration:
         """Test that service modules can be imported."""
         try:
             from storytime.services.content_analyzer import ContentAnalyzer
+
             analyzer = ContentAnalyzer()
             assert analyzer is not None
             print("✅ ContentAnalyzer import successful")

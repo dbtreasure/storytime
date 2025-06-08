@@ -10,6 +10,7 @@ from storytime.models import CharacterCatalogue
 
 router = APIRouter(prefix="/api/v1", tags=["Voice Management"])
 
+
 # --- Models ---
 class VoiceOut(BaseModel):
     id: str
@@ -17,18 +18,22 @@ class VoiceOut(BaseModel):
     gender: str | None
     description: str | None
 
+
 class VoiceAssignmentRequest(BaseModel):
     provider: str
     voice_id: str
+
 
 class VoicePreviewRequest(BaseModel):
     provider: str
     voice_id: str
     text: str | None = "This is a sample of the selected voice."
 
+
 # --- In-memory character catalogue for now ---
 # (In production, this would be persistent or loaded per project/session)
 character_catalogue = CharacterCatalogue()
+
 
 # --- Endpoints ---
 @router.get("/voices", response_model=dict)
@@ -44,6 +49,7 @@ def list_voices():
         result[name] = [VoiceOut(**v.__dict__) for v in voices]
     return result
 
+
 @router.post("/characters/{character_id}/voice")
 def assign_voice(character_id: str, req: VoiceAssignmentRequest):
     """Assign a specific voice to a character for a provider."""
@@ -52,6 +58,7 @@ def assign_voice(character_id: str, req: VoiceAssignmentRequest):
         raise HTTPException(status_code=404, detail="Character not found")
     character.voice_assignments[req.provider] = req.voice_id
     return {"character_id": character_id, "provider": req.provider, "voice_id": req.voice_id}
+
 
 @router.get("/characters/{character_id}/voice")
 def get_voice_assignment(character_id: str, provider: str):
@@ -63,6 +70,7 @@ def get_voice_assignment(character_id: str, provider: str):
     if not voice_id:
         raise HTTPException(status_code=404, detail="No voice assigned for this provider")
     return {"character_id": character_id, "provider": provider, "voice_id": voice_id}
+
 
 @router.post("/voices/preview")
 def preview_voice(req: VoicePreviewRequest):

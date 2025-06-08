@@ -14,7 +14,7 @@ from storytime.workflows.chapter_parsing import workflow as chapter_workflow
 
 def main():
     # Check if API key is set
-    if not os.getenv('GOOGLE_API_KEY'):
+    if not os.getenv("GOOGLE_API_KEY"):
         print("⚠️  Please set your GOOGLE_API_KEY environment variable first!")
         print("   You can get one from: https://makersuite.google.com/app/apikey")
         print("   Then run: export GOOGLE_API_KEY='your-key-here'")
@@ -27,15 +27,19 @@ def main():
         with open(file_path, encoding="utf-8") as f:
             chapter_text = f.read()
         import asyncio
+
         async def run_workflow():
-            await chapter_workflow.store.set_state({
-                "chapter_text": chapter_text,
-                "chapter_number": 1,
-                "title": "Anna Pavlovna's Salon",
-            })
+            await chapter_workflow.store.set_state(
+                {
+                    "chapter_text": chapter_text,
+                    "chapter_number": 1,
+                    "title": "Anna Pavlovna's Salon",
+                }
+            )
             await chapter_workflow.execute()
             state = await chapter_workflow.store.get_state()
             return state.chapter
+
         chapter = asyncio.run(run_workflow())
 
         if not chapter:
@@ -50,8 +54,14 @@ def main():
         print("\n📝 First 5 segments:")
         for i, segment in enumerate(chapter.segments[:5]):
             # Handle both enum and string cases for speaker_type
-            speaker_type_str = segment.speaker_type.value if hasattr(segment.speaker_type, 'value') else str(segment.speaker_type)
-            speaker_info = f"[{segment.speaker_name}]" if speaker_type_str == "character" else "[NARRATOR]"
+            speaker_type_str = (
+                segment.speaker_type.value
+                if hasattr(segment.speaker_type, "value")
+                else str(segment.speaker_type)
+            )
+            speaker_info = (
+                f"[{segment.speaker_name}]" if speaker_type_str == "character" else "[NARRATOR]"
+            )
             print(f"\n{segment.sequence_number}. {speaker_info}")
             print(f"   Text: {segment.text[:150]}{'...' if len(segment.text) > 150 else ''}")
             if segment.emotion:
@@ -77,11 +87,14 @@ def main():
         print(f"   Dialogue ratio: {len(character_segments) / len(chapter.segments) * 100:.1f}%")
 
     except FileNotFoundError:
-        print(f"❌ {SCRIPT_DIR / 'chapter_1.txt'} not found. Make sure the file exists in the current directory.")
+        print(
+            f"❌ {SCRIPT_DIR / 'chapter_1.txt'} not found. Make sure the file exists in the current directory."
+        )
     except ValueError as e:
         print(f"❌ API Error: {e}")
     except Exception as e:
         print(f"❌ Unexpected error: {e}")
+
 
 if __name__ == "__main__":
     main()

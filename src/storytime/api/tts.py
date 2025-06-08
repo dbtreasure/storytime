@@ -11,12 +11,14 @@ from storytime.database import Book as DBBook
 
 router = APIRouter(prefix="/api/v1/tts", tags=["TTS"])
 
+
 class GenerateRequest(BaseModel):
     chapter_text: str
     chapter_number: int | None = 1
     title: str | None = None
     provider: str | None = "openai"
     # Add more fields as needed
+
 
 def estimate_cost_by_characters(text: str, provider: str) -> float:
     char_count = len(text)
@@ -25,6 +27,7 @@ def estimate_cost_by_characters(text: str, provider: str) -> float:
     else:
         rate = 0.000015  # Example: $0.000015 per character
     return round((char_count * rate), 4)
+
 
 @router.post("/generate")
 async def generate_tts(request: GenerateRequest, background_tasks: BackgroundTasks):
@@ -54,10 +57,8 @@ async def generate_tts(request: GenerateRequest, background_tasks: BackgroundTas
                 progress=0.0,
                 config={
                     "content": request.chapter_text,
-                    "voice_config": {
-                        "provider": provider_name
-                    }
-                }
+                    "voice_config": {"provider": provider_name},
+                },
             )
 
             session.add(job)
@@ -111,23 +112,26 @@ async def test_database_connection():
 
             # Test 2: Check if book table exists
             table_check = await session.execute(
-                text("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name='book')")
+                text(
+                    "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name='book')"
+                )
             )
             table_exists = table_check.scalar()
             logging.info(f"Book table exists: {table_exists}")
 
             # Test 3: Manual insert via raw SQL
             await session.execute(
-                text("INSERT INTO book (id, title, status, progress_pct) VALUES (:id, :title, :status, :progress)"),
-                {"id": test_id, "title": "Test Book SQL", "status": "UPLOADED", "progress": 0}
+                text(
+                    "INSERT INTO book (id, title, status, progress_pct) VALUES (:id, :title, :status, :progress)"
+                ),
+                {"id": test_id, "title": "Test Book SQL", "status": "UPLOADED", "progress": 0},
             )
             await session.commit()
             logging.info(f"Manual SQL insert successful: {test_id}")
 
             # Test 4: Verify the insert
             verify_result = await session.execute(
-                text("SELECT id, title, status FROM book WHERE id = :id"),
-                {"id": test_id}
+                text("SELECT id, title, status FROM book WHERE id = :id"), {"id": test_id}
             )
             row = verify_result.fetchone()
             logging.info(f"Verification result: {row}")
@@ -135,10 +139,7 @@ async def test_database_connection():
             # Test 5: Try SQLAlchemy ORM insert
             orm_id = str(uuid.uuid4())
             orm_book = DBBook(
-                id=orm_id,
-                title="Test Book ORM",
-                status=BookStatus.UPLOADED,
-                progress_pct=0
+                id=orm_id, title="Test Book ORM", status=BookStatus.UPLOADED, progress_pct=0
             )
             session.add(orm_book)
             await session.commit()
@@ -150,7 +151,7 @@ async def test_database_connection():
                 "table_exists": table_exists,
                 "manual_insert_id": test_id,
                 "orm_insert_id": orm_id,
-                "status": "success"
+                "status": "success",
             }
 
     except Exception as e:

@@ -27,16 +27,14 @@ def process_job(self, job_id):
     loop.run_until_complete(_process_job_async(self, job_id))
     return f"Job completed: {job_id}"
 
+
 async def _process_job_async(self, job_id):
     """Async implementation of job processing."""
     async with AsyncSessionLocal() as session:
         try:
             # Create job processor
             spaces_client = SpacesClient()
-            job_processor = JobProcessor(
-                db_session=session,
-                spaces_client=spaces_client
-            )
+            job_processor = JobProcessor(db_session=session, spaces_client=spaces_client)
 
             # Process the job
             result = await job_processor.process_job(job_id)
@@ -46,6 +44,7 @@ async def _process_job_async(self, job_id):
         except Exception as e:
             logging.error(f"[Celery] Job {job_id} failed: {e!s}", exc_info=True)
             raise  # Let Celery handle retry
+
 
 @celery_app.task(
     name="storytime.worker.tasks.generate_tts",
@@ -59,6 +58,7 @@ def generate_tts(self, book_id):
     loop = asyncio.get_event_loop()
     loop.run_until_complete(_generate_tts_async(self, book_id))
     return f"Done: {book_id}"
+
 
 async def _generate_tts_async(self, book_id):
     async with AsyncSessionLocal() as session:

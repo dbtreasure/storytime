@@ -20,7 +20,7 @@ class TestGeminiContentAnalyzer:
     @pytest.mark.asyncio
     async def test_core52_dialogue_detection(self, analyzer):
         """Test the specific case from CORE-52 where dialogue wasn't detected."""
-        content = '''Chapter 1: The Meeting
+        content = """Chapter 1: The Meeting
 
 The wind howled through the trees as Emma approached the old cottage.
 
@@ -34,7 +34,7 @@ The hermit opened the door slowly. "What kind of help?" he asked suspiciously.
 
 "My village is in danger," Emma explained. "We need your wisdom."
 
-The hermit studied her face carefully before nodding.'''
+The hermit studied her face carefully before nodding."""
 
         result = await analyzer.analyze_content(content, SourceType.TEXT)
 
@@ -51,13 +51,14 @@ The hermit studied her face carefully before nodding.'''
         # Should identify Emma and hermit as characters
         if "identified_characters" in features:
             import json
+
             characters = json.loads(features["identified_characters"])
             assert "Emma" in characters or any("Emma" in c for c in characters)
 
     @pytest.mark.asyncio
     async def test_technical_content_detection(self, analyzer):
         """Test detection of technical content."""
-        content = '''# Python Tutorial
+        content = """# Python Tutorial
 
 Here's how to define a function in Python:
 
@@ -73,7 +74,7 @@ This function prints a message and returns True. You can call it like this:
 result = hello_world()
 ```
 
-Classes are defined using the `class` keyword.'''
+Classes are defined using the `class` keyword."""
 
         result = await analyzer.analyze_content(content, SourceType.TEXT)
 
@@ -87,7 +88,8 @@ Classes are defined using the `class` keyword.'''
     async def test_book_with_chapters_detection(self, analyzer):
         """Test detection of book structure with chapters."""
         # Make content longer and more book-like to trigger BOOK_PROCESSING
-        chapter_content = """
+        chapter_content = (
+            """
         The protagonist walked through the ancient forest, contemplating the journey ahead. 
         Years had passed since the last great adventure, and the world had changed significantly.
         The trees whispered secrets of old, telling tales of heroes who had come before.
@@ -99,9 +101,11 @@ Classes are defined using the `class` keyword.'''
         Each step forward was a step into the unknown, but also a step toward destiny.
         The weight of responsibility rested heavily on the protagonist's shoulders,
         yet there was also a sense of excitement about what lay ahead.
-        """ * 3  # Make it substantial
+        """
+            * 3
+        )  # Make it substantial
 
-        content = f'''Table of Contents
+        content = f"""Table of Contents
 
 Chapter 1: The Beginning
 Chapter 2: The Journey  
@@ -122,7 +126,7 @@ Chapter 4: The Trial
 {chapter_content}
 
 Chapter 5: The Return
-{chapter_content}'''
+{chapter_content}"""
 
         result = await analyzer.analyze_content(content, SourceType.BOOK)
 
@@ -136,7 +140,7 @@ Chapter 5: The Return
     @pytest.mark.asyncio
     async def test_mixed_dialogue_narration(self, analyzer):
         """Test content with mixed dialogue and narration."""
-        content = '''The detective entered the room and looked around carefully.
+        content = """The detective entered the room and looked around carefully.
 
 "What happened here?" Detective Smith asked, surveying the scene.
 
@@ -150,7 +154,7 @@ The detective made notes in his pad, then walked over to examine the broken wind
 
 "Get forensics in here," Smith ordered. "And bring Mrs. Chen in for questioning."
 
-"Right away, sir," Johnson said, already reaching for his radio.'''
+"Right away, sir," Johnson said, already reaching for his radio."""
 
         result = await analyzer.analyze_content(content, SourceType.TEXT)
 
@@ -164,6 +168,7 @@ The detective made notes in his pad, then walked over to examine the broken wind
         # Should identify the detective and officer
         if "identified_characters" in features:
             import json
+
             characters = json.loads(features["identified_characters"])
             assert len(characters) >= 2
 
@@ -193,7 +198,7 @@ The detective made notes in his pad, then walked over to examine the broken wind
             pytest.skip("Gemini not configured")
 
         # Mock the model to return invalid JSON
-        with patch.object(analyzer.model, 'generate_content') as mock_generate:
+        with patch.object(analyzer.model, "generate_content") as mock_generate:
             mock_response = MagicMock()
             mock_response.text = "This is not valid JSON"
             mock_generate.return_value = mock_response
@@ -207,10 +212,7 @@ The detective made notes in his pad, then walked over to examine the broken wind
             assert len(result.reasons) > 0
 
 
-@pytest.mark.skipif(
-    not os.getenv("GOOGLE_API_KEY"),
-    reason="GOOGLE_API_KEY not set"
-)
+@pytest.mark.skipif(not os.getenv("GOOGLE_API_KEY"), reason="GOOGLE_API_KEY not set")
 class TestGeminiIntegration:
     """Integration tests that actually call Gemini API."""
 
@@ -222,7 +224,7 @@ class TestGeminiIntegration:
         if not analyzer.use_gemini:
             pytest.skip("Gemini not initialized")
 
-        content = '''
+        content = """
         "Good morning, Sarah," Dr. Williams said as she entered the office.
         
         Sarah looked up from her computer. "Oh, hello Doctor. I was just reviewing the test results."
@@ -230,7 +232,7 @@ class TestGeminiIntegration:
         "And what did you find?" the doctor asked, pulling up a chair.
         
         "The results are quite interesting," Sarah replied, turning the monitor. "Look at these numbers."
-        '''
+        """
 
         result = await analyzer.analyze_content(content, SourceType.TEXT)
 
@@ -246,6 +248,7 @@ class TestGeminiIntegration:
         # Should identify Sarah and Dr. Williams
         if "identified_characters" in features:
             import json
+
             characters = json.loads(features["identified_characters"])
             assert any("Sarah" in c for c in characters)
             assert any("Williams" in c or "Doctor" in c for c in characters)

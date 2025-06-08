@@ -18,26 +18,26 @@ from storytime.database import User
 
 def mock_current_user():
     # Return a mock user for testing
-    return User(
-        id="test-user-id",
-        email="test@example.com",
-        hashed_password="test-hash"
-    )
+    return User(id="test-user-id", email="test@example.com", hashed_password="test-hash")
+
 
 app.dependency_overrides[auth.get_current_user] = mock_current_user
 
 client = TestClient(app)
+
 
 # --- Fixtures ---
 @pytest.fixture
 def sample_text():
     return "\"Hello!\" said Marcus. She replied, 'Good morning.' The sun was shining."
 
+
 @pytest.fixture
 def sample_file(tmp_path, sample_text):
     file_path = tmp_path / "chapter.txt"
     file_path.write_text(sample_text)
     return file_path
+
 
 # --- Tests ---
 def test_parse_chapter_text(sample_text):
@@ -113,7 +113,9 @@ def test_get_characters_no_analysis(sample_text):
 
 
 def test_generate_tts():
-    resp = client.post("/api/v1/tts/generate", json={"chapter_text": "Hello world!", "provider": "openai"})
+    resp = client.post(
+        "/api/v1/tts/generate", json={"chapter_text": "Hello world!", "provider": "openai"}
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert "job_id" in data

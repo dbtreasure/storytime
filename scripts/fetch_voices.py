@@ -12,6 +12,7 @@ PROVIDERS = {
 
 VOICE_CACHE_DIR = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "voice_cache"
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Fetch voice list from provider and cache into voice_cache/"
@@ -27,6 +28,7 @@ def main():
     with out_path.open("w", encoding="utf-8") as f:
         json.dump([v.__dict__ for v in voices], f, indent=2)
     print(f"✅ Cached {len(voices)} voices to {out_path}")
+
 
 if __name__ == "__main__":
     main()

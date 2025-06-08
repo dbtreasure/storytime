@@ -22,7 +22,9 @@ class MockTTSProvider(TTSProvider):
     def list_voices(self) -> list[Voice]:
         return self._voices
 
-    def synth(self, *, text: str, voice: str, style: str | None, format: str, out_path: Path) -> Path:
+    def synth(
+        self, *, text: str, voice: str, style: str | None, format: str, out_path: Path
+    ) -> Path:
         # Create a dummy file to simulate audio generation
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(f"Mock audio for voice {voice}: {text[:50]}")
@@ -61,7 +63,7 @@ def sample_chapter(sample_characters):
             sequence_number=1,
             voice_hint=None,
             emotion=None,
-            instruction=None
+            instruction=None,
         ),
         TextSegment(
             text="You're early,",
@@ -70,7 +72,7 @@ def sample_chapter(sample_characters):
             sequence_number=2,
             voice_hint="male, warm",
             emotion="friendly",
-            instruction="Speak warmly"
+            instruction="Speak warmly",
         ),
         TextSegment(
             text="said Marcus with a smile.",
@@ -79,7 +81,7 @@ def sample_chapter(sample_characters):
             sequence_number=3,
             voice_hint=None,
             emotion=None,
-            instruction=None
+            instruction=None,
         ),
         TextSegment(
             text="I couldn't sleep,",
@@ -88,7 +90,7 @@ def sample_chapter(sample_characters):
             sequence_number=4,
             voice_hint="female, anxious",
             emotion="nervous",
-            instruction="Speak anxiously"
+            instruction="Speak anxiously",
         ),
         TextSegment(
             text="Sarah replied nervously.",
@@ -97,7 +99,7 @@ def sample_chapter(sample_characters):
             sequence_number=5,
             voice_hint=None,
             emotion=None,
-            instruction=None
+            instruction=None,
         ),
         TextSegment(
             text="I suppose we should get to business.",
@@ -106,7 +108,7 @@ def sample_chapter(sample_characters):
             sequence_number=6,
             voice_hint="male, serious",
             emotion="businesslike",
-            instruction="Speak seriously"
+            instruction="Speak seriously",
         ),
         TextSegment(
             text="I think we should do it,",
@@ -115,15 +117,11 @@ def sample_chapter(sample_characters):
             sequence_number=7,
             voice_hint="female, determined",
             emotion="confident",
-            instruction="Speak with determination"
+            instruction="Speak with determination",
         ),
     ]
 
-    return Chapter(
-        chapter_number=1,
-        title="Test Chapter",
-        segments=segments
-    )
+    return Chapter(chapter_number=1, title="Test Chapter", segments=segments)
 
 
 def test_voice_consistency_single_provider(sample_voices, sample_characters, sample_chapter):
@@ -135,9 +133,7 @@ def test_voice_consistency_single_provider(sample_voices, sample_characters, sam
     with tempfile.TemporaryDirectory() as temp_dir:
         # Create TTS generator with character catalogue
         tts_generator = TTSGenerator(
-            provider=provider,
-            output_dir=temp_dir,
-            character_catalogue=sample_characters
+            provider=provider, output_dir=temp_dir, character_catalogue=sample_characters
         )
 
         # Track voice assignments for each character
@@ -152,15 +148,17 @@ def test_voice_consistency_single_provider(sample_voices, sample_characters, sam
                     character_voices[segment.speaker_name] = voice_id
                 else:
                     # Assert that the same character gets the same voice
-                    assert character_voices[segment.speaker_name] == voice_id, \
-                        f"Character {segment.speaker_name} got different voices: " \
+                    assert character_voices[segment.speaker_name] == voice_id, (
+                        f"Character {segment.speaker_name} got different voices: "
                         f"{character_voices[segment.speaker_name]} vs {voice_id}"
+                    )
 
         # Verify that different characters get different voices (when possible)
         assigned_voices = list(character_voices.values())
         if len(assigned_voices) > 1:
-            assert len(set(assigned_voices)) > 1, \
+            assert len(set(assigned_voices)) > 1, (
                 "Different characters should get different voices when available"
+            )
 
 
 def test_voice_consistency_multiple_providers(sample_voices, sample_characters, sample_chapter):
@@ -185,16 +183,12 @@ def test_voice_consistency_multiple_providers(sample_voices, sample_characters, 
     with tempfile.TemporaryDirectory() as temp_dir:
         # Test with first provider
         tts_gen1 = TTSGenerator(
-            provider=provider1,
-            output_dir=temp_dir,
-            character_catalogue=sample_characters
+            provider=provider1, output_dir=temp_dir, character_catalogue=sample_characters
         )
 
         # Test with second provider
         tts_gen2 = TTSGenerator(
-            provider=provider2,
-            output_dir=temp_dir,
-            character_catalogue=sample_characters
+            provider=provider2, output_dir=temp_dir, character_catalogue=sample_characters
         )
 
         # Process segments with both providers
@@ -221,9 +215,7 @@ def test_narrator_voice_consistency(sample_voices, sample_characters, sample_cha
 
     with tempfile.TemporaryDirectory() as temp_dir:
         tts_generator = TTSGenerator(
-            provider=provider,
-            output_dir=temp_dir,
-            character_catalogue=sample_characters
+            provider=provider, output_dir=temp_dir, character_catalogue=sample_characters
         )
 
         narrator_voices = []
@@ -235,8 +227,9 @@ def test_narrator_voice_consistency(sample_voices, sample_characters, sample_cha
                 narrator_voices.append(voice_id)
 
         # Assert all narrator segments use the same voice
-        assert len(set(narrator_voices)) == 1, \
+        assert len(set(narrator_voices)) == 1, (
             f"Narrator should use consistent voice, got: {set(narrator_voices)}"
+        )
 
 
 def test_gender_based_voice_assignment(sample_voices, sample_characters, sample_chapter):
@@ -246,9 +239,7 @@ def test_gender_based_voice_assignment(sample_voices, sample_characters, sample_
 
     with tempfile.TemporaryDirectory() as temp_dir:
         tts_generator = TTSGenerator(
-            provider=provider,
-            output_dir=temp_dir,
-            character_catalogue=sample_characters
+            provider=provider, output_dir=temp_dir, character_catalogue=sample_characters
         )
 
         # Process segments and verify gender-appropriate voice assignment
@@ -263,9 +254,10 @@ def test_gender_based_voice_assignment(sample_voices, sample_characters, sample_
 
                 # Verify gender matching (when character gender is specified)
                 if character.gender in ["male", "female"]:
-                    assert voice_obj.gender == character.gender, \
-                        f"Character {character.name} ({character.gender}) got voice " \
+                    assert voice_obj.gender == character.gender, (
+                        f"Character {character.name} ({character.gender}) got voice "
                         f"{voice_obj.name} ({voice_obj.gender})"
+                    )
 
 
 if __name__ == "__main__":

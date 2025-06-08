@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 try:
     from storytime.worker.celery_app import celery_app
     from storytime.worker.tasks import generate_tts
+
     logger.info("Successfully imported Celery components")
 except ImportError as e:
     logger.error(f"Failed to import Celery components: {e}")

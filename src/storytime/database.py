@@ -15,6 +15,7 @@ Base = declarative_base()
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+
 class BookStatus(str, enum.Enum):
     UPLOADED = "UPLOADED"
     PROCESSING = "PROCESSING"
@@ -24,34 +25,39 @@ class BookStatus(str, enum.Enum):
 
 class JobType(str, enum.Enum):
     """Types of jobs that can be processed."""
-    SINGLE_VOICE = "SINGLE_VOICE"      # Simple TTS generation
-    MULTI_VOICE = "MULTI_VOICE"        # Complex character-based TTS
+
+    SINGLE_VOICE = "SINGLE_VOICE"  # Simple TTS generation
+    MULTI_VOICE = "MULTI_VOICE"  # Complex character-based TTS
     BOOK_PROCESSING = "BOOK_PROCESSING"  # Full book with chapter splitting
     CHAPTER_PARSING = "CHAPTER_PARSING"  # Text analysis and segment parsing
 
 
 class SourceType(str, enum.Enum):
     """Source content types for jobs."""
-    BOOK = "BOOK"        # Full book file
+
+    BOOK = "BOOK"  # Full book file
     CHAPTER = "CHAPTER"  # Single chapter
-    TEXT = "TEXT"        # Raw text input
+    TEXT = "TEXT"  # Raw text input
 
 
 class JobStatus(str, enum.Enum):
     """Job processing states."""
-    PENDING = "PENDING"      # Job created, not started
+
+    PENDING = "PENDING"  # Job created, not started
     PROCESSING = "PROCESSING"  # Job in progress
-    COMPLETED = "COMPLETED"   # Job finished successfully
-    FAILED = "FAILED"        # Job failed with error
-    CANCELLED = "CANCELLED"   # Job cancelled by user
+    COMPLETED = "COMPLETED"  # Job finished successfully
+    FAILED = "FAILED"  # Job failed with error
+    CANCELLED = "CANCELLED"  # Job cancelled by user
 
 
 class StepStatus(str, enum.Enum):
     """Individual step processing states."""
+
     PENDING = "PENDING"
     RUNNING = "RUNNING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
+
 
 class User(Base):
     __tablename__ = "users"
@@ -75,6 +81,7 @@ class User(Base):
         """Hash a password for storing."""
         return pwd_context.hash(password)
 
+
 class Book(Base):
     __tablename__ = "book"
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -94,6 +101,7 @@ class Book(Base):
 
 class Job(Base):
     """Unified job entity for all processing types."""
+
     __tablename__ = "jobs"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -140,6 +148,7 @@ class Job(Base):
 
 class JobStep(Base):
     """Individual steps within a job for granular progress tracking."""
+
     __tablename__ = "job_steps"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -173,9 +182,11 @@ class JobStep(Base):
             return (self.completed_at - self.started_at).total_seconds()
         return None
 
+
 settings = get_settings()
 engine = create_async_engine(settings.database_url, echo=True, future=True)
 AsyncSessionLocal = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
 
 async def get_db():
     """Dependency to get database session."""
@@ -184,6 +195,7 @@ async def get_db():
             yield session
         finally:
             await session.close()
+
 
 async def create_all():
     async with engine.begin() as conn:

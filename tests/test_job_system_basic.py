@@ -4,7 +4,7 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import asyncio
 from unittest.mock import AsyncMock
@@ -43,6 +43,7 @@ def test_imports():
     except Exception as e:
         print(f"❌ Import failed: {e}")
         return False
+
 
 def test_content_analyzer():
     """Test content analyzer functionality."""
@@ -87,6 +88,7 @@ def test_content_analyzer():
         print(f"❌ Content analyzer test failed: {e}")
         return False
 
+
 def test_job_models():
     """Test job data models."""
     print("\nTesting job models...")
@@ -110,10 +112,7 @@ def test_job_models():
             description="Test description",
             content="Sample content",
             source_type=SourceType.TEXT,
-            voice_config=VoiceConfig(
-                provider="openai",
-                voice_id="alloy"
-            )
+            voice_config=VoiceConfig(provider="openai", voice_id="alloy"),
         )
 
         assert request.title == "Test Job"
@@ -131,7 +130,7 @@ def test_job_models():
             status=JobStatus.PENDING,
             progress=0.0,
             created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            updated_at=datetime.utcnow(),
         )
 
         assert response.status == JobStatus.PENDING
@@ -145,6 +144,7 @@ def test_job_models():
         print(f"❌ Job models test failed: {e}")
         return False
 
+
 def test_job_processor_initialization():
     """Test job processor can be initialized."""
     print("\nTesting job processor initialization...")
@@ -156,10 +156,7 @@ def test_job_processor_initialization():
         mock_session = AsyncMock()
         mock_spaces = AsyncMock()
 
-        processor = JobProcessor(
-            db_session=mock_session,
-            spaces_client=mock_spaces
-        )
+        processor = JobProcessor(db_session=mock_session, spaces_client=mock_spaces)
 
         assert processor.db_session == mock_session
         assert processor.spaces_client == mock_spaces
@@ -172,6 +169,7 @@ def test_job_processor_initialization():
         print("✅ Job processor class is importable despite workflow issues")
         return True  # Consider this a pass since the issue is with Junjo workflows
 
+
 def test_database_models():
     """Test database model definitions."""
     print("\nTesting database models...")
@@ -181,10 +179,10 @@ def test_database_models():
         import storytime.database as db_module
 
         # Check that classes exist
-        assert hasattr(db_module, 'Job')
-        assert hasattr(db_module, 'JobStep')
-        assert hasattr(db_module, 'JobType')
-        assert hasattr(db_module, 'JobStatus')
+        assert hasattr(db_module, "Job")
+        assert hasattr(db_module, "JobStep")
+        assert hasattr(db_module, "JobType")
+        assert hasattr(db_module, "JobStatus")
 
         # Test enum values
         assert db_module.JobType.SINGLE_VOICE == "SINGLE_VOICE"
@@ -196,6 +194,7 @@ def test_database_models():
     except Exception as e:
         print(f"❌ Database models test failed: {e}")
         return False
+
 
 def main():
     """Run all basic validation tests."""
@@ -225,6 +224,7 @@ def main():
     else:
         print("⚠️  Some tests failed. Check the output above for details.")
         return False
+
 
 if __name__ == "__main__":
     success = main()

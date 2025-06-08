@@ -51,14 +51,12 @@ class TTSGenerator:
 
     @staticmethod
     def get_speaker_type_str(speaker_type) -> str:
-        if hasattr(speaker_type, 'value'):
+        if hasattr(speaker_type, "value"):
             return speaker_type.value
         return str(speaker_type)
 
     async def generate_simple_audio(
-        self,
-        text: str,
-        voice_config: dict[str, any] | None = None
+        self, text: str, voice_config: dict[str, any] | None = None
     ) -> bytes:
         """Generate simple single-voice audio for unified job system."""
         voice_config = voice_config or {}
@@ -70,7 +68,8 @@ class TTSGenerator:
 
         # Generate audio using provider
         import tempfile
-        with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as tmp_file:
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
             self.provider.synth(
                 text=text,
                 voice=voice_id,
@@ -80,11 +79,12 @@ class TTSGenerator:
             )
 
             # Read audio data
-            with open(tmp_file.name, 'rb') as f:
+            with open(tmp_file.name, "rb") as f:
                 audio_data = f.read()
 
             # Clean up temp file
             import os
+
             os.unlink(tmp_file.name)
 
             return audio_data
@@ -104,6 +104,7 @@ class TTSGenerator:
         """Generate audio for a *single* `segment` and return the output path. With retry/backoff."""
 
         import time
+
         max_attempts = 3
         delay = 1.0
         last_exc = None
@@ -145,16 +146,22 @@ class TTSGenerator:
                 print(f"   ✅ Saved: {filename}")
                 return str(output_path)
             except Exception as exc:
-                print(f"   ⚠️  Error on attempt {attempt} for segment {segment.sequence_number}: {exc}")
+                print(
+                    f"   ⚠️  Error on attempt {attempt} for segment {segment.sequence_number}: {exc}"
+                )
                 last_exc = exc
                 if attempt < max_attempts:
                     time.sleep(delay)
                     delay *= 2
                 else:
-                    print(f"   ❌ Failed after {max_attempts} attempts for segment {segment.sequence_number}")
+                    print(
+                        f"   ❌ Failed after {max_attempts} attempts for segment {segment.sequence_number}"
+                    )
                     raise last_exc
         # Defensive: should never reach here
-        raise RuntimeError(f"generate_audio_for_segment failed for segment {segment.sequence_number} with no exception.")
+        raise RuntimeError(
+            f"generate_audio_for_segment failed for segment {segment.sequence_number} with no exception."
+        )
 
     def generate_audio_for_chapter(
         self,
@@ -173,18 +180,24 @@ class TTSGenerator:
         for idx, segment in enumerate(chapter.segments, 1):
             try:
                 path = self.generate_audio_for_segment(
-                    segment, chapter.chapter_number, chapter, model=model, response_format=response_format
+                    segment,
+                    chapter.chapter_number,
+                    chapter,
+                    model=model,
+                    response_format=response_format,
                 )
                 audio_files[f"segment_{segment.sequence_number}"] = path
                 print(
                     f"   Progress: {idx}/{len(chapter.segments)} "
-                    f"({idx/len(chapter.segments)*100:.1f}%)"
+                    f"({idx / len(chapter.segments) * 100:.1f}%)"
                 )
             except Exception as exc:
                 print(f"   ⚠️  Skipping segment {segment.sequence_number}: {exc}")
                 continue
 
-        print(f"\n✅ Chapter {chapter.chapter_number} audio generation complete! ({len(audio_files)} files)")
+        print(
+            f"\n✅ Chapter {chapter.chapter_number} audio generation complete! ({len(audio_files)} files)"
+        )
 
         playlist_path = self.create_playlist(chapter, audio_files)
         _ = self.stitch_chapter_audio(chapter, audio_files)
@@ -255,7 +268,9 @@ class TTSGenerator:
                 if key in audio_files:
                     audio_file = Path(audio_files[key]).name
                     duration = len(segment.text) / 150 * 60  # ~150 wpm
-                    f.write(f"#EXTINF:{duration:.1f},{segment.speaker_name} - {segment.text[:50]}...\n")
+                    f.write(
+                        f"#EXTINF:{duration:.1f},{segment.speaker_name} - {segment.text[:50]}...\n"
+                    )
                     f.write(f"{audio_file}\n")
         print(f"📝 Created playlist: {playlist_filename}")
         return str(playlist_path)
@@ -277,7 +292,9 @@ class TTSGenerator:
             audio_path = audio_files[key]
             try:
                 seg_audio = AudioSegment.from_mp3(audio_path)
-                seg_audio = cast(AudioSegment, self.strip_silence(seg_audio, thresh=-40, chunk_size=10))
+                seg_audio = cast(
+                    AudioSegment, self.strip_silence(seg_audio, thresh=-40, chunk_size=10)
+                )
                 seg_audio = effects.normalize(seg_audio)
                 seg_audio = (
                     AudioSegment.silent(duration=lead_in_ms)
@@ -310,11 +327,14 @@ class TTSGenerator:
         audio: AudioSegment, *, thresh: int = -40, chunk_size: int = 10
     ) -> AudioSegment:
         start = detect_leading_silence(audio, silence_threshold=thresh, chunk_size=chunk_size)
-        end = detect_leading_silence(audio.reverse(), silence_threshold=thresh, chunk_size=chunk_size)
+        end = detect_leading_silence(
+            audio.reverse(), silence_threshold=thresh, chunk_size=chunk_size
+        )
         return cast(AudioSegment, audio[start : len(audio) - end])
 
 
 # Convenience wrapper
+
 
 def generate_chapter_audio(
     chapter: Chapter,

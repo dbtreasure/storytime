@@ -8,10 +8,10 @@ import sys
 import pytest
 
 # Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # Set test environment
-os.environ['DATABASE_URL'] = 'postgresql+asyncpg://postgres:postgres@localhost:5432/storytime'
+os.environ["DATABASE_URL"] = "postgresql+asyncpg://postgres:postgres@localhost:5432/storytime"
 
 
 def test_enum_definitions():
@@ -48,10 +48,7 @@ def test_pydantic_models():
     from storytime.models import CreateJobRequest, SourceType, VoiceConfig
 
     # Test VoiceConfig
-    voice_config = VoiceConfig(
-        provider="openai",
-        voice_id="alloy"
-    )
+    voice_config = VoiceConfig(provider="openai", voice_id="alloy")
     assert voice_config.provider == "openai"
     assert voice_config.voice_id == "alloy"
 
@@ -61,7 +58,7 @@ def test_pydantic_models():
         description="A test job",
         content="Some test content here",
         source_type=SourceType.TEXT,
-        voice_config=voice_config
+        voice_config=voice_config,
     )
 
     assert request.title == "Test Job"
@@ -87,12 +84,12 @@ async def test_content_analyzer():
     assert len(result.reasons) > 0  # Use 'reasons' not 'reasoning'
 
     # Test dialogue-heavy text
-    dialogue_text = '''
+    dialogue_text = """
     "Hello," said Alice.
     "Hi there," Bob replied.
     "How are you today?" Alice continued.
     "I'm doing well, thanks for asking," Bob answered.
-    '''
+    """
 
     result = await analyzer.analyze_content(dialogue_text, SourceType.TEXT)
 
@@ -107,9 +104,7 @@ async def test_database_connectivity():
     from sqlalchemy import text
     from sqlalchemy.ext.asyncio import create_async_engine
 
-    engine = create_async_engine(
-        "postgresql+asyncpg://postgres:postgres@localhost:5432/storytime"
-    )
+    engine = create_async_engine("postgresql+asyncpg://postgres:postgres@localhost:5432/storytime")
 
     async with engine.begin() as conn:
         # Test basic connectivity
@@ -117,26 +112,30 @@ async def test_database_connectivity():
         assert result.scalar() == 1
 
         # Test that our tables exist
-        result = await conn.execute(text("""
+        result = await conn.execute(
+            text("""
             SELECT table_name FROM information_schema.tables 
             WHERE table_schema = 'public' AND table_name IN ('jobs', 'job_steps')
             ORDER BY table_name
-        """))
+        """)
+        )
         tables = [row[0] for row in result.fetchall()]
-        assert 'jobs' in tables
-        assert 'job_steps' in tables
+        assert "jobs" in tables
+        assert "job_steps" in tables
 
         # Test that our enums exist
-        result = await conn.execute(text("""
+        result = await conn.execute(
+            text("""
             SELECT typname FROM pg_type WHERE typtype = 'e' 
             AND typname IN ('jobtype', 'jobstatus', 'sourcetype', 'stepstatus')
             ORDER BY typname
-        """))
+        """)
+        )
         enums = [row[0] for row in result.fetchall()]
-        assert 'jobstatus' in enums
-        assert 'jobtype' in enums
-        assert 'sourcetype' in enums
-        assert 'stepstatus' in enums
+        assert "jobstatus" in enums
+        assert "jobtype" in enums
+        assert "sourcetype" in enums
+        assert "stepstatus" in enums
 
         print(f"✅ Database schema verified: tables={tables}, enums={enums}")
 
@@ -147,9 +146,11 @@ def test_api_imports():
     """Test that API modules can be imported without errors."""
     try:
         from storytime.api.jobs import router
+
         assert router is not None
 
         from storytime.models import JobListResponse, JobResponse
+
         assert JobResponse is not None
         assert JobListResponse is not None
 
@@ -164,6 +165,7 @@ def test_service_imports():
     """Test that service modules can be imported."""
     # ContentAnalyzer should always work
     from storytime.services.content_analyzer import ContentAnalyzer
+
     analyzer = ContentAnalyzer()
     assert analyzer is not None
     print("✅ ContentAnalyzer import successful")

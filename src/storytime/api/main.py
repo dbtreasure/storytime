@@ -33,6 +33,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Create DB tables on startup (MVP, not for prod)
 @app.on_event("startup")
 async def on_startup():
@@ -42,11 +43,13 @@ async def on_startup():
     except Exception as e:
         logging.getLogger(__name__).error(f"DB bootstrap failed: {e}")
 
+
 app.include_router(auth_router)
 app.include_router(chapters_router)
 app.include_router(tts_router)
 app.include_router(jobs_router)
 app.include_router(voice_management.router)
+
 
 @app.get("/health", tags=["Utility"])
 async def health() -> dict[str, str]:

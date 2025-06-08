@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 # Setup logging
-logging.basicConfig(level=logging.DEBUG, format='[%(levelname)s] %(message)s')
+logging.basicConfig(level=logging.DEBUG, format="[%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
 # Add src to path to allow running this script directly before proper packaging
@@ -21,6 +21,7 @@ from storytime.workflows.chapter_parsing import workflow as chapter_workflow
 
 CHAPTER_PATH = Path(__file__).parent / "fixtures" / "chapter_1.txt"
 
+
 def main():
     logger.info("🚀 Testing Complete Pipeline: Text → Structured Data → Audio")
     print("🚀 Testing Complete Pipeline: Text → Structured Data → Audio")
@@ -28,10 +29,10 @@ def main():
 
     # Check API keys
     missing_keys = []
-    if not os.getenv('GOOGLE_API_KEY'):
-        missing_keys.append('GOOGLE_API_KEY')
-    if not os.getenv('OPENAI_API_KEY'):
-        missing_keys.append('OPENAI_API_KEY')
+    if not os.getenv("GOOGLE_API_KEY"):
+        missing_keys.append("GOOGLE_API_KEY")
+    if not os.getenv("OPENAI_API_KEY"):
+        missing_keys.append("OPENAI_API_KEY")
 
     if missing_keys:
         logger.error(f"Missing required API keys: {missing_keys}")
@@ -50,15 +51,19 @@ def main():
         with open(CHAPTER_PATH, encoding="utf-8") as f:
             chapter_text = f.read()
         import asyncio
+
         async def run_workflow():
-            await chapter_workflow.store.set_state({
-                "chapter_text": chapter_text,
-                "chapter_number": 1,
-                "title": "Anna Pavlovna's Salon",
-            })
+            await chapter_workflow.store.set_state(
+                {
+                    "chapter_text": chapter_text,
+                    "chapter_number": 1,
+                    "title": "Anna Pavlovna's Salon",
+                }
+            )
             await chapter_workflow.execute()
             state = await chapter_workflow.store.get_state()
             return state.chapter
+
         chapter = asyncio.run(run_workflow())
 
         if not chapter:
@@ -79,7 +84,7 @@ def main():
         logger.debug("Prompting user for audio generation confirmation...")
         response = input("Continue with audio generation? (y/N): ").strip().lower()
         logger.debug(f"User input: {response}")
-        if response != 'y':
+        if response != "y":
             logger.info("Audio generation cancelled by user.")
             print("❌ Audio generation cancelled by user.")
             return
@@ -97,9 +102,7 @@ def main():
             print(f"\n🎙️  Generating audio {i}/3...")
             try:
                 audio_path = tts_generator.generate_audio_for_segment(
-                    segment,
-                    chapter.chapter_number,
-                    chapter=chapter
+                    segment, chapter.chapter_number, chapter=chapter
                 )
                 audio_files[f"segment_{segment.sequence_number}"] = audio_path
                 print(f"   ✅ Created: {os.path.basename(audio_path)}")
@@ -127,13 +130,13 @@ def main():
                 "number": chapter.chapter_number,
                 "title": chapter.title,
                 "total_segments": len(chapter.segments),
-                "characters": list(chapter.get_unique_characters())
+                "characters": list(chapter.get_unique_characters()),
             },
             "audio_test": {
                 "segments_tested": len(test_segments),
                 "audio_files_created": len(audio_files),
-                "audio_files": audio_files
-            }
+                "audio_files": audio_files,
+            },
         }
 
         test_results_path = SCRIPT_DIR / "test_results.json"
@@ -152,6 +155,7 @@ def main():
     except Exception as e:
         logger.exception(f"Unexpected error: {e}")
         print(f"❌ Error: {e}")
+
 
 if __name__ == "__main__":
     main()

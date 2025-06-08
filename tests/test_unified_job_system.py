@@ -45,7 +45,8 @@ class TestContentAnalyzer:
     @pytest.mark.asyncio
     async def test_analyze_dialogue_content(self, analyzer):
         """Test analysis of dialogue-heavy content suggests MULTI_VOICE."""
-        content = '''
+        content = (
+            """
         "Hello there," said John with a smile.
         "How are you doing today?" Mary replied cheerfully.
         "I'm doing well, thank you for asking," John answered.
@@ -53,7 +54,9 @@ class TestContentAnalyzer:
         The narrator then described how they walked together.
         "Where shall we go?" asked John.
         "Let's visit the park," suggested Mary.
-        ''' * 20  # Make it long enough
+        """
+            * 20
+        )  # Make it long enough
 
         result = await analyzer.analyze_content(content, SourceType.TEXT)
 
@@ -64,7 +67,8 @@ class TestContentAnalyzer:
     @pytest.mark.asyncio
     async def test_analyze_book_content(self, analyzer):
         """Test analysis of book with chapters suggests BOOK_PROCESSING."""
-        content = '''
+        content = (
+            """
         Chapter 1
         
         This is the first chapter of our story...
@@ -76,7 +80,9 @@ class TestContentAnalyzer:
         Chapter 3
         
         And this continues the tale...
-        ''' * 50  # Make it substantial
+        """
+            * 50
+        )  # Make it substantial
 
         result = await analyzer.analyze_content(content, SourceType.BOOK)
 
@@ -88,7 +94,8 @@ class TestContentAnalyzer:
     async def test_split_book_into_chapters(self, analyzer):
         """Test book splitting functionality."""
         # Make chapters longer to meet minimum length requirement
-        chapter_content = """
+        chapter_content = (
+            """
         This is chapter content with multiple paragraphs to ensure it meets the minimum
         length requirement for chapter splitting. The content analyzer requires chapters
         to be at least 1000 characters long to be considered valid chapters.
@@ -100,15 +107,17 @@ class TestContentAnalyzer:
         The story continues with interesting developments and character interactions.
         There are plot points that need to be developed across multiple paragraphs
         to create a complete narrative experience for the reader.
-        """ * 2  # Double it to ensure length
+        """
+            * 2
+        )  # Double it to ensure length
 
-        content = f'''
+        content = f"""
         Chapter 1{chapter_content}
         
         Chapter 2{chapter_content}
         
         Chapter 3{chapter_content}
-        '''
+        """
 
         chapters = await analyzer.split_book_into_chapters(content)
 
@@ -138,10 +147,7 @@ class TestJobProcessor:
     @pytest.fixture
     def job_processor(self, mock_db_session, mock_spaces_client):
         """Create job processor with mocked dependencies."""
-        return JobProcessor(
-            db_session=mock_db_session,
-            spaces_client=mock_spaces_client
-        )
+        return JobProcessor(db_session=mock_db_session, spaces_client=mock_spaces_client)
 
     @pytest.fixture
     def sample_job(self):
@@ -157,8 +163,8 @@ class TestJobProcessor:
             progress=0.0,
             config={
                 "content": "This is test content for TTS generation.",
-                "voice_config": {"provider": "openai"}
-            }
+                "voice_config": {"provider": "openai"},
+            },
         )
 
     @pytest.mark.asyncio
@@ -181,7 +187,7 @@ class TestJobProcessor:
         steps = [
             ("load_content", "Loading text content"),
             ("generate_audio", "Generating audio"),
-            ("upload_results", "Uploading results")
+            ("upload_results", "Uploading results"),
         ]
 
         await job_processor._create_job_steps(job_id, steps)
@@ -197,8 +203,10 @@ class TestJobProcessor:
         assert added_steps[1].step_order == 1
 
     @pytest.mark.asyncio
-    @patch('storytime.services.job_processor.TTSGenerator')
-    async def test_process_single_voice_job(self, mock_tts_class, job_processor, mock_db_session, sample_job):
+    @patch("storytime.services.job_processor.TTSGenerator")
+    async def test_process_single_voice_job(
+        self, mock_tts_class, job_processor, mock_db_session, sample_job
+    ):
         """Test processing a single voice job."""
         # Mock TTS generator
         mock_tts = AsyncMock()
@@ -231,11 +239,7 @@ class TestJobAPI:
     @pytest.fixture
     def mock_user(self):
         """Create a mock user for testing."""
-        return User(
-            id=str(uuid4()),
-            email="test@example.com",
-            hashed_password="hashed_password"
-        )
+        return User(id=str(uuid4()), email="test@example.com", hashed_password="hashed_password")
 
     def test_create_job_request_validation(self):
         """Test job creation request validation."""
@@ -244,7 +248,7 @@ class TestJobAPI:
             title="Test Job",
             description="Test description",
             content="Sample text content",
-            source_type=SourceType.TEXT
+            source_type=SourceType.TEXT,
         )
 
         assert request.title == "Test Job"
@@ -252,15 +256,11 @@ class TestJobAPI:
 
         # Request with voice config
         voice_config = VoiceConfig(
-            provider="openai",
-            voice_id="alloy",
-            voice_settings={"speed": "1.0", "pitch": "normal"}
+            provider="openai", voice_id="alloy", voice_settings={"speed": "1.0", "pitch": "normal"}
         )
 
         request_with_voice = CreateJobRequest(
-            title="Voice Test",
-            content="Content",
-            voice_config=voice_config
+            title="Voice Test", content="Content", voice_config=voice_config
         )
 
         assert request_with_voice.voice_config.provider == "openai"
@@ -277,7 +277,7 @@ class TestJobAPI:
             status=StepStatus.COMPLETED,
             progress=1.0,
             created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            updated_at=datetime.utcnow(),
         )
 
         job = JobResponse(
@@ -290,7 +290,7 @@ class TestJobAPI:
             progress=1.0,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
-            steps=[step]
+            steps=[step],
         )
 
         assert job.status == JobStatus.COMPLETED
@@ -303,16 +303,14 @@ class TestBackwardCompatibility:
     """Tests for backward compatibility with existing endpoints."""
 
     @pytest.mark.asyncio
-    @patch('storytime.api.tts.process_job')
+    @patch("storytime.api.tts.process_job")
     async def test_legacy_tts_endpoint_creates_job(self, mock_process_job):
         """Test that legacy TTS endpoint creates a unified job."""
         from storytime.api.tts import GenerateRequest
 
         # This would normally be tested with a test client, but we're testing the logic
         request = GenerateRequest(
-            chapter_text="Sample text for TTS generation",
-            title="Test Chapter",
-            provider="openai"
+            chapter_text="Sample text for TTS generation", title="Test Chapter", provider="openai"
         )
 
         # Verify request is valid
@@ -330,10 +328,11 @@ class TestBackwardCompatibility:
 async def test_end_to_end_job_flow():
     """Integration test for complete job flow."""
     # Mock all external dependencies
-    with patch('storytime.services.job_processor.SpacesClient') as mock_spaces, \
-         patch('storytime.services.job_processor.TTSGenerator') as mock_tts, \
-         patch('storytime.database.AsyncSessionLocal') as mock_session:
-
+    with (
+        patch("storytime.services.job_processor.SpacesClient") as mock_spaces,
+        patch("storytime.services.job_processor.TTSGenerator") as mock_tts,
+        patch("storytime.database.AsyncSessionLocal") as mock_session,
+    ):
         # Setup mocks
         mock_spaces_instance = AsyncMock()
         mock_spaces.return_value = mock_spaces_instance
@@ -349,8 +348,7 @@ async def test_end_to_end_job_flow():
 
         # Create job processor
         processor = JobProcessor(
-            db_session=mock_session_instance,
-            spaces_client=mock_spaces_instance
+            db_session=mock_session_instance, spaces_client=mock_spaces_instance
         )
 
         # Create test job
@@ -362,7 +360,7 @@ async def test_end_to_end_job_flow():
             title="Integration Test Job",
             status=JobStatus.PENDING,
             progress=0.0,
-            config={"content": "Test content"}
+            config={"content": "Test content"},
         )
 
         # Mock database responses

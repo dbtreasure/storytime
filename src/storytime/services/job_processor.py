@@ -64,7 +64,7 @@ class JobProcessor:
                 JobStatus.COMPLETED,
                 progress=1.0,
                 completed_at=datetime.utcnow(),
-                result_data=result
+                result_data=result,
             )
 
             logger.info(f"Job {job_id} completed successfully")
@@ -73,10 +73,7 @@ class JobProcessor:
         except Exception as e:
             logger.error(f"Job {job_id} failed: {e!s}", exc_info=True)
             await self._update_job_status(
-                job_id,
-                JobStatus.FAILED,
-                error_message=str(e),
-                completed_at=datetime.utcnow()
+                job_id, JobStatus.FAILED, error_message=str(e), completed_at=datetime.utcnow()
             )
             raise
 
@@ -110,8 +107,7 @@ class JobProcessor:
 
         voice_config = job.config.get("voice_config", {}) if job.config else {}
         audio_data = await self.tts_generator.generate_simple_audio(
-            text=content,
-            voice_config=voice_config
+            text=content, voice_config=voice_config
         )
 
         await self._update_step_status(job.id, "generate_audio", StepStatus.COMPLETED, progress=1.0)
@@ -132,7 +128,7 @@ class JobProcessor:
         return {
             "audio_key": audio_key,
             "content_length": len(content),
-            "processing_type": "single_voice"
+            "processing_type": "single_voice",
         }
 
     async def _process_multi_voice_job(self, job: Job) -> dict[str, Any]:
@@ -163,7 +159,7 @@ class JobProcessor:
         parsing_result = await parsing_workflow.run(
             text_content=content,
             job_id=job.id,
-            progress_callback=lambda p: self._update_step_progress(job.id, "parse_chapter", p)
+            progress_callback=lambda p: self._update_step_progress(job.id, "parse_chapter", p),
         )
 
         await self._update_step_status(job.id, "parse_chapter", StepStatus.COMPLETED, progress=1.0)
@@ -186,7 +182,7 @@ class JobProcessor:
             chapter_data=parsing_result,
             voice_config=voice_config,
             job_id=job.id,
-            progress_callback=lambda p: self._update_step_progress(job.id, "generate_audio", p)
+            progress_callback=lambda p: self._update_step_progress(job.id, "generate_audio", p),
         )
 
         await self._update_step_status(job.id, "generate_audio", StepStatus.COMPLETED, progress=1.0)
@@ -213,7 +209,7 @@ class JobProcessor:
             "chapter_data_key": chapter_data_key,
             "segment_count": len(parsing_result.get("segments", [])),
             "character_count": len(parsing_result.get("characters", {})),
-            "processing_type": "multi_voice"
+            "processing_type": "multi_voice",
         }
 
     async def _process_book_job(self, job: Job) -> dict[str, Any]:
@@ -258,11 +254,13 @@ class JobProcessor:
                 chapter_number=i + 1,
                 content=chapter_content,
                 user_id=job.user_id,
-                voice_config=job.config.get("voice_config", {}) if job.config else {}
+                voice_config=job.config.get("voice_config", {}) if job.config else {},
             )
             chapter_job_ids.append(chapter_job.id)
 
-        await self._update_step_status(job.id, "create_chapter_jobs", StepStatus.COMPLETED, progress=1.0)
+        await self._update_step_status(
+            job.id, "create_chapter_jobs", StepStatus.COMPLETED, progress=1.0
+        )
         await self._update_job_progress(job.id, 0.3)
 
         # Step 4: Monitor chapter job progress (simplified)
@@ -271,13 +269,15 @@ class JobProcessor:
         # In a real implementation, this would monitor child jobs and update progress
         # For now, we'll mark it as completed
 
-        await self._update_step_status(job.id, "monitor_progress", StepStatus.COMPLETED, progress=1.0)
+        await self._update_step_status(
+            job.id, "monitor_progress", StepStatus.COMPLETED, progress=1.0
+        )
         await self._update_job_progress(job.id, 1.0)
 
         return {
             "chapter_count": len(chapters),
             "chapter_job_ids": chapter_job_ids,
-            "processing_type": "book_processing"
+            "processing_type": "book_processing",
         }
 
     async def _process_chapter_parsing_job(self, job: Job) -> dict[str, Any]:
@@ -313,11 +313,13 @@ class JobProcessor:
         result = await parsing_workflow.run(
             text_content=content,
             job_id=job.id,
-            progress_callback=lambda p: self._update_job_progress(job.id, 0.25 + (p * 0.75))
+            progress_callback=lambda p: self._update_job_progress(job.id, 0.25 + (p * 0.75)),
         )
 
         await self._update_step_status(job.id, "parse_segments", StepStatus.COMPLETED, progress=1.0)
-        await self._update_step_status(job.id, "analyze_characters", StepStatus.COMPLETED, progress=1.0)
+        await self._update_step_status(
+            job.id, "analyze_characters", StepStatus.COMPLETED, progress=1.0
+        )
         await self._update_step_status(job.id, "save_results", StepStatus.COMPLETED, progress=1.0)
         await self._update_job_progress(job.id, 1.0)
 
@@ -327,9 +329,7 @@ class JobProcessor:
 
     async def _get_job(self, job_id: str) -> Job | None:
         """Get job from database."""
-        result = await self.db_session.execute(
-            select(Job).where(Job.id == job_id)
-        )
+        result = await self.db_session.execute(select(Job).where(Job.id == job_id))
         return result.scalar_one_or_none()
 
     async def _get_job_response(self, job_id: str) -> JobResponse:
@@ -357,7 +357,7 @@ class JobProcessor:
                 updated_at=step.updated_at,
                 started_at=step.started_at,
                 completed_at=step.completed_at,
-                duration=step.duration
+                duration=step.duration,
             )
             for step in steps
         ]
@@ -382,7 +382,7 @@ class JobProcessor:
             started_at=job.started_at,
             completed_at=job.completed_at,
             duration=job.duration,
-            steps=step_responses
+            steps=step_responses,
         )
 
     async def _update_job_status(
@@ -393,7 +393,7 @@ class JobProcessor:
         error_message: str | None = None,
         started_at: datetime | None = None,
         completed_at: datetime | None = None,
-        result_data: dict[str, Any] | None = None
+        result_data: dict[str, Any] | None = None,
     ):
         """Update job status and related fields."""
         update_data = {"status": status, "updated_at": datetime.utcnow()}
@@ -409,9 +409,7 @@ class JobProcessor:
         if result_data is not None:
             update_data["result_data"] = result_data
 
-        await self.db_session.execute(
-            update(Job).where(Job.id == job_id).values(**update_data)
-        )
+        await self.db_session.execute(update(Job).where(Job.id == job_id).values(**update_data))
         await self.db_session.commit()
 
     async def _update_job_progress(self, job_id: str, progress: float):
@@ -442,7 +440,7 @@ class JobProcessor:
                 step_order=i,
                 status=StepStatus.PENDING,
                 progress=0.0,
-                step_metadata={"description": description}
+                step_metadata={"description": description},
             )
             step_objects.append(step)
 
@@ -455,7 +453,7 @@ class JobProcessor:
         step_name: str,
         status: StepStatus,
         progress: float | None = None,
-        error_message: str | None = None
+        error_message: str | None = None,
     ):
         """Update individual step status."""
         update_data = {"status": status, "updated_at": datetime.utcnow()}
@@ -491,7 +489,7 @@ class JobProcessor:
         chapter_number: int,
         content: str,
         user_id: str,
-        voice_config: dict[str, Any]
+        voice_config: dict[str, Any],
     ) -> Job:
         """Create a child job for processing a single chapter."""
         chapter_job = Job(
@@ -506,8 +504,8 @@ class JobProcessor:
                 "content": content,
                 "voice_config": voice_config,
                 "parent_job_id": parent_job_id,
-                "chapter_number": chapter_number
-            }
+                "chapter_number": chapter_number,
+            },
         )
 
         self.db_session.add(chapter_job)

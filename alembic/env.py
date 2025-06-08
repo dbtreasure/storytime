@@ -6,7 +6,7 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.storytime.database import Base
 
@@ -31,7 +31,10 @@ target_metadata = Base.metadata
 # ... etc.
 
 # Use a sync DB URL for Alembic migrations
-SYNC_DB_URL = os.getenv("ALEMBIC_DATABASE_URL") or "postgresql+psycopg2://postgres:postgres@db:5432/storytime"
+SYNC_DB_URL = (
+    os.getenv("ALEMBIC_DATABASE_URL") or "postgresql+psycopg2://postgres:postgres@db:5432/storytime"
+)
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -71,9 +74,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()
