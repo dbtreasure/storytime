@@ -16,10 +16,10 @@ from .models import (
 )
 
 __all__ = [
-    "SpeakerType",
+    "Book",
+    "Chapter",
     "Character",
     "CharacterCatalogue",
+    "SpeakerType",
     "TextSegment",
-    "Chapter",
-    "Book",
-] 
+]

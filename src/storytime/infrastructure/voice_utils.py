@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 # Now imports from the new location
 from storytime.infrastructure.tts.base import TTSProvider, Voice
@@ -42,4 +41,4 @@ def get_voices(provider: TTSProvider) -> list[Voice]:
     # Save to cache
     with cache_path.open("w", encoding="utf-8") as f:
         json.dump([v.__dict__ for v in voices], f, indent=2)
-    return voices 
+    return voices

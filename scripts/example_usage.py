@@ -1,5 +1,5 @@
-import sys # Added for sys.path modification
-from pathlib import Path # Added for path manipulation
+import sys  # Added for sys.path modification
+from pathlib import Path  # Added for path manipulation
 
 # Add src to path to allow running this script directly before proper packaging
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -7,7 +7,8 @@ SRC_DIR = SCRIPT_DIR.parent / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from storytime.models import TextSegment, Chapter, Book, SpeakerType
+from storytime.models import Chapter, SpeakerType, TextSegment
+
 
 # Example of how your parsed War and Peace chapter might look
 def create_sample_chapter():
@@ -45,23 +46,23 @@ def create_sample_chapter():
             emotion=None
         )
     ]
-    
+
     chapter = Chapter(
         chapter_number=1,
         title="Anna Pavlovna's Salon",
         segments=segments
     )
-    
+
     return chapter
 
 # Example usage
 if __name__ == "__main__":
     chapter_1 = create_sample_chapter()
-    
+
     print(f"Chapter {chapter_1.chapter_number}: {chapter_1.title}")
     print(f"Total segments: {len(chapter_1.segments)}")
     print(f"Characters in this chapter: {chapter_1.get_unique_characters()}")
-    
+
     print("\n--- Segments ---")
     for segment in chapter_1.segments:
         speaker_info = f"[{segment.speaker_name}]" if segment.speaker_type == SpeakerType.CHARACTER else "[NARRATOR]"
@@ -71,7 +72,7 @@ if __name__ == "__main__":
         if segment.voice_hint:
             print(f"   Voice: {segment.voice_hint}")
         print()
-    
+
     # Convert to dict for Gemini API processing
     chapter_dict = chapter_1.model_dump()
-    print("JSON structure ready for API:", chapter_dict.keys()) 
+    print("JSON structure ready for API:", chapter_dict.keys())

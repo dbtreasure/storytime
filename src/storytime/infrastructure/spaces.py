@@ -1,10 +1,11 @@
-import os
-import boto3
 import json
-import tempfile
-from botocore.client import Config
-from typing import Optional, Any
 import logging
+import os
+import tempfile
+from typing import Any
+
+import boto3
+from botocore.client import Config
 
 DO_SPACES_KEY = os.getenv("DO_SPACES_KEY")
 DO_SPACES_SECRET = os.getenv("DO_SPACES_SECRET")
@@ -15,7 +16,7 @@ DO_SPACES_ENDPOINT = os.getenv("DO_SPACES_ENDPOINT", f"https://{DO_SPACES_REGION
 
 class SpacesClient:
     """DigitalOcean Spaces client for file operations."""
-    
+
     def __init__(self):
         session = boto3.Session()
         self.s3 = session.client(
@@ -27,16 +28,16 @@ class SpacesClient:
             config=Config(signature_version='s3v4')
         )
         self.bucket = DO_SPACES_BUCKET
-        
+
     async def download_text_file(self, key: str) -> str:
         """Download a text file and return its content."""
         with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp_file:
             self.s3.download_file(self.bucket, key, tmp_file.name)
-            with open(tmp_file.name, 'r', encoding='utf-8') as f:
+            with open(tmp_file.name, encoding='utf-8') as f:
                 content = f.read()
             os.unlink(tmp_file.name)
             return content
-    
+
     async def upload_audio_file(self, key: str, audio_data: bytes) -> bool:
         """Upload audio data to spaces."""
         try:
@@ -52,7 +53,7 @@ class SpacesClient:
         except Exception as e:
             logging.error(f"[Spaces] Audio upload failed: {e}")
             return False
-    
+
     async def upload_json_file(self, key: str, data: dict[str, Any]) -> bool:
         """Upload JSON data to spaces."""
         try:
@@ -69,7 +70,7 @@ class SpacesClient:
         except Exception as e:
             logging.error(f"[Spaces] JSON upload failed: {e}")
             return False
-    
+
     async def get_presigned_download_url(self, key: str, expires_in: int = 3600) -> str:
         """Generate a presigned URL for downloading a file."""
         return self.s3.generate_presigned_url(
@@ -90,7 +91,7 @@ s3 = session.client(
     config=Config(signature_version='s3v4')
 )
 
-def upload_file(file_path: str, key: str, content_type: Optional[str] = None) -> bool:
+def upload_file(file_path: str, key: str, content_type: str | None = None) -> bool:
     logging.info(f"[Spaces] Attempting to upload {file_path} to {DO_SPACES_BUCKET}/{key}")
     try:
         extra_args = {"ACL": "public-read"}
@@ -111,4 +112,4 @@ def generate_presigned_url(key: str, expires_in: int = 3600) -> str:
         'get_object',
         Params={'Bucket': DO_SPACES_BUCKET, 'Key': key},
         ExpiresIn=expires_in
-    ) 
+    )

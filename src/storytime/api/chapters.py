@@ -1,12 +1,11 @@
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, status, Form
-from pydantic import BaseModel
-from typing import List, Dict, Optional
 import uuid
-import asyncio
 
-from .auth import get_current_user
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel
+
 from ..database import User
-from ..services.character_analyzer import CharacterAnalyzer
+from .auth import get_current_user
+
 # Import workflow conditionally to avoid initialization issues
 try:
     from ..workflows.chapter_parsing import workflow as chapter_workflow
@@ -19,11 +18,11 @@ except Exception as e:
 router = APIRouter(prefix="/api/v1/chapters", tags=["Chapters"])
 
 # In-memory storage for parsed chapters (MVP)
-CHAPTERS: Dict[str, dict] = {}
+CHAPTERS: dict[str, dict] = {}
 
 class ParseRequest(BaseModel):
     text: str
-    chapter_number: Optional[int] = None
+    chapter_number: int | None = None
 
 class ParseResponse(BaseModel):
     chapter_id: str
@@ -40,10 +39,10 @@ async def parse_chapter(
 ):
     if not CHAPTER_WORKFLOW_AVAILABLE:
         raise HTTPException(
-            status_code=503, 
+            status_code=503,
             detail="Chapter parsing workflow is not available due to system configuration issues"
         )
-    
+
     await chapter_workflow.store.set_state({
         "chapter_text": request.text,
         "chapter_number": request.chapter_number or 1,
@@ -64,10 +63,10 @@ async def parse_with_characters(
 ):
     if not CHAPTER_WORKFLOW_AVAILABLE:
         raise HTTPException(
-            status_code=503, 
+            status_code=503,
             detail="Chapter parsing workflow is not available due to system configuration issues"
         )
-    
+
     await chapter_workflow.store.set_state({
         "chapter_text": request.text,
         "chapter_number": request.chapter_number or 1,
@@ -86,15 +85,15 @@ async def parse_with_characters(
 @router.post("/parse-file", response_model=ParseResponse)
 async def parse_chapter_file(
     file: UploadFile = File(...),
-    chapter_number: Optional[int] = Form(None),
+    chapter_number: int | None = Form(None),
     current_user: User = Depends(get_current_user),
 ):
     if not CHAPTER_WORKFLOW_AVAILABLE:
         raise HTTPException(
-            status_code=503, 
+            status_code=503,
             detail="Chapter parsing workflow is not available due to system configuration issues"
         )
-    
+
     text = (await file.read()).decode()
     await chapter_workflow.store.set_state({
         "chapter_text": text,
@@ -131,4 +130,4 @@ async def get_characters(
     characters = data["characters"]
     if characters is None:
         raise HTTPException(status_code=404, detail="No character analysis for this chapter")
-    return {"chapter_id": chapter_id, "characters": characters} 
+    return {"chapter_id": chapter_id, "characters": characters}

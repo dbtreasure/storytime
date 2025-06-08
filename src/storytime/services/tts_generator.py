@@ -62,12 +62,12 @@ class TTSGenerator:
     ) -> bytes:
         """Generate simple single-voice audio for unified job system."""
         voice_config = voice_config or {}
-        
+
         # Use specified voice or default narrator voice
         voice_id = voice_config.get("voice_id")
         if not voice_id:
             voice_id = self.voice_assigner.get_narrator_voice()
-        
+
         # Generate audio using provider
         import tempfile
         with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as tmp_file:
@@ -78,15 +78,15 @@ class TTSGenerator:
                 format="mp3",
                 out_path=tmp_file.name,
             )
-            
+
             # Read audio data
             with open(tmp_file.name, 'rb') as f:
                 audio_data = f.read()
-            
+
             # Clean up temp file
             import os
             os.unlink(tmp_file.name)
-            
+
             return audio_data
 
     # ------------------------------------------------------------------
@@ -180,7 +180,7 @@ class TTSGenerator:
                     f"   Progress: {idx}/{len(chapter.segments)} "
                     f"({idx/len(chapter.segments)*100:.1f}%)"
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 print(f"   ⚠️  Skipping segment {segment.sequence_number}: {exc}")
                 continue
 
@@ -194,7 +194,7 @@ class TTSGenerator:
     # ------------------------------------------------------------------
     # Voice assignment helpers
     # ------------------------------------------------------------------
-    def select_voice(self, segment: TextSegment) -> str:  # noqa: D401
+    def select_voice(self, segment: TextSegment) -> str:
         """Return a voice ID for *segment* based on character/narrator logic."""
 
         speaker_type_str = self.get_speaker_type_str(segment.speaker_type)
@@ -294,7 +294,7 @@ class TTSGenerator:
                         combined += seg_audio
                 last_speaker = segment.speaker_name
                 print(f"   ✅ Added & processed segment {segment.sequence_number}")
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 print(f"   ⚠️  Skipping segment {segment.sequence_number}: {exc}")
                 continue
 
@@ -323,4 +323,4 @@ def generate_chapter_audio(
     provider: TTSProvider | None = None,
 ) -> dict[str, str]:
     generator = TTSGenerator(provider=provider, output_dir=output_dir)
-    return generator.generate_audio_for_chapter(chapter) 
+    return generator.generate_audio_for_chapter(chapter)

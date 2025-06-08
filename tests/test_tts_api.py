@@ -1,9 +1,7 @@
-import pytest
-from fastapi.testclient import TestClient
-from pathlib import Path
 import sys
-import io
-from unittest.mock import patch, MagicMock
+from pathlib import Path
+
+from fastapi.testclient import TestClient
 
 SRC_DIR = Path(__file__).resolve().parent.parent / "src"
 if str(SRC_DIR) not in sys.path:
@@ -22,7 +20,7 @@ def test_list_voices():
 
 def test_assign_and_get_voice():
     # Add a character to the catalogue
-    from storytime.api.voice_management import character_catalogue, Character
+    from storytime.api.voice_management import Character, character_catalogue
     character_catalogue.add_character(Character(name="TestChar", gender="male", description="Test character"))
     # Assign
     # Use a real voice id from the provider
@@ -103,7 +101,7 @@ def test_assign_voice_nonexistent_character():
     assert resp.status_code == 404
 
 def test_assign_voice_invalid_voice():
-    from storytime.api.voice_management import character_catalogue, Character
+    from storytime.api.voice_management import Character, character_catalogue
     character_catalogue.add_character(Character(name="EdgeCaseChar", gender="male", description="Edge case"))
     resp = client.post("/api/v1/characters/EdgeCaseChar/voice", json={"provider": "openai", "voice_id": "notarealvoice"})
     # Should be 400, but current API may not validate; if not, mark as expected failure
@@ -114,7 +112,7 @@ def test_get_voice_assignment_nonexistent_character():
     assert resp.status_code == 404
 
 def test_get_voice_assignment_none_set():
-    from storytime.api.voice_management import character_catalogue, Character
+    from storytime.api.voice_management import Character, character_catalogue
     character_catalogue.add_character(Character(name="NoVoiceChar", gender="male", description="No voice assigned"))
     resp = client.get("/api/v1/characters/NoVoiceChar/voice?provider=openai")
     assert resp.status_code == 404
@@ -145,4 +143,4 @@ def test_download_audio_not_ready():
     job_id = resp.json()["job_id"]
     resp2 = client.get(f"/api/v1/tts/jobs/{job_id}/download")
     # Accept 400 (not ready) or 200 (if job is super fast)
-    assert resp2.status_code in (200, 400) 
+    assert resp2.status_code in (200, 400)

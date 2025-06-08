@@ -1,14 +1,12 @@
-from fastapi import APIRouter, HTTPException, status, Body
-from pydantic import BaseModel
-from typing import List, Optional
-from fastapi.responses import FileResponse
 import hashlib
-import os
 from pathlib import Path
 
-from storytime.infrastructure.tts import OpenAIProvider, ElevenLabsProvider, TTSProvider
-from storytime.models import Character, CharacterCatalogue
-from storytime.services.voice_assigner import VoiceAssigner
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+
+from storytime.infrastructure.tts import ElevenLabsProvider, OpenAIProvider
+from storytime.models import CharacterCatalogue
 
 router = APIRouter(prefix="/api/v1", tags=["Voice Management"])
 
@@ -16,8 +14,8 @@ router = APIRouter(prefix="/api/v1", tags=["Voice Management"])
 class VoiceOut(BaseModel):
     id: str
     name: str
-    gender: Optional[str]
-    description: Optional[str]
+    gender: str | None
+    description: str | None
 
 class VoiceAssignmentRequest(BaseModel):
     provider: str
@@ -26,7 +24,7 @@ class VoiceAssignmentRequest(BaseModel):
 class VoicePreviewRequest(BaseModel):
     provider: str
     voice_id: str
-    text: Optional[str] = "This is a sample of the selected voice."
+    text: str | None = "This is a sample of the selected voice."
 
 # --- In-memory character catalogue for now ---
 # (In production, this would be persistent or loaded per project/session)
@@ -100,4 +98,4 @@ def preview_voice(req: VoicePreviewRequest):
         out_path,
         media_type="audio/mpeg",
         filename=out_path.name,
-    ) 
+    )

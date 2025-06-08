@@ -42,4 +42,3 @@ class TTSProvider(ABC):
         out_path: Path,
     ) -> None:
         """Synthesise *text* to *out_path* using *voice* and optional *style*."""
- 

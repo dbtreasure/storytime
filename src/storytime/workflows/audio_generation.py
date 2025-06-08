@@ -16,18 +16,17 @@ Usage::
 """
 
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
 import json
-import os
-from pathlib import Path
-from typing import Any, Dict, List, Callable, Awaitable
 import time
+from collections.abc import Awaitable, Callable
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any
 
 from junjo import BaseState, BaseStore, Edge, Graph, Node, Workflow  # type: ignore
 from opentelemetry import trace
+
 from storytime.models import Chapter, TextSegment
 from storytime.services.tts_generator import TTSGenerator
-from pydantic import Field
 
 tracer = trace.get_tracer(__name__)
 
@@ -37,11 +36,11 @@ tracer = trace.get_tracer(__name__)
 
 class AudioGenerationState(BaseState):
     chapter: Chapter | None = None
-    audio_paths: Dict[str, str] | None = None
+    audio_paths: dict[str, str] | None = None
     stitched_path: str | None = None
     playlist_path: str | None = None
     error: str | None = None
-    
+
     model_config = {'arbitrary_types_allowed': True}
 
 
@@ -60,7 +59,7 @@ class InitAudioNode(Node[AudioGenerationStore]):
         super().__init__()
         self._chapter = chapter
 
-    async def service(self, store: AudioGenerationStore) -> None:  # noqa: D401
+    async def service(self, store: AudioGenerationStore) -> None:
         start = time.perf_counter()
         with tracer.start_as_current_span("InitAudioNode") as span:
             await store.set_state({
@@ -175,13 +174,13 @@ def build_audio_workflow(
     init_node = InitAudioNode(chapter)
 
     # One node per segment
-    seg_nodes: List[GenerateSegmentAudioNode] = [
+    seg_nodes: list[GenerateSegmentAudioNode] = [
         GenerateSegmentAudioNode(seg, tts_generator, max_concurrency=max_concurrency) for seg in chapter.segments
     ]
 
     stitch_node = StitchChapterNode(tts_generator)
 
-    edges: List[Edge] = []
+    edges: list[Edge] = []
     # init -> each segment node
     for n in seg_nodes:
         edges.append(Edge(tail=init_node, head=n))
@@ -199,17 +198,17 @@ def build_audio_workflow(
         # Set the store separately if possible
         if hasattr(wf, 'store'):
             wf.store = AudioGenerationStore(initial_state=AudioGenerationState())
-    except Exception as e:
+    except Exception:
         # Fallback: create a minimal workflow object
         class MockWorkflow:
             def __init__(self):
                 self.name = "Chapter Audio Generation Pipeline"
                 self.graph = graph
                 self.store = AudioGenerationStore(initial_state=AudioGenerationState())
-            
+
             async def execute(self):
                 raise NotImplementedError("Workflow execution not available due to Junjo version incompatibility")
-        
+
         wf = MockWorkflow()
     return wf
 
@@ -217,10 +216,10 @@ def build_audio_workflow(
 # --- Workflow Wrapper Class for Job System ---
 class AudioGenerationWorkflow:
     """Wrapper class for audio generation workflow to integrate with job system."""
-    
+
     def __init__(self):
         self.tts_generator = None
-    
+
     async def run(
         self,
         chapter_data: dict[str, Any],
@@ -231,7 +230,7 @@ class AudioGenerationWorkflow:
         """Run the audio generation workflow and return results."""
         try:
             from storytime.services.tts_generator import TTSGenerator
-            
+
             # Convert chapter data back to Chapter object
             if chapter_data.get("chapter"):
                 chapter_dict = chapter_data["chapter"]
@@ -244,19 +243,19 @@ class AudioGenerationWorkflow:
                     title="Chapter 1",
                     segments=segments
                 )
-            
+
             # Create TTS generator
             if not self.tts_generator:
                 self.tts_generator = TTSGenerator()
-            
+
             try:
                 # Try to create and run full workflow
                 workflow = build_audio_workflow(chapter, self.tts_generator)
                 await workflow.execute()
-                
+
                 # Get final state
                 final_state = await workflow.store.get_state()
-                
+
                 # Return audio data
                 result = {
                     "audio_data": b"dummy_audio_data",  # In real implementation, get from final_state
@@ -264,16 +263,16 @@ class AudioGenerationWorkflow:
                     "chapter_file": final_state.chapter_file,
                     "error": final_state.error
                 }
-                
+
             except Exception:
                 # Fallback to simple audio generation
                 result = await self._simple_audio_generation(chapter, voice_config)
-            
+
             if progress_callback:
                 await progress_callback(1.0)
-            
+
             return result
-            
+
         except Exception as e:
             # Ultimate fallback
             return {
@@ -282,10 +281,10 @@ class AudioGenerationWorkflow:
                 "chapter_file": None,
                 "error": str(e)
             }
-    
+
     async def _simple_audio_generation(
-        self, 
-        chapter: Chapter, 
+        self,
+        chapter: Chapter,
         voice_config: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """Simple fallback audio generation."""
@@ -296,4 +295,4 @@ class AudioGenerationWorkflow:
             "segment_files": {f"segment_{i}": f"dummy_path_{i}.mp3" for i in range(len(chapter.segments))},
             "chapter_file": "dummy_chapter.mp3",
             "error": None
-        } 
+        }

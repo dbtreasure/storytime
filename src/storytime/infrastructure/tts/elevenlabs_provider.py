@@ -4,7 +4,8 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from elevenlabs import ElevenLabs, Voice as ElevenVoice
+from elevenlabs import ElevenLabs
+from elevenlabs import Voice as ElevenVoice
 
 from storytime.infrastructure.tts.base import ResponseFormat, TTSProvider, Voice
 
@@ -63,4 +64,4 @@ class ElevenLabsProvider(TTSProvider):
             gender=getattr(eleven_voice, "labels", {}).get("gender"),
             description=getattr(eleven_voice, "labels", {}).get("description"),
             tags=list(getattr(eleven_voice, "labels", {}).keys()) if getattr(eleven_voice, "labels", None) else [],
-        ) 
+        )

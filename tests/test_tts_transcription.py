@@ -1,17 +1,18 @@
 import os
+import re
+import sys
 import time
+import unicodedata
+from difflib import SequenceMatcher
+from pathlib import Path
+
 import pytest
 import requests
-from pathlib import Path
-import sys
-import unicodedata, re
-from difflib import SequenceMatcher
 
 SRC_DIR = Path(__file__).resolve().parent.parent / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from storytime.api.main import app
 
 BASE_URL = "http://localhost:8000"
 
@@ -72,7 +73,7 @@ def test_tts_to_transcription():
         pytest.skip("OpenAI client not available")
     # Read the more substantial test chapter text
     chapter_path = Path(__file__).parent / "fixtures" / "test_chapter.txt"
-    with open(chapter_path, "r", encoding="utf-8") as f:
+    with open(chapter_path, encoding="utf-8") as f:
         text = f.read().strip()
     # Submit TTS job
     resp = requests.post(f"{BASE_URL}/api/v1/tts/generate", json={"chapter_text": text, "provider": "openai"})
@@ -118,4 +119,4 @@ def test_tts_to_transcription():
     else:
         assert ratio > 0.9, (
             f"Transcription similarity too low (ratio={ratio:.2f})\n--- ORIGINAL ---\n{norm_orig[:400]}...\n--- TRANSCRIBED ---\n{norm_trans[:400]}..."
-        ) 
+        )

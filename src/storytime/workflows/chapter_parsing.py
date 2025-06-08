@@ -1,19 +1,24 @@
-from junjo import BaseState, BaseStore, Node, Graph, Workflow, Edge
-from storytime.models import Chapter, CharacterCatalogue, TextSegment, SpeakerType
-from storytime.services.character_analyzer import CharacterAnalyzer
-from typing import Optional, List, Any, Callable, Awaitable
-from pathlib import Path
 import json
 import os
-import google.generativeai as genai
 import re
+from collections.abc import Awaitable, Callable
+from pathlib import Path
+from typing import Any
+
+import google.generativeai as genai
 from google.generativeai.types import GenerationConfig
-from pydantic import ValidationError
+from junjo import BaseState, BaseStore, Edge, Graph, Node, Workflow
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from pydantic import ValidationError
+
+from storytime.models import Chapter, CharacterCatalogue, SpeakerType, TextSegment
+
 try:
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter  # type: ignore[import]
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+        OTLPSpanExporter,  # type: ignore[import]
+    )
 except ImportError:
     from opentelemetry.exporter.otlp.trace_exporter import OTLPSpanExporter  # type: ignore[import]
 
@@ -28,17 +33,17 @@ tracer = trace.get_tracer(__name__)
 
 # --- State ---
 class ChapterParsingState(BaseState):
-    chapter_text: Optional[str] = None
-    file_path: Optional[str] = None
-    chapter_number: Optional[int] = None
-    title: Optional[str] = None
-    character_catalogue: Optional[CharacterCatalogue] = None
-    chunks: Optional[List[str]] = None
-    prompts: Optional[List[str]] = None
-    raw_responses: Optional[List[Any]] = None
-    segments: Optional[List[TextSegment]] = None
-    chapter: Optional[Chapter] = None
-    error: Optional[str] = None
+    chapter_text: str | None = None
+    file_path: str | None = None
+    chapter_number: int | None = None
+    title: str | None = None
+    character_catalogue: CharacterCatalogue | None = None
+    chunks: list[str] | None = None
+    prompts: list[str] | None = None
+    raw_responses: list[Any] | None = None
+    segments: list[TextSegment] | None = None
+    chapter: Chapter | None = None
+    error: str | None = None
     # Add more fields as needed
 
 # --- Store ---
@@ -52,13 +57,13 @@ class LoadTextNode(Node[ChapterParsingStore]):
     async def service(self, store: ChapterParsingStore) -> None:
         with tracer.start_as_current_span("LoadTextNode") as span:
             state = await store.get_state()
-            
+
             node_inputs: dict[str, Any] = {
                 "has_chapter_text_initially": bool(state.chapter_text),
                 "file_path": str(state.file_path or "")
             }
             span.set_attribute("braintrust.input", json.dumps(node_inputs))
-            
+
             node_outputs: dict[str, Any] = {}
 
             try:
@@ -72,20 +77,20 @@ class LoadTextNode(Node[ChapterParsingStore]):
 
                 if state.file_path:
                     text = Path(state.file_path).read_text(encoding="utf-8")
-                    await store.set_state({"chapter_text": text}) 
+                    await store.set_state({"chapter_text": text})
                     node_outputs["text_loaded_from_file"] = True
                     node_outputs["text_summary"] = str(text[:200] + "..." if len(text) > 200 else text)
                     # Log state transition
                     span.add_event("state_transition", {"set": "chapter_text (from file)"})
                 else:
                     raise ValueError("No chapter_text or file_path provided in state.")
-                
+
                 span.set_attribute("braintrust.output", json.dumps(node_outputs))
 
             except Exception as e:
                 error_message = f"Failed to load text: {e}"
                 node_outputs["error"] = error_message
-                span.set_attribute("error", error_message) 
+                span.set_attribute("error", error_message)
                 await store.set_state({"error": error_message})
                 # Log error state transition
                 span.add_event("state_transition", {"set": "error", "value": error_message})
@@ -97,7 +102,7 @@ class ChunkTextNode(Node[ChapterParsingStore]):
     async def service(self, store: ChapterParsingStore) -> None:
         with tracer.start_as_current_span("ChunkTextNode") as span:
             state = await store.get_state()
-            
+
             node_inputs: dict[str, Any] = {"has_chapter_text": bool(state.chapter_text)}
             if state.chapter_text:
                 node_inputs["chapter_text_length"] = len(state.chapter_text)
@@ -108,7 +113,7 @@ class ChunkTextNode(Node[ChapterParsingStore]):
             try:
                 if not state.chapter_text:
                     raise ValueError("chapter_text must be loaded before chunking.")
-                
+
                 text = state.chapter_text
                 max_chunk_size = 800
                 paragraphs = text.split("\n\n")
@@ -137,11 +142,11 @@ class ChunkTextNode(Node[ChapterParsingStore]):
                             current += sentence
                     if current:
                         chunks.append(current.strip())
-                
+
                 node_outputs["num_chunks"] = len(chunks)
                 if chunks:
                     node_outputs["first_chunk_summary"] = str(chunks[0][:200] + "..." if len(chunks[0]) > 200 else chunks[0])
-                
+
                 await store.set_state({"chunks": chunks})
                 # Log state transition
                 span.add_event("state_transition", {"set": "chunks", "num_chunks": len(chunks)})
@@ -167,12 +172,12 @@ class PromptConstructionNode(Node[ChapterParsingStore]):
             if state.chunks:
                 node_inputs["first_chunk_summary"] = str(state.chunks[0][:200] + "..." if state.chunks[0] and len(state.chunks[0]) > 200 else state.chunks[0] or "")
             span.set_attribute("braintrust.input", json.dumps(node_inputs))
-            
+
             node_outputs: dict[str, Any] = {}
             try:
                 if not state.chunks:
                     raise ValueError("chunks must be set before prompt construction.")
-                
+
                 prompts = []
                 for chunk in state.chunks:
                     prompt = f'''
@@ -194,11 +199,11 @@ Title: {state.title or ''}
 • Do not include any explanations, comments, or formatting outside the JSON object.
 '''
                     prompts.append(prompt.strip())
-                
+
                 node_outputs["num_prompts"] = len(prompts)
                 if prompts:
                     node_outputs["first_prompt_summary"] = str(prompts[0][:200] + "..." if prompts[0] and len(prompts[0]) > 200 else prompts[0] or "")
-                
+
                 await store.set_state({"prompts": prompts})
                 # Log state transition
                 span.add_event("state_transition", {"set": "prompts", "num_prompts": len(prompts)})
@@ -215,8 +220,6 @@ Title: {state.title or ''}
                 raise
 
 async def call_gemini_api(prompt: str, model_name: str, api_key: str) -> str:
-    import google.generativeai as genai
-    from google.generativeai.types import GenerationConfig
     genai.configure(api_key=api_key)  # type: ignore[attr-defined]
     model = genai.GenerativeModel(model_name)  # type: ignore[attr-defined]
     import asyncio
@@ -245,19 +248,19 @@ class GeminiApiNode(Node[ChapterParsingStore]):
             try:
                 if not state.prompts:
                     raise ValueError("prompts must be set before Gemini API calls.")
-                
+
                 api_key = os.getenv("GOOGLE_API_KEY")
                 if not api_key:
                     raise ValueError("GOOGLE_API_KEY not set in environment.")
-                
+
                 model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
                 tasks = [call_gemini_api(prompt, model_name, api_key) for prompt in state.prompts]
                 raw_responses = await asyncio.gather(*tasks)
-                
+
                 node_outputs["num_responses"] = len(raw_responses)
                 if raw_responses:
                     node_outputs["first_response_summary"] = str(str(raw_responses[0])[:200] + "..." if raw_responses[0] and len(str(raw_responses[0])) > 200 else str(raw_responses[0]) or "")
-                
+
                 await store.set_state({"raw_responses": raw_responses})
                 # Log state transition
                 span.add_event("state_transition", {"set": "raw_responses", "num_responses": len(raw_responses)})
@@ -288,33 +291,33 @@ class ParseSegmentsNode(Node[ChapterParsingStore]):
             span.set_attribute("braintrust.input", json.dumps(node_inputs))
 
             node_outputs: dict[str, Any] = {}
-            all_segments: List[TextSegment] = [] # Define all_segments at a scope visible to the finally/except block if needed for output
+            all_segments: list[TextSegment] = [] # Define all_segments at a scope visible to the finally/except block if needed for output
             try:
                 if not state.raw_responses or not state.prompts:
                     raise ValueError("raw_responses and prompts must be set before parsing segments.")
-                
+
                 seq = 1
                 api_key = os.getenv("GOOGLE_API_KEY")
                 if not api_key:
                     raise ValueError("GOOGLE_API_KEY not set in environment.")
                 model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
 
-                for idx, (raw, prompt) in enumerate(zip(state.raw_responses, state.prompts)):
+                for idx, (raw, prompt) in enumerate(zip(state.raw_responses, state.prompts, strict=False)):
                     for attempt in range(3): # Max 3 attempts
                         try:
                             response_text = raw.strip() if attempt == 0 else await call_gemini_api(prompt, model_name, api_key)
                             match = re.search(r'([\{\[].*)', response_text, re.DOTALL) # Corrected regex
                             if match:
                                 response_text = match.group(1)
-                            
+
                             response_text = re.sub(r',([ \t\r\n]*[\]\}])', r'\1', response_text) # remove trailing commas
-                            
+
                             # Attempt to fix incomplete JSON (common with LLMs)
                             n_open_curly = response_text.count('{')
                             n_close_curly = response_text.count('}')
                             if n_open_curly > n_close_curly:
                                 response_text += '}' * (n_open_curly - n_close_curly)
-                            
+
                             n_open_square = response_text.count('[')
                             n_close_square = response_text.count(']')
                             if n_open_square > n_close_square:
@@ -327,7 +330,7 @@ class ParseSegmentsNode(Node[ChapterParsingStore]):
                                 segments_data = data # Assumes the list itself is the segments_data
                             else:
                                 raise ValueError(f"Expected a list or dict with 'segments', got: {type(data)}")
-                            
+
                             if not isinstance(segments_data, list):
                                 raise ValueError(f"Expected a list of segments, got: {type(segments_data)}")
 
@@ -364,7 +367,7 @@ class ParseSegmentsNode(Node[ChapterParsingStore]):
                             else:
                                 span.add_event("parse_chunk_retry", {"chunk_idx": idx, "attempt": attempt + 1, "error": str(e_attempt)})
                                 await asyncio.sleep(0.5) # Wait before retrying
-                
+
                 node_outputs["num_segments"] = len(all_segments)
                 if all_segments:
                     try:
@@ -372,7 +375,7 @@ class ParseSegmentsNode(Node[ChapterParsingStore]):
                         node_outputs["first_segment_summary"] = str(first_segment_json[:200] + "..." if len(first_segment_json) > 200 else first_segment_json)
                     except Exception as e_dump: # Catch error from model_dump_json
                         node_outputs["first_segment_summary_error"] = str(e_dump)
-                
+
                 await store.set_state({"segments": all_segments})
                 # Log state transition
                 span.add_event("state_transition", {"set": "segments", "num_segments": len(all_segments)})
@@ -419,7 +422,7 @@ class MergeSegmentsNode(Node[ChapterParsingStore]):
                 await store.set_state({"chapter": chapter})
                 # Log state transition
                 span.add_event("state_transition", {"set": "chapter"})
-                
+
                 node_outputs["chapter_number"] = chapter.chapter_number
                 node_outputs["chapter_title"] = str(chapter.title or "")
                 node_outputs["num_segments_in_chapter"] = len(chapter.segments)
@@ -440,10 +443,10 @@ class ErrorHandlingNode(Node[ChapterParsingStore]):
     async def service(self, store: ChapterParsingStore) -> None:
         with tracer.start_as_current_span("ErrorHandlingNode") as span:
             state = await store.get_state()
-            
+
             node_inputs: dict[str, Any] = {"error_message_from_state": str(state.error or "No error message present in state.")}
             span.set_attribute("braintrust.input", json.dumps(node_inputs))
-            
+
             node_outputs: dict[str, Any] = {"processed_error": str(state.error or "") if state.error else None}
             if state.error:
                 span.set_attribute("error", str(state.error)) # Standard way to flag error in span
@@ -453,7 +456,7 @@ class ErrorHandlingNode(Node[ChapterParsingStore]):
                 span.add_event("state_transition", {"set": "error", "value": str(state.error)})
             else:
                 node_outputs["status"] = "No error to process"
-            
+
             span.set_attribute("braintrust.output", json.dumps(node_outputs))
             # This node typically doesn't change state unless it resolves an error,
             # or re-raises if it cannot handle it. For now, it's informational.
@@ -478,10 +481,10 @@ class SaveResultsNode(Node[ChapterParsingStore]):
                 chapter_number = state.chapter_number or 1
                 chapter_data_path = Path(output_dir_env) / f"chapter_{chapter_number:02d}"
                 chapter_data_path.mkdir(parents=True, exist_ok=True)
-                
+
                 node_outputs["output_dir"] = str(chapter_data_path)
-                files_saved: List[str] = []
-                
+                files_saved: list[str] = []
+
                 if state.chapter_text:
                     (chapter_data_path / "text.txt").write_text(state.chapter_text, encoding="utf-8")
                     files_saved.append("text.txt")
@@ -497,7 +500,7 @@ class SaveResultsNode(Node[ChapterParsingStore]):
                     with (chapter_data_path / "characters.json").open("w", encoding="utf-8") as f:
                         json.dump(state.character_catalogue.model_dump(), f, indent=2, ensure_ascii=False)
                     files_saved.append("characters.json")
-                
+
                 node_outputs["files_saved"] = files_saved if files_saved else [] # Ensure it's a list
                 # Log state transition
                 span.add_event("state_transition", {"set": "files_saved", "files": files_saved})
@@ -548,24 +551,24 @@ try:
     # Set the store separately if possible
     if hasattr(workflow, 'store'):
         workflow.store = ChapterParsingStore(initial_state=ChapterParsingState())
-except Exception as e:
+except Exception:
     # Fallback: create a minimal workflow object
     class MockWorkflow:
         def __init__(self):
             self.name = "Chapter Parsing Pipeline (Junjo-Native)"
             self.graph = graph
             self.store = ChapterParsingStore(initial_state=ChapterParsingState())
-        
+
         async def execute(self):
             raise NotImplementedError("Workflow execution not available due to Junjo version incompatibility")
-    
+
     workflow = MockWorkflow()
 
 
 # --- Workflow Wrapper Class for Job System ---
 class ChapterParsingWorkflow:
     """Wrapper class for chapter parsing workflow to integrate with job system."""
-    
+
     def __init__(self):
         # Create a fresh workflow instance to avoid initialization issues
         self.store = ChapterParsingStore(initial_state=ChapterParsingState())
@@ -575,7 +578,7 @@ class ChapterParsingWorkflow:
         except Exception:
             # Fallback to a minimal implementation
             self.workflow = None
-    
+
     async def run(
         self,
         text_content: str,
@@ -583,23 +586,23 @@ class ChapterParsingWorkflow:
         progress_callback: Callable[[float], Awaitable[None]] | None = None
     ) -> dict[str, Any]:
         """Run the chapter parsing workflow and return results."""
-        
+
         if self.workflow:
             try:
                 # Set initial state
                 await self.workflow.store.set_state({
                     "chapter_text": text_content,
                     "chapter_number": 1,
-                    "title": "Chapter 1", 
+                    "title": "Chapter 1",
                     "character_catalogue": CharacterCatalogue()
                 })
-                
+
                 # Execute workflow
                 await self.workflow.execute()
-                
+
                 # Get final state
                 final_state = await self.workflow.store.get_state()
-                
+
                 # Convert to serializable format
                 result = {
                     "chapter": final_state.chapter.dict() if final_state.chapter else None,
@@ -607,27 +610,27 @@ class ChapterParsingWorkflow:
                     "characters": final_state.character_catalogue.dict() if final_state.character_catalogue else {},
                     "error": final_state.error
                 }
-                
+
                 if progress_callback:
                     await progress_callback(1.0)
-                
+
                 return result
-                
-            except Exception as e:
+
+            except Exception:
                 # Fallback to simple parsing if workflow fails
                 return await self._simple_parse(text_content, progress_callback)
         else:
             # Use simple parsing fallback
             return await self._simple_parse(text_content, progress_callback)
-    
+
     async def _simple_parse(
-        self, 
-        text_content: str, 
+        self,
+        text_content: str,
         progress_callback: Callable[[float], Awaitable[None]] | None = None
     ) -> dict[str, Any]:
         """Simple fallback parsing when full workflow is not available."""
-        from storytime.models import TextSegment, Chapter, SpeakerType
-        
+        from storytime.models import Chapter, SpeakerType, TextSegment
+
         # Simple implementation: treat entire text as one narrator segment
         segment = TextSegment(
             text=text_content,
@@ -635,27 +638,28 @@ class ChapterParsingWorkflow:
             speaker_name="narrator",
             sequence_number=1
         )
-        
+
         chapter = Chapter(
             chapter_number=1,
             title="Chapter 1",
             segments=[segment]
         )
-        
+
         result = {
             "chapter": chapter.dict(),
             "segments": [segment.dict()],
             "characters": {},
             "error": None
         }
-        
+
         if progress_callback:
             await progress_callback(1.0)
-        
+
         return result
 
 # --- Minimal runner for local testing ---
 import asyncio
+
 
 async def main():
     # Example: set file_path, chapter_number, and title here
@@ -672,4 +676,4 @@ async def main():
     print("Final workflow state:", state)
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

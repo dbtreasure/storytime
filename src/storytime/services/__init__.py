@@ -1,3 +1,3 @@
-"""Stateless, testable building blocks (e.g. TTS, parsing) live here.""" 
+"""Stateless, testable building blocks (e.g. TTS, parsing) live here."""
 
-from .tts_generator import TTSGenerator 
+from .tts_generator import TTSGenerator

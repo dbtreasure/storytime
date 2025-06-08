@@ -5,23 +5,23 @@ Revises: f4e761e08e6e
 Create Date: 2025-06-07 19:59:47.447144
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = '2411eb0df3d9'
-down_revision: Union[str, None] = 'f4e761e08e6e'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = 'f4e761e08e6e'
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
     """Upgrade schema."""
     connection = op.get_bind()
-    
+
     # Create jobs table with inline enum definitions
     # This will let PostgreSQL handle enum creation automatically
     if not connection.dialect.has_table(connection, 'jobs'):
@@ -49,14 +49,14 @@ def upgrade() -> None:
             sa.ForeignKeyConstraint(['user_id'], ['users.id']),
             sa.PrimaryKeyConstraint('id')
         )
-        
+
         # Create indexes for jobs table
         op.create_index(op.f('ix_jobs_book_id'), 'jobs', ['book_id'], unique=False)
         op.create_index(op.f('ix_jobs_created_at'), 'jobs', ['created_at'], unique=False)
         op.create_index(op.f('ix_jobs_job_type'), 'jobs', ['job_type'], unique=False)
         op.create_index(op.f('ix_jobs_status'), 'jobs', ['status'], unique=False)
         op.create_index(op.f('ix_jobs_user_id'), 'jobs', ['user_id'], unique=False)
-    
+
     # Create job_steps table if it doesn't exist
     if not connection.dialect.has_table(connection, 'job_steps'):
         op.create_table(
@@ -76,7 +76,7 @@ def upgrade() -> None:
             sa.ForeignKeyConstraint(['job_id'], ['jobs.id']),
             sa.PrimaryKeyConstraint('id')
         )
-        
+
         # Create indexes for job_steps table
         op.create_index(op.f('ix_job_steps_job_id'), 'job_steps', ['job_id'], unique=False)
 
@@ -84,12 +84,12 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade schema."""
     connection = op.get_bind()
-    
+
     # Drop tables if they exist
     if connection.dialect.has_table(connection, 'job_steps'):
         op.drop_index(op.f('ix_job_steps_job_id'), table_name='job_steps')
         op.drop_table('job_steps')
-    
+
     if connection.dialect.has_table(connection, 'jobs'):
         op.drop_index(op.f('ix_jobs_user_id'), table_name='jobs')
         op.drop_index(op.f('ix_jobs_status'), table_name='jobs')
@@ -97,7 +97,7 @@ def downgrade() -> None:
         op.drop_index(op.f('ix_jobs_created_at'), table_name='jobs')
         op.drop_index(op.f('ix_jobs_book_id'), table_name='jobs')
         op.drop_table('jobs')
-    
+
     # Drop enum types using raw SQL
     connection.execute(sa.text("DROP TYPE IF EXISTS stepstatus"))
     connection.execute(sa.text("DROP TYPE IF EXISTS jobstatus"))

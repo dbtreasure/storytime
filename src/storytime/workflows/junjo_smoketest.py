@@ -1,5 +1,7 @@
-from junjo import BaseState, BaseStore, Node, Graph, Workflow
 import asyncio
+
+from junjo import BaseState, BaseStore, Graph, Node, Workflow
+
 
 # Define the workflow state
 class SmokeTestState(BaseState):
@@ -41,4 +43,4 @@ async def main():
     print("Final state:", state)
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

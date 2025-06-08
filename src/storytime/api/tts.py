@@ -1,33 +1,21 @@
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status, Depends
-from pydantic import BaseModel
-from typing import Dict, Optional, List, Any
-import uuid
-import time
-from pathlib import Path
-from fastapi.responses import FileResponse
-import os
-import asyncio
 import logging
-import tempfile
+import os
+import uuid
 
-from storytime.services.tts_generator import TTSGenerator
-from storytime.models import TextSegment, SpeakerType, Chapter, CharacterCatalogue
-from storytime.infrastructure.tts import OpenAIProvider, ElevenLabsProvider
-from storytime.workflows.audio_generation import build_audio_workflow
-from storytime.workflows.chapter_parsing import workflow as chapter_workflow
-from storytime.worker.celery_app import celery_app
+from fastapi import APIRouter, BackgroundTasks, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import text
+
 from storytime.database import AsyncSessionLocal, BookStatus
 from storytime.database import Book as DBBook
-from sqlalchemy import text
-from storytime.infrastructure.spaces import upload_file
 
 router = APIRouter(prefix="/api/v1/tts", tags=["TTS"])
 
 class GenerateRequest(BaseModel):
     chapter_text: str
-    chapter_number: Optional[int] = 1
-    title: Optional[str] = None
-    provider: Optional[str] = "openai"
+    chapter_number: int | None = 1
+    title: str | None = None
+    provider: str | None = "openai"
     # Add more fields as needed
 
 def estimate_cost_by_characters(text: str, provider: str) -> float:
@@ -44,14 +32,14 @@ async def generate_tts(request: GenerateRequest, background_tasks: BackgroundTas
     provider_name = (request.provider or "openai").lower()
     if provider_name not in ("openai", "elevenlabs", "eleven"):
         raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider_name}")
-    
+
     # Create a job using the new unified system
-    from storytime.models import CreateJobRequest, JobType, SourceType, VoiceConfig
     from storytime.database import Job, JobStatus
+    from storytime.models import JobType, SourceType
     from storytime.worker.tasks import process_job
-    
+
     job_id = str(uuid.uuid4())
-    
+
     try:
         async with AsyncSessionLocal() as session:
             # Create job record
@@ -71,11 +59,11 @@ async def generate_tts(request: GenerateRequest, background_tasks: BackgroundTas
                     }
                 }
             )
-            
+
             session.add(job)
             await session.commit()
             await session.refresh(job)
-            
+
             # Also create legacy book record for compatibility
             new_book = DBBook(
                 id=job_id,
@@ -87,7 +75,7 @@ async def generate_tts(request: GenerateRequest, background_tasks: BackgroundTas
             )
             session.add(new_book)
             await session.commit()
-            
+
     except Exception as e:
         logging.error(f"Database error for job_id={job_id}: {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
@@ -113,21 +101,21 @@ async def generate_tts(request: GenerateRequest, background_tasks: BackgroundTas
 async def test_database_connection():
     """Debug endpoint to test database connectivity and manual insert."""
     test_id = str(uuid.uuid4())
-    
+
     try:
         async with AsyncSessionLocal() as session:
             # Test 1: Basic connectivity
             result = await session.execute(text("SELECT 1 as test"))
             test_result = result.scalar()
             logging.info(f"Database connectivity test: {test_result}")
-            
+
             # Test 2: Check if book table exists
             table_check = await session.execute(
                 text("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name='book')")
             )
             table_exists = table_check.scalar()
             logging.info(f"Book table exists: {table_exists}")
-            
+
             # Test 3: Manual insert via raw SQL
             await session.execute(
                 text("INSERT INTO book (id, title, status, progress_pct) VALUES (:id, :title, :status, :progress)"),
@@ -135,7 +123,7 @@ async def test_database_connection():
             )
             await session.commit()
             logging.info(f"Manual SQL insert successful: {test_id}")
-            
+
             # Test 4: Verify the insert
             verify_result = await session.execute(
                 text("SELECT id, title, status FROM book WHERE id = :id"),
@@ -143,7 +131,7 @@ async def test_database_connection():
             )
             row = verify_result.fetchone()
             logging.info(f"Verification result: {row}")
-            
+
             # Test 5: Try SQLAlchemy ORM insert
             orm_id = str(uuid.uuid4())
             orm_book = DBBook(
@@ -156,7 +144,7 @@ async def test_database_connection():
             await session.commit()
             await session.refresh(orm_book)
             logging.info(f"ORM insert successful: {orm_book.id}")
-            
+
             return {
                 "connectivity": test_result == 1,
                 "table_exists": table_exists,
@@ -164,7 +152,7 @@ async def test_database_connection():
                 "orm_insert_id": orm_id,
                 "status": "success"
             }
-            
+
     except Exception as e:
         logging.error(f"Database test failed: {type(e).__name__}: {e}")
-        return {"error": str(e), "status": "failed"} 
+        return {"error": str(e), "status": "failed"}

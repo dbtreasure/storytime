@@ -5,17 +5,17 @@ Revises: 2273b4060b15
 Create Date: 2025-06-01 00:29:21.621276
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = 'f4e761e08e6e'
-down_revision: Union[str, None] = '2273b4060b15'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = '2273b4060b15'
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -32,11 +32,11 @@ def upgrade() -> None:
         sa.UniqueConstraint('email')
     )
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=False)
-    
+
     # Add user_id column to book table
     op.add_column('book', sa.Column('user_id', sa.String(), nullable=True))
     op.create_foreign_key('fk_book_user_id', 'book', 'users', ['user_id'], ['id'])
-    
+
     # Note: In production, you'd want to populate user_id for existing books
     # or make it nullable temporarily and handle the migration
 
@@ -46,7 +46,7 @@ def downgrade() -> None:
     # Remove foreign key and user_id column from book table
     op.drop_constraint('fk_book_user_id', 'book', type_='foreignkey')
     op.drop_column('book', 'user_id')
-    
+
     # Drop users table
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')

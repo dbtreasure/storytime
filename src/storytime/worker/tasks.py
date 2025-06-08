@@ -1,16 +1,17 @@
-import time
+import asyncio
 import logging
-from .celery_app import celery_app
-from storytime.services.tts_generator import TTSGenerator
-from storytime.services.job_processor import JobProcessor
-from storytime.infrastructure.spaces import download_file, upload_file, SpacesClient
-from storytime.database import AsyncSessionLocal, Book as DBBook, BookStatus, Job
 import os
 import tempfile
-import asyncio
-from storytime.models import TextSegment, Chapter, SpeakerType
-from sqlalchemy.ext.asyncio import AsyncSession
-from celery import Task
+
+from storytime.database import AsyncSessionLocal, BookStatus
+from storytime.database import Book as DBBook
+from storytime.infrastructure.spaces import SpacesClient, download_file, upload_file
+from storytime.models import Chapter, SpeakerType, TextSegment
+from storytime.services.job_processor import JobProcessor
+from storytime.services.tts_generator import TTSGenerator
+
+from .celery_app import celery_app
+
 
 @celery_app.task(
     name="storytime.worker.tasks.process_job",
@@ -36,14 +37,14 @@ async def _process_job_async(self, job_id):
                 db_session=session,
                 spaces_client=spaces_client
             )
-            
+
             # Process the job
             result = await job_processor.process_job(job_id)
             logging.info(f"[Celery] Job {job_id} completed successfully")
             return result
-            
+
         except Exception as e:
-            logging.error(f"[Celery] Job {job_id} failed: {str(e)}", exc_info=True)
+            logging.error(f"[Celery] Job {job_id} failed: {e!s}", exc_info=True)
             raise  # Let Celery handle retry
 
 @celery_app.task(
@@ -77,7 +78,7 @@ async def _generate_tts_async(self, book_id):
                 tmp_path = tmp.name
             try:
                 download_file(book.text_key, tmp_path)
-                with open(tmp_path, "r", encoding="utf-8") as f:
+                with open(tmp_path, encoding="utf-8") as f:
                     text = f.read()
             except Exception as e:
                 logging.error(f"[Celery] Failed to download/read text for book_id={book_id}: {e}")
@@ -141,10 +142,10 @@ async def _generate_tts_async(self, book_id):
                 book.error_msg = f"Audio upload/DB update failed: {e}"
                 book.status = BookStatus.FAILED
                 await session.commit()
-                raise  # Let Celery retry 
+                raise  # Let Celery retry
         except Exception as e:
             if book:
                 book.error_msg = str(e)
                 book.status = BookStatus.FAILED
                 await session.commit()
-            raise  # Let Celery handle retry 
+            raise  # Let Celery handle retry

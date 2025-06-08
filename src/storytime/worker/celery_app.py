@@ -1,4 +1,5 @@
 import os
+
 from celery import Celery
 
 celery_app = Celery(
@@ -12,4 +13,4 @@ celery_app = Celery(
 # }
 
 # Import tasks to ensure they are registered with the Celery app
-from . import tasks  # noqa: F401,E402 
+from . import tasks  # noqa: F401,E402

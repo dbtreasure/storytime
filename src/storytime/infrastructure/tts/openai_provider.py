@@ -61,4 +61,4 @@ class OpenAIProvider(TTSProvider):
             input=text,
             response_format=format,
         )
-        response.stream_to_file(out_path) 
+        response.stream_to_file(out_path)

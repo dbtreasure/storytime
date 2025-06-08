@@ -1,16 +1,17 @@
-from fastapi import FastAPI, Depends
-from fastapi.middleware.cors import CORSMiddleware
 import logging
-import asyncio
 
-from .settings import get_settings
-from .middleware import LoggingMiddleware
-from .chapters import router as chapters_router
-from .tts import router as tts_router
-from .auth import router as auth_router
-from .jobs import router as jobs_router
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 from storytime.api import voice_management
 from storytime.database import create_all
+
+from .auth import router as auth_router
+from .chapters import router as chapters_router
+from .jobs import router as jobs_router
+from .middleware import LoggingMiddleware
+from .settings import get_settings
+from .tts import router as tts_router
 
 settings = get_settings()
 
@@ -50,4 +51,4 @@ app.include_router(voice_management.router)
 @app.get("/health", tags=["Utility"])
 async def health() -> dict[str, str]:
     """Return basic service health status."""
-    return {"status": "ok"} 
+    return {"status": "ok"}

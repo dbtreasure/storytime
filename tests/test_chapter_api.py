@@ -1,27 +1,26 @@
+import sys
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
-from pathlib import Path
-import io
-import sys
-import os
 
 # Ensure src is in sys.path for import
 SRC_DIR = Path(__file__).resolve().parent.parent / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from storytime.api.main import app
-
 # --- Mock JWT auth dependency ---
-from fastapi import status
+
 from storytime.api import auth
+from storytime.api.main import app
 from storytime.database import User
+
 
 def mock_current_user():
     # Return a mock user for testing
     return User(
         id="test-user-id",
-        email="test@example.com", 
+        email="test@example.com",
         hashed_password="test-hash"
     )
 
@@ -159,4 +158,4 @@ def test_job_not_found():
     resp2 = client.get("/api/v1/tts/jobs/doesnotexist/download")
     assert resp2.status_code == 404
     resp3 = client.delete("/api/v1/tts/jobs/doesnotexist")
-    assert resp3.status_code == 404 
+    assert resp3.status_code == 404

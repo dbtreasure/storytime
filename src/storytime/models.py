@@ -185,7 +185,7 @@ class CreateJobRequest(BaseModel):
     content: str | None = Field(None, description="Text content (for TEXT source)")
     file_key: str | None = Field(None, description="File key (for BOOK/CHAPTER source)")
     book_id: str | None = Field(None, description="Associated book ID")
-    
+
     # Optional job configuration
     job_type: JobType | None = Field(None, description="Job type (auto-detected if not provided)")
     source_type: SourceType = Field(SourceType.TEXT, description="Source content type")
@@ -216,31 +216,31 @@ class JobResponse(BaseModel):
     book_id: str | None = None
     title: str
     description: str | None = None
-    
+
     # Job configuration
     job_type: JobType
     source_type: SourceType
-    
+
     # Processing state
     status: JobStatus
     progress: float
     error_message: str | None = None
-    
+
     # Configuration and results
     config: dict[str, Any] | None = None
     result_data: dict[str, Any] | None = None
-    
+
     # File references
     input_file_key: str | None = None
     output_file_key: str | None = None
-    
+
     # Timestamps
     created_at: datetime
     updated_at: datetime
     started_at: datetime | None = None
     completed_at: datetime | None = None
     duration: float | None = None
-    
+
     # Related data
     steps: list[JobStepResponse] = Field(default_factory=list)
 

@@ -77,4 +77,4 @@ class VoiceAssigner:
             return self.male_voices[0].id
         if self.all_voices:
             return self.all_voices[0].id
-        return "default"  # Last resort 
+        return "default"  # Last resort

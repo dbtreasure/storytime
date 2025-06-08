@@ -1,16 +1,28 @@
 # Ruff configuration for the Storytime project
+# Replaces black, isort, flake8, and other formatting/linting tools
 line-length = 100
-# Set to your minimum supported Python version
 target-version = "py311"
 
 [lint]
-# Enable common error, formatting, and best-practice rules
-select = ["E", "F", "I", "UP", "B"]
-ignore = []
+# Enable comprehensive rules to replace multiple tools:
+# E/W = pycodestyle (replaces flake8)
+# F = pyflakes (replaces flake8) 
+# I = isort (replaces isort)
+# UP = pyupgrade
+# B = flake8-bugbear
+# C4 = flake8-comprehensions
+# SIM = flake8-simplify
+# RUF = Ruff-specific rules
+select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
+ignore = [
+    "E501",  # Line too long (handled by formatter)
+]
 fixable = ["ALL"]
 unfixable = []
 
 [format]
+# Black-compatible formatting
 quote-style = "double"
 indent-style = "space"
-line-ending = "auto" 
+line-ending = "auto"
+skip-magic-trailing-comma = false 

@@ -1,8 +1,8 @@
+import logging
 from functools import lru_cache
 
-from pydantic_settings import BaseSettings
 from pydantic import Field
-import logging
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -22,7 +22,7 @@ class Settings(BaseSettings):
 
     # JWT Authentication
     jwt_secret_key: str = Field(..., description="JWT Secret Key")
-    
+
     # DigitalOcean Spaces
     do_spaces_key: str | None = None
     do_spaces_secret: str | None = None
@@ -42,11 +42,11 @@ class Settings(BaseSettings):
     }
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:  # pragma: no cover
     """Return a cached instance of Settings."""
     s = Settings()
     logging.basicConfig(level=s.log_level)
     logging.getLogger(__name__).info(f"Loaded DATABASE_URL: {getattr(s, 'database_url', None)}")
     logging.getLogger(__name__).info(f"Loaded REDIS_URL: {getattr(s, 'redis_url', None)}")
-    return s 
+    return s

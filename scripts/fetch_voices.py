@@ -1,8 +1,9 @@
-import argparse, json
+import argparse
+import json
 from pathlib import Path
 
-from tts_providers.openai_provider import OpenAIProvider
 from tts_providers.elevenlabs_provider import ElevenLabsProvider
+from tts_providers.openai_provider import OpenAIProvider
 
 PROVIDERS = {
     "openai": OpenAIProvider,
@@ -28,4 +29,4 @@ def main():
     print(f"✅ Cached {len(voices)} voices to {out_path}")
 
 if __name__ == "__main__":
-    main() 
+    main()

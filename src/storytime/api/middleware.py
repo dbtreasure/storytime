@@ -1,4 +1,5 @@
 import logging
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
@@ -11,4 +12,4 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         logger.info(f"Request: {request.method} {request.url.path} | API Key: {api_key}")
         response: Response = await call_next(request)
         logger.info(f"Response: {request.method} {request.url.path} | Status: {response.status_code} | API Key: {api_key}")
-        return response 
+        return response

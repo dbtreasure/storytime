@@ -58,14 +58,14 @@ class CharacterAnalyzer:
                 )
                 for cd in characters_data
             ]
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             # In library code we avoid prints; instead raise or log.
             raise RuntimeError(f"Error analysing characters: {exc}") from exc
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
-    def _build_prompt(self, chapter_text: str, existing_str: str) -> str:  # noqa: D401
+    def _build_prompt(self, chapter_text: str, existing_str: str) -> str:
         """Return the LLM prompt string."""
 
         return f"""
@@ -100,4 +100,4 @@ Return a JSON array of character objects:
 ]
 
 If no new characters found, return: []
-""" 
+"""

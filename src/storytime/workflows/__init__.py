@@ -1,1 +1,1 @@
-"""Junjo Graph definitions will live here.""" 
+"""Junjo Graph definitions will live here."""
