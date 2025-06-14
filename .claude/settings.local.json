@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__linear__list_my_issues",
+      "mcp__linear__list_issues",
+      "Bash(python -m pytest tests/test_content_analyzer_gemini.py -v)",
+      "Bash(find:*)",
+      "mcp__linear__get_issue",
+      "Bash(poetry --version)",
+      "mcp__linear__update_issue",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(rg:*)",
+      "Bash(rg:*)",
+      "Bash(ruff check:*)",
+      "Bash(python:*)",
+      "Bash(uvx ruff check:*)",
+      "Bash(ls:*)"
+    ],
+    "deny": []
+  }
+}

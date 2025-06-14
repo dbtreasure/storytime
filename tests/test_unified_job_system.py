@@ -1,4 +1,4 @@
-"""Tests for the unified job management system."""
+"""Tests for the simplified unified job management system."""
 
 import asyncio
 from datetime import datetime
@@ -11,120 +11,11 @@ from storytime.database import Job, User
 from storytime.models import (
     CreateJobRequest,
     JobStatus,
-    JobType,
-    SourceType,
     StepStatus,
     VoiceConfig,
 )
-from storytime.services.content_analyzer import ContentAnalyzer
 from storytime.services.job_processor import JobProcessor
 
-
-class TestContentAnalyzer:
-    """Tests for the content analyzer service."""
-
-    @pytest.fixture
-    def analyzer(self):
-        return ContentAnalyzer()
-
-    @pytest.mark.asyncio
-    async def test_analyze_short_content(self, analyzer):
-        """Test analysis of short content suggests SINGLE_VOICE."""
-        content = "This is a short text for testing."
-
-        result = await analyzer.analyze_content(content, SourceType.TEXT)
-
-        assert result.suggested_job_type == JobType.SINGLE_VOICE
-        assert result.confidence > 0.5
-        # Gemini provides different reasons than regex, so be more flexible
-        assert len(result.reasons) > 0
-        # Check that it mentions short content or single voice somewhere
-        reasons_text = " ".join(result.reasons).lower()
-        assert any(term in reasons_text for term in ["short", "single", "no dialogue", "simple"])
-
-    @pytest.mark.asyncio
-    async def test_analyze_dialogue_content(self, analyzer):
-        """Test analysis of dialogue-heavy content suggests MULTI_VOICE."""
-        content = (
-            """
-        "Hello there," said John with a smile.
-        "How are you doing today?" Mary replied cheerfully.
-        "I'm doing well, thank you for asking," John answered.
-        "That's wonderful to hear," Mary said.
-        The narrator then described how they walked together.
-        "Where shall we go?" asked John.
-        "Let's visit the park," suggested Mary.
-        """
-            * 20
-        )  # Make it long enough
-
-        result = await analyzer.analyze_content(content, SourceType.TEXT)
-
-        assert result.suggested_job_type == JobType.MULTI_VOICE
-        assert result.confidence > 0.5
-        assert any("dialogue" in reason.lower() for reason in result.reasons)
-
-    @pytest.mark.asyncio
-    async def test_analyze_book_content(self, analyzer):
-        """Test analysis of book with chapters suggests BOOK_PROCESSING."""
-        content = (
-            """
-        Chapter 1
-        
-        This is the first chapter of our story...
-        
-        Chapter 2
-        
-        This is the second chapter...
-        
-        Chapter 3
-        
-        And this continues the tale...
-        """
-            * 50
-        )  # Make it substantial
-
-        result = await analyzer.analyze_content(content, SourceType.BOOK)
-
-        assert result.suggested_job_type == JobType.BOOK_PROCESSING
-        assert result.confidence > 0.5
-        assert any("chapter" in reason.lower() for reason in result.reasons)
-
-    @pytest.mark.asyncio
-    async def test_split_book_into_chapters(self, analyzer):
-        """Test book splitting functionality."""
-        # Make chapters longer to meet minimum length requirement
-        chapter_content = (
-            """
-        This is chapter content with multiple paragraphs to ensure it meets the minimum
-        length requirement for chapter splitting. The content analyzer requires chapters
-        to be at least 1000 characters long to be considered valid chapters.
-        
-        We need to add enough text here to make sure each chapter is substantial enough
-        to pass the validation checks. This includes multiple sentences and paragraphs
-        that would be typical of a real book chapter.
-        
-        The story continues with interesting developments and character interactions.
-        There are plot points that need to be developed across multiple paragraphs
-        to create a complete narrative experience for the reader.
-        """
-            * 2
-        )  # Double it to ensure length
-
-        content = f"""
-        Chapter 1{chapter_content}
-        
-        Chapter 2{chapter_content}
-        
-        Chapter 3{chapter_content}
-        """
-
-        chapters = await analyzer.split_book_into_chapters(content)
-
-        assert len(chapters) == 3
-        assert "Chapter 1" in chapters[0]
-        assert "Chapter 2" in chapters[1]
-        assert "Chapter 3" in chapters[2]
 
 
 class TestJobProcessor:
@@ -155,8 +46,6 @@ class TestJobProcessor:
         return Job(
             id=str(uuid4()),
             user_id=str(uuid4()),
-            job_type=JobType.SINGLE_VOICE,
-            source_type=SourceType.TEXT,
             title="Test Job",
             description="Test job description",
             status=JobStatus.PENDING,
@@ -181,50 +70,62 @@ class TestJobProcessor:
         mock_db_session.execute.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_create_job_steps(self, job_processor, mock_db_session):
-        """Test creating job steps for progress tracking."""
+    async def test_create_job_step(self, job_processor, mock_db_session):
+        """Test creating a job step for progress tracking."""
         job_id = str(uuid4())
-        steps = [
-            ("load_content", "Loading text content"),
-            ("generate_audio", "Generating audio"),
-            ("upload_results", "Uploading results"),
-        ]
+        
+        # Mock the add and commit operations
+        mock_db_session.add = AsyncMock()
+        mock_db_session.commit = AsyncMock()
+        mock_db_session.refresh = AsyncMock()
 
-        await job_processor._create_job_steps(job_id, steps)
+        result = await job_processor._create_job_step(
+            job_id, "text_to_audio", 0, "Convert text to audio"
+        )
 
-        # Verify job steps were added to session
-        mock_db_session.add_all.assert_called_once()
-        added_steps = mock_db_session.add_all.call_args[0][0]
-
-        assert len(added_steps) == 3
-        assert added_steps[0].step_name == "load_content"
-        assert added_steps[0].step_order == 0
-        assert added_steps[1].step_name == "generate_audio"
-        assert added_steps[1].step_order == 1
+        # Verify job step was added to session
+        mock_db_session.add.assert_called_once()
+        mock_db_session.commit.assert_called_once()
+        mock_db_session.refresh.assert_called_once()
 
     @pytest.mark.asyncio
     @patch("storytime.services.job_processor.TTSGenerator")
-    async def test_process_single_voice_job(
+    async def test_process_text_to_audio_job(
         self, mock_tts_class, job_processor, mock_db_session, sample_job
     ):
-        """Test processing a single voice job."""
+        """Test processing a text-to-audio job."""
         # Mock TTS generator
         mock_tts = AsyncMock()
         mock_tts.generate_simple_audio.return_value = b"fake_audio_data"
         mock_tts_class.return_value = mock_tts
 
-        # Mock database operations
+        # Mock database operations and job step creation
         mock_result = AsyncMock()
         mock_result.scalar_one_or_none.return_value = sample_job
         mock_db_session.execute.return_value = mock_result
+        mock_db_session.add = AsyncMock()
+        mock_db_session.commit = AsyncMock()
+        mock_db_session.refresh = AsyncMock()
+
+        # Mock job step for progress tracking
+        from storytime.database import JobStep
+        mock_step = JobStep(
+            id=str(uuid4()),
+            job_id=sample_job.id,
+            step_name="text_to_audio",
+            step_order=0,
+            status=StepStatus.PENDING,
+            progress=0.0,
+        )
+        mock_db_session.refresh.return_value = mock_step
 
         # Test processing
-        result = await job_processor._process_single_voice_job(sample_job)
+        result = await job_processor._process_text_to_audio_job(sample_job)
 
         # Verify results
         assert result["processing_type"] == "single_voice"
         assert "audio_key" in result
-        assert result["content_length"] > 0
+        assert result["text_length"] > 0
 
         # Verify TTS was called
         mock_tts.generate_simple_audio.assert_called_once()
@@ -248,11 +149,10 @@ class TestJobAPI:
             title="Test Job",
             description="Test description",
             content="Sample text content",
-            source_type=SourceType.TEXT,
         )
 
         assert request.title == "Test Job"
-        assert request.source_type == SourceType.TEXT
+        assert request.content == "Sample text content"
 
         # Request with voice config
         voice_config = VoiceConfig(
@@ -284,8 +184,6 @@ class TestJobAPI:
             id=str(uuid4()),
             user_id=str(uuid4()),
             title="Test Job",
-            job_type=JobType.SINGLE_VOICE,
-            source_type=SourceType.TEXT,
             status=JobStatus.COMPLETED,
             progress=1.0,
             created_at=datetime.utcnow(),
@@ -299,29 +197,6 @@ class TestJobAPI:
         assert job.steps[0].step_name == "test_step"
 
 
-class TestBackwardCompatibility:
-    """Tests for backward compatibility with existing endpoints."""
-
-    @pytest.mark.asyncio
-    @patch("storytime.api.tts.process_job")
-    async def test_legacy_tts_endpoint_creates_job(self, mock_process_job):
-        """Test that legacy TTS endpoint creates a unified job."""
-        from storytime.api.tts import GenerateRequest
-
-        # This would normally be tested with a test client, but we're testing the logic
-        request = GenerateRequest(
-            chapter_text="Sample text for TTS generation", title="Test Chapter", provider="openai"
-        )
-
-        # Verify request is valid
-        assert request.chapter_text == "Sample text for TTS generation"
-        assert request.provider == "openai"
-
-        # In a full test, we'd verify that:
-        # 1. A Job record is created
-        # 2. A legacy Book record is created for compatibility
-        # 3. The Celery task is enqueued
-        # 4. The response format matches the legacy format
 
 
 @pytest.mark.asyncio
@@ -355,8 +230,6 @@ async def test_end_to_end_job_flow():
         job = Job(
             id=str(uuid4()),
             user_id=str(uuid4()),
-            job_type=JobType.SINGLE_VOICE,
-            source_type=SourceType.TEXT,
             title="Integration Test Job",
             status=JobStatus.PENDING,
             progress=0.0,
@@ -367,9 +240,12 @@ async def test_end_to_end_job_flow():
         mock_result = AsyncMock()
         mock_result.scalar_one_or_none.return_value = job
         mock_session_instance.execute.return_value = mock_result
+        mock_session_instance.add = AsyncMock()
+        mock_session_instance.commit = AsyncMock()
+        mock_session_instance.refresh = AsyncMock()
 
         # Process job
-        result = await processor._process_single_voice_job(job)
+        result = await processor._process_text_to_audio_job(job)
 
         # Verify end-to-end flow
         assert result["processing_type"] == "single_voice"

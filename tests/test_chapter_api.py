@@ -14,6 +14,7 @@ if str(SRC_DIR) not in sys.path:
 from storytime.api import auth
 from storytime.api.main import app
 from storytime.database import User
+from storytime.models import CreateJobRequest, JobType, SourceType, VoiceConfig
 
 
 def mock_current_user():
@@ -113,51 +114,85 @@ def test_get_characters_no_analysis(sample_text):
 
 
 def test_generate_tts():
-    resp = client.post(
-        "/api/v1/tts/generate", json={"chapter_text": "Hello world!", "provider": "openai"}
+    """Test job creation via unified job API."""
+    request = CreateJobRequest(
+        title="Test Chapter TTS Job",
+        description="Test job for chapter TTS generation",
+        content="Hello world!",
+        source_type=SourceType.TEXT,
+        job_type=JobType.SINGLE_VOICE,
+        voice_config=VoiceConfig(provider="openai", voice_id="alloy")
     )
+    resp = client.post("/api/v1/jobs", json=request.dict())
     assert resp.status_code == 200
     data = resp.json()
-    assert "job_id" in data
-    assert data["status"] == "pending"
+    assert "id" in data
+    assert data["status"] in ["PENDING", "PROCESSING", "COMPLETED"]
 
 
 def test_get_job_status():
+    """Test job status retrieval via unified job API."""
     # Create a job first
-    resp = client.post("/api/v1/tts/generate", json={"chapter_text": "Hello world!"})
-    job_id = resp.json()["job_id"]
-    resp2 = client.get(f"/api/v1/tts/jobs/{job_id}")
+    request = CreateJobRequest(
+        title="Test Chapter Status Job",
+        content="Hello world!",
+        source_type=SourceType.TEXT,
+        job_type=JobType.SINGLE_VOICE
+    )
+    resp = client.post("/api/v1/jobs", json=request.dict())
+    job_id = resp.json()["id"]
+    
+    resp2 = client.get(f"/api/v1/jobs/{job_id}")
     assert resp2.status_code == 200
     data = resp2.json()
-    assert data["job_id"] == job_id
-    assert data["status"] in ("pending", "done")
+    assert data["id"] == job_id
+    assert data["status"] in ["PENDING", "PROCESSING", "COMPLETED", "FAILED"]
 
 
 def test_download_job_audio():
+    """Test job audio download via unified job API."""
     # Create a job first
-    resp = client.post("/api/v1/tts/generate", json={"chapter_text": "Hello world!"})
-    job_id = resp.json()["job_id"]
-    resp2 = client.get(f"/api/v1/tts/jobs/{job_id}/download")
+    request = CreateJobRequest(
+        title="Test Chapter Download Job",
+        content="Hello world!",
+        source_type=SourceType.TEXT,
+        job_type=JobType.SINGLE_VOICE
+    )
+    resp = client.post("/api/v1/jobs", json=request.dict())
+    job_id = resp.json()["id"]
+    
+    resp2 = client.get(f"/api/v1/jobs/{job_id}/audio")
     assert resp2.status_code in (200, 400)
-    if resp2.status_code == 400:
-        assert resp2.json()["detail"] == "Audio not ready"
+    if resp2.status_code == 200:
+        data = resp2.json()
+        assert "download_url" in data
 
 
 def test_cancel_job():
+    """Test job cancellation via unified job API."""
     # Create a job first
-    resp = client.post("/api/v1/tts/generate", json={"chapter_text": "Hello world!"})
-    job_id = resp.json()["job_id"]
-    resp2 = client.delete(f"/api/v1/tts/jobs/{job_id}")
-    assert resp2.status_code == 200
-    data = resp2.json()
-    assert data["job_id"] == job_id
-    assert data["status"] == "canceled"
+    request = CreateJobRequest(
+        title="Test Chapter Cancel Job",
+        content="Hello world!",
+        source_type=SourceType.TEXT,
+        job_type=JobType.SINGLE_VOICE
+    )
+    resp = client.post("/api/v1/jobs", json=request.dict())
+    job_id = resp.json()["id"]
+    
+    resp2 = client.delete(f"/api/v1/jobs/{job_id}")
+    # May succeed (if job is still cancellable) or fail (if already completed)
+    assert resp2.status_code in (200, 400)
+    if resp2.status_code == 200:
+        data = resp2.json()
+        assert "message" in data
 
 
 def test_job_not_found():
-    resp = client.get("/api/v1/tts/jobs/doesnotexist")
+    """Test 404 responses for non-existent jobs."""
+    resp = client.get("/api/v1/jobs/doesnotexist")
     assert resp.status_code == 404
-    resp2 = client.get("/api/v1/tts/jobs/doesnotexist/download")
+    resp2 = client.get("/api/v1/jobs/doesnotexist/audio")
     assert resp2.status_code == 404
-    resp3 = client.delete("/api/v1/tts/jobs/doesnotexist")
+    resp3 = client.delete("/api/v1/jobs/doesnotexist")
     assert resp3.status_code == 404

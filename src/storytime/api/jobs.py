@@ -5,31 +5,20 @@ from datetime import datetime
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from storytime.api.auth import get_current_user
-from storytime.database import Job, JobStatus, JobStep, JobType, SourceType, User, get_db
+from storytime.database import Job, JobStatus, JobStep, User, get_db
 from storytime.infrastructure.spaces import SpacesClient
 from storytime.models import (
-    ContentAnalysisResult,
     CreateJobRequest,
     JobListResponse,
     JobResponse,
     JobStepResponse,
 )
-from storytime.services.content_analyzer import ContentAnalyzer
 
-# Import JobProcessor conditionally to avoid workflow initialization issues
-try:
-    from storytime.services.job_processor import JobProcessor
-
-    JOB_PROCESSOR_AVAILABLE = True
-except Exception as e:
-    print(f"Warning: JobProcessor not available due to workflow dependencies: {e}")
-    JobProcessor = None
-    JOB_PROCESSOR_AVAILABLE = False
+# JobProcessor is now simplified and always available
 
 logger = logging.getLogger(__name__)
 
@@ -52,33 +41,10 @@ async def create_job(
                 status_code=400, detail="Either content or file_key must be provided"
             )
 
-        # Auto-detect job type if not specified
-        job_type = request.job_type
-        if not job_type:
-            content_analyzer = ContentAnalyzer()
-
-            # Get content for analysis
-            if request.content:
-                content = request.content
-            elif request.file_key:
-                spaces_client = SpacesClient()
-                content = await spaces_client.download_text_file(request.file_key)
-            else:
-                raise HTTPException(status_code=400, detail="No content available for analysis")
-
-            # Analyze content and suggest job type
-            analysis = await content_analyzer.analyze_content(content, request.source_type)
-            job_type = analysis.suggested_job_type
-
-            logger.info(f"Auto-detected job type: {job_type} (confidence: {analysis.confidence})")
-
         # Create job record
         job = Job(
             id=str(uuid4()),
             user_id=current_user.id,
-            book_id=request.book_id,
-            job_type=job_type,
-            source_type=request.source_type,
             title=request.title,
             description=request.description,
             status=JobStatus.PENDING,
@@ -86,9 +52,6 @@ async def create_job(
             config={
                 "content": request.content,
                 "voice_config": request.voice_config.dict() if request.voice_config else {},
-                "processing_config": request.processing_config.dict()
-                if request.processing_config
-                else {},
             },
             input_file_key=request.file_key,
         )
@@ -120,9 +83,6 @@ async def list_jobs(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     status: JobStatus | None = Query(None, description="Filter by job status"),
-    job_type: JobType | None = Query(None, description="Filter by job type"),
-    source_type: SourceType | None = Query(None, description="Filter by source type"),
-    book_id: str | None = Query(None, description="Filter by book ID"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> JobListResponse:
@@ -135,12 +95,6 @@ async def list_jobs(
 
         if status:
             query = query.where(Job.status == status)
-        if job_type:
-            query = query.where(Job.job_type == job_type)
-        if source_type:
-            query = query.where(Job.source_type == source_type)
-        if book_id:
-            query = query.where(Job.book_id == book_id)
 
         # Get total count
         count_query = select(func.count()).select_from(query.subquery())
@@ -308,28 +262,6 @@ async def get_job_audio(
         raise HTTPException(status_code=500, detail=f"Failed to get job audio: {e!s}")
 
 
-class ContentAnalysisRequest(BaseModel):
-    content: str = Field(..., description="Text content to analyze")
-    source_type: SourceType = Field(SourceType.TEXT, description="Type of content source")
-
-
-@router.post("/analyze-content", response_model=ContentAnalysisResult)
-async def analyze_content(
-    request: ContentAnalysisRequest, current_user: User = Depends(get_current_user)
-) -> ContentAnalysisResult:
-    """Analyze content and suggest appropriate job type without creating a job."""
-    logger.info(f"Analyzing content for user {current_user.id}")
-
-    try:
-        content_analyzer = ContentAnalyzer()
-        result = await content_analyzer.analyze_content(request.content, request.source_type)
-        return result
-
-    except Exception as e:
-        logger.error(f"Failed to analyze content: {e!s}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to analyze content: {e!s}")
-
-
 # Helper functions
 
 
@@ -380,11 +312,8 @@ async def _get_job_response(job_id: str, db: AsyncSession) -> JobResponse:
     return JobResponse(
         id=job.id,
         user_id=job.user_id,
-        book_id=job.book_id,
         title=job.title,
         description=job.description,
-        job_type=job.job_type,
-        source_type=job.source_type,
         status=job.status,
         progress=job.progress,
         error_message=job.error_message,

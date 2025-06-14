@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Basic validation tests for the unified job management system."""
+"""Basic validation tests for the simplified unified job management system."""
 
 import os
 import sys
@@ -11,32 +11,26 @@ from unittest.mock import AsyncMock
 
 
 def test_imports():
-    """Test that all new modules can be imported."""
+    """Test that all simplified modules can be imported."""
     print("Testing imports...")
 
     try:
         # Test model imports
+        from storytime.models import JobStatus, CreateJobRequest, VoiceConfig
         print("✅ Model imports successful")
 
-        # Test service imports
-        print("✅ Content analyzer import successful")
-
-        # Test job processor import (may have workflow dependencies)
-        try:
-            print("✅ Job processor import successful")
-        except Exception as e:
-            print(f"⚠️ Job processor import has workflow dependencies: {e}")
-            print("✅ Service imports partially successful")
+        # Test simplified job processor import
+        from storytime.services.job_processor import JobProcessor
+        print("✅ Job processor import successful")
 
         # Test API imports
+        from storytime.api.jobs import router as jobs_router
+        from storytime.api.auth import router as auth_router
         print("✅ API imports successful")
 
-        # Test worker imports (may have workflow dependencies)
-        try:
-            print("✅ Worker imports successful")
-        except Exception as e:
-            print(f"⚠️ Worker import has dependencies: {e}")
-            print("✅ Worker imports partially successful")
+        # Test simplified worker imports
+        from storytime.worker.tasks import process_job
+        print("✅ Worker imports successful")
 
         return True
 
@@ -45,52 +39,32 @@ def test_imports():
         return False
 
 
-def test_content_analyzer():
-    """Test content analyzer functionality."""
-    print("\nTesting content analyzer...")
+def test_job_processor():
+    """Test basic job processor functionality."""
+    print("\nTesting job processor...")
 
     try:
-        from storytime.models import JobType, SourceType
-        from storytime.services.content_analyzer import ContentAnalyzer
+        from storytime.services.job_processor import JobProcessor
+        
+        # Mock dependencies
+        mock_session = AsyncMock()
+        mock_spaces = AsyncMock()
 
-        analyzer = ContentAnalyzer()
+        processor = JobProcessor(db_session=mock_session, spaces_client=mock_spaces)
 
-        # Test short content
-        short_content = "This is a short text."
+        assert processor.db_session == mock_session
+        assert processor.spaces_client == mock_spaces
 
-        # Test feature extraction (synchronous part)
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-        features = loop.run_until_complete(analyzer._extract_features(short_content))
-
-        assert "length" in features
-        assert "word_count" in features
-        assert "dialogue_count" in features
-
-        print("✅ Content analyzer basic functionality works")
-
-        # Test job type determination
-        job_type, confidence, reasons = loop.run_until_complete(
-            analyzer._determine_job_type(features, SourceType.TEXT)
-        )
-
-        assert job_type in [JobType.SINGLE_VOICE, JobType.MULTI_VOICE]
-        assert 0.0 <= confidence <= 1.0
-        assert len(reasons) > 0
-
-        print("✅ Job type determination works")
-
-        loop.close()
+        print("✅ Job processor initialization works")
         return True
 
     except Exception as e:
-        print(f"❌ Content analyzer test failed: {e}")
+        print(f"❌ Job processor test failed: {e}")
         return False
 
 
 def test_job_models():
-    """Test job data models."""
+    """Test simplified job data models."""
     print("\nTesting job models...")
 
     try:
@@ -101,8 +75,6 @@ def test_job_models():
             CreateJobRequest,
             JobResponse,
             JobStatus,
-            JobType,
-            SourceType,
             VoiceConfig,
         )
 
@@ -111,7 +83,6 @@ def test_job_models():
             title="Test Job",
             description="Test description",
             content="Sample content",
-            source_type=SourceType.TEXT,
             voice_config=VoiceConfig(provider="openai", voice_id="alloy"),
         )
 
@@ -125,8 +96,6 @@ def test_job_models():
             id=str(uuid4()),
             user_id=str(uuid4()),
             title="Test Job",
-            job_type=JobType.SINGLE_VOICE,
-            source_type=SourceType.TEXT,
             status=JobStatus.PENDING,
             progress=0.0,
             created_at=datetime.utcnow(),
@@ -145,33 +114,8 @@ def test_job_models():
         return False
 
 
-def test_job_processor_initialization():
-    """Test job processor can be initialized."""
-    print("\nTesting job processor initialization...")
-
-    try:
-        from storytime.services.job_processor import JobProcessor
-
-        # Mock dependencies
-        mock_session = AsyncMock()
-        mock_spaces = AsyncMock()
-
-        processor = JobProcessor(db_session=mock_session, spaces_client=mock_spaces)
-
-        assert processor.db_session == mock_session
-        assert processor.spaces_client == mock_spaces
-
-        print("✅ Job processor initialization works")
-        return True
-
-    except Exception as e:
-        print(f"⚠️ Job processor test failed (workflow dependencies): {e}")
-        print("✅ Job processor class is importable despite workflow issues")
-        return True  # Consider this a pass since the issue is with Junjo workflows
-
-
 def test_database_models():
-    """Test database model definitions."""
+    """Test simplified database model definitions."""
     print("\nTesting database models...")
 
     try:
@@ -181,11 +125,9 @@ def test_database_models():
         # Check that classes exist
         assert hasattr(db_module, "Job")
         assert hasattr(db_module, "JobStep")
-        assert hasattr(db_module, "JobType")
         assert hasattr(db_module, "JobStatus")
 
         # Test enum values
-        assert db_module.JobType.SINGLE_VOICE == "SINGLE_VOICE"
         assert db_module.JobStatus.PENDING == "PENDING"
 
         print("✅ Database models are properly defined")
@@ -196,16 +138,37 @@ def test_database_models():
         return False
 
 
+def test_tts_generator():
+    """Test simplified TTS generator."""
+    print("\nTesting TTS generator...")
+
+    try:
+        from storytime.services.tts_generator import TTSGenerator
+        
+        # Test initialization (will use OpenAI by default)
+        generator = TTSGenerator()
+        
+        assert generator.provider is not None
+        assert generator.provider_name in ["openai", "eleven"]
+        
+        print("✅ TTS generator initialization works")
+        return True
+
+    except Exception as e:
+        print(f"❌ TTS generator test failed: {e}")
+        return False
+
+
 def main():
     """Run all basic validation tests."""
-    print("🧪 Running basic validation tests for unified job management system...\n")
+    print("🧪 Running basic validation tests for simplified job management system...\n")
 
     tests = [
         test_imports,
         test_job_models,
-        test_content_analyzer,
-        test_job_processor_initialization,
+        test_job_processor,
         test_database_models,
+        test_tts_generator,
     ]
 
     passed = 0

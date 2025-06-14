@@ -16,28 +16,9 @@ Base = declarative_base()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-class BookStatus(str, enum.Enum):
-    UPLOADED = "UPLOADED"
-    PROCESSING = "PROCESSING"
-    READY = "READY"
-    FAILED = "FAILED"
 
 
-class JobType(str, enum.Enum):
-    """Types of jobs that can be processed."""
-
-    SINGLE_VOICE = "SINGLE_VOICE"  # Simple TTS generation
-    MULTI_VOICE = "MULTI_VOICE"  # Complex character-based TTS
-    BOOK_PROCESSING = "BOOK_PROCESSING"  # Full book with chapter splitting
-    CHAPTER_PARSING = "CHAPTER_PARSING"  # Text analysis and segment parsing
-
-
-class SourceType(str, enum.Enum):
-    """Source content types for jobs."""
-
-    BOOK = "BOOK"  # Full book file
-    CHAPTER = "CHAPTER"  # Single chapter
-    TEXT = "TEXT"  # Raw text input
+# Simplified: Only single-voice TTS processing
 
 
 class JobStatus(str, enum.Enum):
@@ -69,7 +50,6 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    books = relationship("Book", back_populates="user")
     jobs = relationship("Job", back_populates="user")
 
     def verify_password(self, password: str) -> bool:
@@ -82,35 +62,17 @@ class User(Base):
         return pwd_context.hash(password)
 
 
-class Book(Base):
-    __tablename__ = "book"
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    title = Column(String, nullable=False)
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
-    status = Column(Enum(BookStatus), nullable=False, default=BookStatus.UPLOADED)
-    progress_pct = Column(Integer, nullable=False, default=0)
-    error_msg = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    text_key = Column(String, nullable=True)
-    audio_key = Column(String, nullable=True)
-
-    # Relationships
-    user = relationship("User", back_populates="books")
-    jobs = relationship("Job", back_populates="book")
 
 
 class Job(Base):
-    """Unified job entity for all processing types."""
+    """Simple text-to-audio job entity."""
 
     __tablename__ = "jobs"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
-    book_id = Column(String, ForeignKey("book.id"), nullable=True, index=True)
 
     # Job configuration
-    job_type = Column(Enum(JobType), nullable=False, index=True)
-    source_type = Column(Enum(SourceType), nullable=False)
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
 
@@ -135,7 +97,6 @@ class Job(Base):
 
     # Relationships
     user = relationship("User", back_populates="jobs")
-    book = relationship("Book", back_populates="jobs")
     steps = relationship("JobStep", back_populates="job", cascade="all, delete-orphan")
 
     @property

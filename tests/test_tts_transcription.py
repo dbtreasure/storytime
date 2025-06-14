@@ -64,12 +64,15 @@ else:
 
 
 def wait_for_job(job_id, timeout=60):
+    """Wait for a job to complete using the unified job API."""
     for _ in range(timeout):
-        resp = requests.get(f"{BASE_URL}/api/v1/tts/jobs/{job_id}")
-        if resp.status_code == 200 and resp.json()["status"] == "done":
-            return True
-        elif resp.status_code == 200 and resp.json()["status"] == "failed":
-            pytest.fail(f"TTS job failed: {resp.json().get('error')}")
+        resp = requests.get(f"{BASE_URL}/api/v1/jobs/{job_id}")
+        if resp.status_code == 200:
+            status = resp.json()["status"]
+            if status == "COMPLETED":
+                return True
+            elif status == "FAILED":
+                pytest.fail(f"TTS job failed: {resp.json().get('error_message')}")
         time.sleep(1)
     pytest.fail("TTS job did not complete in time")
 
@@ -81,21 +84,39 @@ def test_tts_to_transcription():
     chapter_path = Path(__file__).parent / "fixtures" / "test_chapter.txt"
     with open(chapter_path, encoding="utf-8") as f:
         text = f.read().strip()
-    # Submit TTS job
-    resp = requests.post(
-        f"{BASE_URL}/api/v1/tts/generate", json={"chapter_text": text, "provider": "openai"}
-    )
+    
+    # Submit TTS job via unified job API
+    job_request = {
+        "title": "TTS Transcription Test",
+        "description": "Integration test for TTS to transcription pipeline",
+        "content": text,
+        "source_type": "TEXT",
+        "job_type": "SINGLE_VOICE",
+        "voice_config": {
+            "provider": "openai",
+            "voice_id": "alloy"
+        }
+    }
+    resp = requests.post(f"{BASE_URL}/api/v1/jobs", json=job_request)
     assert resp.status_code == 200
-    job_id = resp.json()["job_id"]
+    job_id = resp.json()["id"]
+    
     # Wait for job to complete
     wait_for_job(job_id)
+    
     # Download audio
-    resp2 = requests.get(f"{BASE_URL}/api/v1/tts/jobs/{job_id}/download")
+    resp2 = requests.get(f"{BASE_URL}/api/v1/jobs/{job_id}/audio")
     assert resp2.status_code == 200
+    # The unified API returns a download URL, not direct content
+    download_url = resp2.json()["download_url"]
+    
+    # Download the actual audio file
+    audio_resp = requests.get(download_url)
+    assert audio_resp.status_code == 200
     # Save audio to temp file
     audio_path = Path("/tmp/tts_test_audio.mp3")
     with open(audio_path, "wb") as f:
-        f.write(resp2.content)
+        f.write(audio_resp.content)
     # Transcribe with OpenAI
     with open(audio_path, "rb") as f:
         transcript = openai_client.audio.transcriptions.create(model="whisper-1", file=f)

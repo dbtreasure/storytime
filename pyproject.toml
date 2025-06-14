@@ -42,6 +42,7 @@ dependencies = [
 [project.optional-dependencies]
 development = [
     "pytest",
+    "pytest-asyncio>=0.21.0",
     "ruff>=0.11.0",
     "mypy",
     "pre-commit",
@@ -50,8 +51,4 @@ development = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.poetry.group.dev.dependencies]
-alembic = "^1.16.1"
-pytest-asyncio = "^1.0.0"
 

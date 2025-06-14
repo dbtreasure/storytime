@@ -1,25 +1,20 @@
 """
-Storytime – audiobook parsing and TTS generation toolkit.
+Storytime – simplified text-to-audio conversion toolkit.
 
-This top-level package exposes the core domain models so that external
-code can simply do `from storytime import Chapter` instead of drilling
-into sub-modules.
+This top-level package exposes the core models for the simplified
+single-voice text-to-audio system.
 """
 
 from .models import (
-    Book,
-    Chapter,
-    Character,
-    CharacterCatalogue,
-    SpeakerType,
-    TextSegment,
+    JobStatus,
+    CreateJobRequest,
+    JobResponse,
+    VoiceConfig,
 )
 
 __all__ = [
-    "Book",
-    "Chapter",
-    "Character",
-    "CharacterCatalogue",
-    "SpeakerType",
-    "TextSegment",
+    "JobStatus",
+    "CreateJobRequest",
+    "JobResponse",
+    "VoiceConfig",
 ]

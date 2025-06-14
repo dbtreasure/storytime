@@ -3,15 +3,12 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from storytime.api import voice_management
 from storytime.database import create_all
 
 from .auth import router as auth_router
-from .chapters import router as chapters_router
 from .jobs import router as jobs_router
 from .middleware import LoggingMiddleware
 from .settings import get_settings
-from .tts import router as tts_router
 
 settings = get_settings()
 
@@ -45,10 +42,7 @@ async def on_startup():
 
 
 app.include_router(auth_router)
-app.include_router(chapters_router)
-app.include_router(tts_router)
 app.include_router(jobs_router)
-app.include_router(voice_management.router)
 
 
 @app.get("/health", tags=["Utility"])
