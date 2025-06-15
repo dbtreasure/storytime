@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from storytime.api.streaming import (
@@ -159,9 +159,12 @@ async def test_get_playlist_single_file(mock_user, mock_completed_job, mock_db_s
         result = await get_playlist(job_id, mock_user, mock_db_session)
         
         # Verify the playlist format
-        assert result.startswith("#EXTM3U\n")
-        assert f"#EXTINF:-1,{mock_completed_job.title}" in result
-        assert "https://example.com/streaming-url" in result
+        assert isinstance(result, Response)
+        assert result.media_type == "audio/x-mpegurl"
+        playlist_content = result.body.decode()
+        assert playlist_content.startswith("#EXTM3U\n")
+        assert f"#EXTINF:-1,{mock_completed_job.title}" in playlist_content
+        assert "https://example.com/streaming-url" in playlist_content
 
 
 @pytest.mark.asyncio
@@ -206,11 +209,14 @@ async def test_get_playlist_multi_chapter(mock_user, mock_completed_job, mock_db
         result = await get_playlist(job_id, mock_user, mock_db_session)
         
         # Verify the playlist format
-        assert result.startswith("#EXTM3U\n")
-        assert "#EXTINF:60,Chapter 1" in result
-        assert "#EXTINF:65,Chapter 2" in result
-        assert "https://example.com/chapter1-url" in result
-        assert "https://example.com/chapter2-url" in result
+        assert isinstance(result, Response)
+        assert result.media_type == "audio/x-mpegurl"
+        playlist_content = result.body.decode()
+        assert playlist_content.startswith("#EXTM3U\n")
+        assert "#EXTINF:60,Chapter 1" in playlist_content
+        assert "#EXTINF:65,Chapter 2" in playlist_content
+        assert "https://example.com/chapter1-url" in playlist_content
+        assert "https://example.com/chapter2-url" in playlist_content
 
 
 @pytest.mark.asyncio

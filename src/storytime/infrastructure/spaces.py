@@ -48,7 +48,7 @@ class SpacesClient:
                 Key=key,
                 Body=audio_data,
                 ContentType="audio/mpeg",
-                ACL="public-read",
+                ACL="private",
             )
             logging.info(f"[Spaces] Audio upload successful: {key}")
             return True
