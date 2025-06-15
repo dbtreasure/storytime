@@ -40,6 +40,23 @@ class SpacesClient:
             os.unlink(tmp_file.name)
             return content
 
+    async def upload_text_file(self, key: str, text_content: str) -> bool:
+        """Upload text content to spaces."""
+        try:
+            text_data = text_content.encode("utf-8")
+            self.s3.put_object(
+                Bucket=self.bucket,
+                Key=key,
+                Body=text_data,
+                ContentType="text/plain",
+                ACL="private",
+            )
+            logging.info(f"[Spaces] Text upload successful: {key}")
+            return True
+        except Exception as e:
+            logging.error(f"[Spaces] Text upload failed: {e}")
+            return False
+
     async def upload_audio_file(self, key: str, audio_data: bytes) -> bool:
         """Upload audio data to spaces."""
         try:
@@ -65,7 +82,7 @@ class SpacesClient:
                 Key=key,
                 Body=json_data,
                 ContentType="application/json",
-                ACL="public-read",
+                ACL="private",
             )
             logging.info(f"[Spaces] JSON upload successful: {key}")
             return True
@@ -115,7 +132,7 @@ s3 = session.client(
 def upload_file(file_path: str, key: str, content_type: str | None = None) -> bool:
     logging.info(f"[Spaces] Attempting to upload {file_path} to {DO_SPACES_BUCKET}/{key}")
     try:
-        extra_args = {"ACL": "public-read"}
+        extra_args = {"ACL": "private"}
         if content_type:
             extra_args["ContentType"] = content_type
         s3.upload_file(file_path, DO_SPACES_BUCKET, key, ExtraArgs=extra_args)
