@@ -95,7 +95,7 @@ class JobProcessor:
             )
 
             # Upload audio to storage
-            audio_key = f"jobs/{job.id}/audio.mp3"
+            audio_key = f"jobs/{str(job.id)}/audio.mp3"
             await self.spaces_client.upload_audio_file(audio_key, audio_data)
 
             # Calculate audio metadata
