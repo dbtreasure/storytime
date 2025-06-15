@@ -48,7 +48,7 @@ class SpacesClient:
                 Key=key,
                 Body=audio_data,
                 ContentType="audio/mpeg",
-                ACL="public-read",
+                ACL="private",
             )
             logging.info(f"[Spaces] Audio upload successful: {key}")
             return True
@@ -77,6 +77,26 @@ class SpacesClient:
         """Generate a presigned URL for downloading a file."""
         return self.s3.generate_presigned_url(
             "get_object", Params={"Bucket": self.bucket, "Key": key}, ExpiresIn=expires_in
+        )
+    
+    async def get_streaming_url(self, key: str, expires_in: int = 3600) -> str:
+        """Generate a presigned URL optimized for audio streaming.
+        
+        This method generates URLs with headers appropriate for streaming:
+        - Content-Disposition: inline (for in-browser playback)
+        - Content-Type: audio/mpeg (for proper audio handling)
+        - Cache-Control headers for optimal streaming performance
+        """
+        return self.s3.generate_presigned_url(
+            "get_object",
+            Params={
+                "Bucket": self.bucket,
+                "Key": key,
+                "ResponseContentDisposition": "inline",
+                "ResponseContentType": "audio/mpeg",
+                "ResponseCacheControl": "public, max-age=3600"
+            },
+            ExpiresIn=expires_in
         )
 
 
