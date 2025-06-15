@@ -245,11 +245,17 @@ async def get_job_audio(
         if not job.output_file_key:
             raise HTTPException(status_code=404, detail="No audio output available for this job")
 
-        # Get presigned URL for audio download
+        # Get presigned URLs for both download and streaming
         spaces_client = SpacesClient()
         download_url = await spaces_client.get_presigned_download_url(job.output_file_key)
+        streaming_url = await spaces_client.get_streaming_url(job.output_file_key)
 
-        return {"download_url": download_url, "file_key": job.output_file_key}
+        return {
+            "download_url": download_url,
+            "streaming_url": streaming_url,
+            "file_key": job.output_file_key,
+            "content_type": "audio/mpeg"
+        }
 
     except HTTPException:
         raise

@@ -98,8 +98,17 @@ class JobProcessor:
             audio_key = f"jobs/{job.id}/audio.mp3"
             await self.spaces_client.upload_audio_file(audio_key, audio_data)
 
-            # Update job with output file reference
-            await self._update_job_output(job.id, audio_key)
+            # Calculate audio metadata
+            audio_metadata = {
+                "file_size_bytes": len(audio_data),
+                "format": "audio/mpeg",
+                # Duration would need to be calculated from audio data
+                # For now, we'll leave it as None
+                "duration_seconds": None,
+            }
+
+            # Update job with output file reference and metadata
+            await self._update_job_output(job.id, audio_key, audio_metadata)
 
             # Complete step
             await self._update_job_step(
@@ -164,13 +173,28 @@ class JobProcessor:
         )
         await self.db_session.commit()
 
-    async def _update_job_output(self, job_id: str, output_file_key: str) -> None:
-        """Update job with output file reference."""
-        await self.db_session.execute(
-            update(Job).where(Job.id == job_id).values(
-                output_file_key=output_file_key,
-                updated_at=datetime.utcnow()
+    async def _update_job_output(self, job_id: str, output_file_key: str, metadata: dict | None = None) -> None:
+        """Update job with output file reference and optional metadata."""
+        update_values = {
+            "output_file_key": output_file_key,
+            "updated_at": datetime.utcnow()
+        }
+        
+        # Add metadata to result_data if provided
+        if metadata:
+            # Get current job to preserve existing result_data
+            result = await self.db_session.execute(
+                select(Job).where(Job.id == job_id)
             )
+            job = result.scalar_one()
+            
+            # Merge metadata into result_data
+            result_data = job.result_data or {}
+            result_data.update(metadata)
+            update_values["result_data"] = result_data
+        
+        await self.db_session.execute(
+            update(Job).where(Job.id == job_id).values(**update_values)
         )
         await self.db_session.commit()
 

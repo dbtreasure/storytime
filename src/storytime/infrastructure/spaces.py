@@ -78,6 +78,26 @@ class SpacesClient:
         return self.s3.generate_presigned_url(
             "get_object", Params={"Bucket": self.bucket, "Key": key}, ExpiresIn=expires_in
         )
+    
+    async def get_streaming_url(self, key: str, expires_in: int = 3600) -> str:
+        """Generate a presigned URL optimized for audio streaming.
+        
+        This method generates URLs with headers appropriate for streaming:
+        - Content-Disposition: inline (for in-browser playback)
+        - Content-Type: audio/mpeg (for proper audio handling)
+        - Cache-Control headers for optimal streaming performance
+        """
+        return self.s3.generate_presigned_url(
+            "get_object",
+            Params={
+                "Bucket": self.bucket,
+                "Key": key,
+                "ResponseContentDisposition": "inline",
+                "ResponseContentType": "audio/mpeg",
+                "ResponseCacheControl": "public, max-age=3600"
+            },
+            ExpiresIn=expires_in
+        )
 
 
 # Legacy functions for backward compatibility
