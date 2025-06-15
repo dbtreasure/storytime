@@ -79,7 +79,7 @@ class JobStepResponse(BaseModel):
     status: StepStatus
     progress: float
     error_message: str | None = None
-    step_metadata: dict[str, str] | None = None
+    step_metadata: dict[str, Any] | None = None
     created_at: datetime
     updated_at: datetime
     started_at: datetime | None = None

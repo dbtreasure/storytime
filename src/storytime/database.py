@@ -2,13 +2,15 @@ import enum
 import logging
 import uuid
 from datetime import datetime
+from typing import Any
 
 from passlib.context import CryptContext
 from sqlalchemy import JSON, Column, DateTime, Enum, Float, ForeignKey, Integer, String, Text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import declarative_base, relationship, sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.orm import Mapped, declarative_base, relationship, mapped_column
 
 from storytime.api.settings import get_settings
+from storytime.models import JobStatus, StepStatus
 
 Base = declarative_base()
 
@@ -21,33 +23,14 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # Simplified: Only single-voice TTS processing
 
 
-class JobStatus(str, enum.Enum):
-    """Job processing states."""
-
-    PENDING = "PENDING"  # Job created, not started
-    PROCESSING = "PROCESSING"  # Job in progress
-    COMPLETED = "COMPLETED"  # Job finished successfully
-    FAILED = "FAILED"  # Job failed with error
-    CANCELLED = "CANCELLED"  # Job cancelled by user
-
-
-class StepStatus(str, enum.Enum):
-    """Individual step processing states."""
-
-    PENDING = "PENDING"
-    RUNNING = "RUNNING"
-    COMPLETED = "COMPLETED"
-    FAILED = "FAILED"
-
-
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    email = Column(String, unique=True, nullable=False, index=True)
-    hashed_password = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    email: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
+    hashed_password: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     jobs = relationship("Job", back_populates="user")
@@ -69,31 +52,31 @@ class Job(Base):
 
     __tablename__ = "jobs"
 
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False, index=True)
 
     # Job configuration
-    title = Column(String, nullable=False)
-    description = Column(Text, nullable=True)
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Processing state
-    status = Column(Enum(JobStatus), nullable=False, default=JobStatus.PENDING, index=True)
-    progress = Column(Float, nullable=False, default=0.0)  # 0.0 to 1.0
-    error_message = Column(Text, nullable=True)
+    status: Mapped[JobStatus] = mapped_column(Enum(JobStatus), nullable=False, default=JobStatus.PENDING, index=True)
+    progress: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)  # 0.0 to 1.0
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Configuration and results (JSON fields)
-    config = Column(JSON, nullable=True)  # Job-specific parameters
-    result_data = Column(JSON, nullable=True)  # Workflow outputs
+    config: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)  # Job-specific parameters
+    result_data: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)  # Workflow outputs
 
     # File references
-    input_file_key = Column(String, nullable=True)  # Source content file
-    output_file_key = Column(String, nullable=True)  # Generated audio file
+    input_file_key: Mapped[str | None] = mapped_column(String, nullable=True)  # Source content file
+    output_file_key: Mapped[str | None] = mapped_column(String, nullable=True)  # Generated audio file
 
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    started_at = Column(DateTime, nullable=True)
-    completed_at = Column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="jobs")
@@ -112,26 +95,26 @@ class JobStep(Base):
 
     __tablename__ = "job_steps"
 
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    job_id = Column(String, ForeignKey("jobs.id"), nullable=False, index=True)
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    job_id: Mapped[str] = mapped_column(String, ForeignKey("jobs.id"), nullable=False, index=True)
 
     # Step identification
-    step_name = Column(String, nullable=False)  # e.g., "LoadTextNode", "GeminiApiNode"
-    step_order = Column(Integer, nullable=False)  # Execution order within job
+    step_name: Mapped[str] = mapped_column(String, nullable=False)  # e.g., "LoadTextNode", "GeminiApiNode"
+    step_order: Mapped[int] = mapped_column(Integer, nullable=False)  # Execution order within job
 
     # Step state
-    status = Column(Enum(StepStatus), nullable=False, default=StepStatus.PENDING)
-    progress = Column(Float, nullable=False, default=0.0)  # 0.0 to 1.0
-    error_message = Column(Text, nullable=True)
+    status: Mapped[StepStatus] = mapped_column(Enum(StepStatus), nullable=False, default=StepStatus.PENDING)
+    progress: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)  # 0.0 to 1.0
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Step-specific data
-    step_metadata = Column(JSON, nullable=True)  # Step-specific information
+    step_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)  # Step-specific information
 
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    started_at = Column(DateTime, nullable=True)
-    completed_at = Column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # Relationships
     job = relationship("Job", back_populates="steps")
@@ -146,7 +129,7 @@ class JobStep(Base):
 
 settings = get_settings()
 engine = create_async_engine(settings.database_url, echo=True, future=True)
-AsyncSessionLocal = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
 
 async def get_db():

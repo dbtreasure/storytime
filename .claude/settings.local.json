@@ -15,7 +15,9 @@
       "Bash(ruff check:*)",
       "Bash(python:*)",
       "Bash(uvx ruff check:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "WebFetch(domain:stackoverflow.com)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": []
   }

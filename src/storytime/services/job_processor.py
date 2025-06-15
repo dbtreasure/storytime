@@ -96,7 +96,7 @@ class JobProcessor:
 
             # Upload audio to storage
             audio_key = f"jobs/{job.id}/audio.mp3"
-            await self.spaces_client.upload_audio_file(audio_data, audio_key)
+            await self.spaces_client.upload_audio_file(audio_key, audio_data)
 
             # Update job with output file reference
             await self._update_job_output(job.id, audio_key)

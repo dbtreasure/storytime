@@ -149,6 +149,8 @@ class TestJobAPI:
             title="Test Job",
             description="Test description",
             content="Sample text content",
+            file_key=None,
+            voice_config=None,
         )
 
         assert request.title == "Test Job"
@@ -160,9 +162,14 @@ class TestJobAPI:
         )
 
         request_with_voice = CreateJobRequest(
-            title="Voice Test", content="Content", voice_config=voice_config
+            title="Voice Test",
+            description=None,
+            content="Content",
+            file_key=None,
+            voice_config=voice_config
         )
 
+        assert request_with_voice.voice_config is not None
         assert request_with_voice.voice_config.provider == "openai"
         assert request_with_voice.voice_config.voice_id == "alloy"
 

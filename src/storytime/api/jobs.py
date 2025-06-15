@@ -7,7 +7,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from storytime.worker.tasks import process_job
 from storytime.api.auth import get_current_user
 from storytime.database import Job, JobStatus, JobStep, User, get_db
 from storytime.infrastructure.spaces import SpacesClient
@@ -62,9 +62,7 @@ async def create_job(
 
         # Schedule job processing in Celery (if available)
         try:
-            from storytime.worker.tasks import process_job
-
-            process_job.delay(job.id)
+            process_job.delay(job.id)  # type: ignore[attr-defined]
             logger.info(f"Job {job.id} scheduled for processing")
         except Exception as e:
             logger.warning(f"Could not schedule job processing: {e}")
@@ -99,7 +97,7 @@ async def list_jobs(
         # Get total count
         count_query = select(func.count()).select_from(query.subquery())
         total_result = await db.execute(count_query)
-        total = total_result.scalar()
+        total = total_result.scalar() or 0
 
         # Apply pagination and ordering
         offset = (page - 1) * page_size

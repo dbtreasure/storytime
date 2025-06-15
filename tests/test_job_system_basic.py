@@ -83,10 +83,12 @@ def test_job_models():
             title="Test Job",
             description="Test description",
             content="Sample content",
+            file_key=None,
             voice_config=VoiceConfig(provider="openai", voice_id="alloy"),
         )
 
         assert request.title == "Test Job"
+        assert request.voice_config is not None
         assert request.voice_config.provider == "openai"
 
         print("✅ CreateJobRequest model works")
