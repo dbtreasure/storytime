@@ -18,6 +18,7 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
 } from '@heroicons/react/24/outline';
+import { JobStepResponse } from '../generated';
 
 interface TaskTreeNode {
   id: string;
@@ -34,10 +35,24 @@ const JobDetails: React.FC = () => {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { selectedJob, loading, error } = useAppSelector((state) => state.jobs);
+  const { currentJob: selectedJob, isLoading: loading, error } = useAppSelector((state) => state.jobs);
   
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [cancelling, setCancelling] = useState(false);
+  
+  // Convert JobStepResponse to TaskTreeNode format
+  const convertStepsToTasks = (steps: JobStepResponse[]): TaskTreeNode[] => {
+    return steps.map(step => ({
+      id: step.id,
+      name: step.step_name,
+      status: step.status.toLowerCase() as 'pending' | 'running' | 'completed' | 'failed',
+      startTime: step.started_at || undefined,
+      endTime: step.completed_at || undefined,
+      error: step.error_message || undefined,
+      progress: step.progress,
+      children: []
+    }));
+  };
 
   useEffect(() => {
     if (jobId) {
@@ -235,7 +250,7 @@ const JobDetails: React.FC = () => {
     );
   }
 
-  const canCancel = selectedJob.status === 'pending' || selectedJob.status === 'running';
+  const canCancel = selectedJob.status === 'PENDING' || selectedJob.status === 'PROCESSING';
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -262,7 +277,7 @@ const JobDetails: React.FC = () => {
         </div>
         
         <div className="flex items-center space-x-2">
-          {selectedJob.status === 'completed' && (
+          {selectedJob.status === 'COMPLETED' && (
             <Button
               onClick={() => navigate(`/library/${selectedJob.id}`)}
             >
@@ -315,7 +330,7 @@ const JobDetails: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Provider</p>
               <p className="text-lg font-semibold text-gray-900 mt-1">
-                {selectedJob.ttsProvider || 'Unknown'}
+                {selectedJob.config?.provider || 'OpenAI'}
               </p>
             </div>
           </div>
@@ -329,7 +344,7 @@ const JobDetails: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Created</p>
               <p className="text-lg font-semibold text-gray-900 mt-1">
-                {formatDate(selectedJob.createdAt)}
+                {formatDate(selectedJob.created_at)}
               </p>
             </div>
           </div>
@@ -363,7 +378,7 @@ const JobDetails: React.FC = () => {
             size="sm"
             onClick={() => {
               // Toggle all tasks
-              const allTaskIds = selectedJob.tasks?.map(t => t.id) || [];
+              const allTaskIds = selectedJob.steps?.map(t => t.id) || [];
               if (allTaskIds.every(id => expandedTasks.has(id))) {
                 setExpandedTasks(new Set());
               } else {
@@ -371,13 +386,13 @@ const JobDetails: React.FC = () => {
               }
             }}
           >
-            {selectedJob.tasks?.every(t => expandedTasks.has(t.id)) ? 'Collapse All' : 'Expand All'}
+            {selectedJob.steps?.every(t => expandedTasks.has(t.id)) ? 'Collapse All' : 'Expand All'}
           </Button>
         </div>
 
-        {selectedJob.tasks && selectedJob.tasks.length > 0 ? (
+        {selectedJob.steps && selectedJob.steps.length > 0 ? (
           <div className="space-y-2">
-            {renderTaskTree(selectedJob.tasks)}
+            {renderTaskTree(convertStepsToTasks(selectedJob.steps))}
           </div>
         ) : (
           <div className="text-center py-8 text-gray-500">
@@ -387,31 +402,19 @@ const JobDetails: React.FC = () => {
         )}
       </Card>
 
-      {/* Error Logs */}
-      {selectedJob.errorLogs && selectedJob.errorLogs.length > 0 && (
+      {/* Error Message */}
+      {selectedJob.error_message && (
         <Card className="p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Error Logs</h2>
-          <div className="space-y-3">
-            {selectedJob.errorLogs.map((log, index) => (
-              <div key={index} className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                <div className="flex items-start space-x-2">
-                  <ExclamationTriangleIcon className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm text-red-800 font-medium">
-                      {log.timestamp && formatDate(log.timestamp)}
-                    </p>
-                    <p className="text-sm text-red-700 mt-1">
-                      {log.message}
-                    </p>
-                    {log.details && (
-                      <pre className="text-xs text-red-600 mt-2 bg-red-100 p-2 rounded overflow-x-auto">
-                        {log.details}
-                      </pre>
-                    )}
-                  </div>
-                </div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Error Details</h2>
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-start space-x-2">
+              <ExclamationTriangleIcon className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm text-red-700">
+                  {selectedJob.error_message}
+                </p>
               </div>
-            ))}
+            </div>
           </div>
         </Card>
       )}

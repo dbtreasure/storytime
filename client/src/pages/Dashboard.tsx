@@ -17,26 +17,28 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
-  const { jobs, loading: jobsLoading } = useAppSelector((state) => state.jobs);
+  const { jobs, isLoading: jobsLoading } = useAppSelector((state) => state.jobs);
 
   useEffect(() => {
     dispatch(fetchJobs());
   }, [dispatch]);
 
   const recentJobs = jobs.slice(0, 5);
-  const completedJobs = jobs.filter(job => job.status === 'completed');
-  const runningJobs = jobs.filter(job => job.status === 'running' || job.status === 'pending');
-  const failedJobs = jobs.filter(job => job.status === 'failed');
+  const completedJobs = jobs.filter(job => job.status === 'COMPLETED');
+  const runningJobs = jobs.filter(job => job.status === 'PROCESSING' || job.status === 'PENDING');
+  const failedJobs = jobs.filter(job => job.status === 'FAILED');
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed':
+      case 'COMPLETED':
         return 'bg-green-100 text-green-800';
-      case 'running':
-      case 'pending':
+      case 'PROCESSING':
+      case 'PENDING':
         return 'bg-blue-100 text-blue-800';
-      case 'failed':
+      case 'FAILED':
         return 'bg-red-100 text-red-800';
+      case 'CANCELLED':
+        return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -195,9 +197,9 @@ const Dashboard: React.FC = () => {
               >
                 <div className="flex items-center space-x-4">
                   <div className="flex-shrink-0">
-                    {job.status === 'completed' ? (
+                    {job.status === 'COMPLETED' ? (
                       <PlayIcon className="h-5 w-5 text-green-600" />
-                    ) : job.status === 'running' || job.status === 'pending' ? (
+                    ) : job.status === 'PROCESSING' || job.status === 'PENDING' ? (
                       <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
                     ) : (
                       <div className="w-2 h-2 bg-red-600 rounded-full" />
@@ -208,13 +210,13 @@ const Dashboard: React.FC = () => {
                       {job.title || `Job ${job.id.slice(0, 8)}`}
                     </h3>
                     <p className="text-xs text-gray-500">
-                      {formatDate(job.createdAt)}
+                      {formatDate(job.created_at)}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Badge className={getStatusColor(job.status)}>
-                    {job.status}
+                    {job.status.toLowerCase()}
                   </Badge>
                 </div>
               </div>

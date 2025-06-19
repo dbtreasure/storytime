@@ -57,14 +57,14 @@ const Jobs: React.FC = () => {
     .filter(job => {
       const matchesSearch = job.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            job.id.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || job.status === statusFilter;
+      const matchesStatus = statusFilter === 'all' || job.status === statusFilter.toUpperCase();
       return matchesSearch && matchesStatus;
     })
     .sort((a, b) => {
       switch (sortBy) {
-        case 'createdAt':
+        case 'created_at':
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        case 'updatedAt':
+        case 'updated_at':
           return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
         case 'title':
           return (a.title || '').localeCompare(b.title || '');
@@ -82,13 +82,16 @@ const Jobs: React.FC = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed':
+      case 'COMPLETED':
         return <CheckCircleIcon className="h-5 w-5 text-green-600" />;
-      case 'running':
-      case 'pending':
+      case 'PROCESSING':
+        return <Spinner size="sm" />;
+      case 'PENDING':
         return <ClockIcon className="h-5 w-5 text-blue-600" />;
-      case 'failed':
+      case 'FAILED':
         return <ExclamationTriangleIcon className="h-5 w-5 text-red-600" />;
+      case 'CANCELLED':
+        return <XMarkIcon className="h-5 w-5 text-gray-600" />;
       default:
         return <ClockIcon className="h-5 w-5 text-gray-600" />;
     }
@@ -96,13 +99,15 @@ const Jobs: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed':
+      case 'COMPLETED':
         return 'bg-green-100 text-green-800';
-      case 'running':
-      case 'pending':
+      case 'PROCESSING':
+      case 'PENDING':
         return 'bg-blue-100 text-blue-800';
-      case 'failed':
+      case 'FAILED':
         return 'bg-red-100 text-red-800';
+      case 'CANCELLED':
+        return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -119,7 +124,7 @@ const Jobs: React.FC = () => {
   };
 
   const canCancelJob = (status: string) => {
-    return status === 'pending' || status === 'running';
+    return status === 'PENDING' || status === 'PROCESSING';
   };
 
   if (loading && jobs.length === 0) {
@@ -243,7 +248,7 @@ const Jobs: React.FC = () => {
                           {job.title || `Job ${job.id.slice(0, 8)}`}
                         </h3>
                         <Badge className={getStatusColor(job.status)}>
-                          {job.status}
+                          {job.status.toLowerCase()}
                         </Badge>
                       </div>
                       
@@ -263,7 +268,7 @@ const Jobs: React.FC = () => {
                   </div>
                   
                   <div className="flex items-center space-x-2 ml-4">
-                    {job.status === 'completed' && (
+                    {job.status === 'COMPLETED' && (
                       <Button
                         variant="outline"
                         size="sm"

@@ -37,7 +37,9 @@
       "mcp__playwright__browser_wait_for",
       "mcp__playwright__browser_tab_new",
       "mcp__playwright__browser_press_key",
-      "Bash(codex full-auto:*)"
+      "Bash(codex full-auto:*)",
+      "mcp__playwright__browser_navigate_back",
+      "Bash(npm run build:*)"
     ],
     "deny": []
   }
