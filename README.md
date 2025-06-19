@@ -80,6 +80,10 @@ export TTS_PROVIDER="openai"  # or "eleven"
 export TTS_MAX_CONCURRENCY="8"
 ```
 
+When using `docker-compose`, the tool will automatically load variables from a
+`.env` file if one exists. Any environment variables set in your shell take
+precedence over values from that file.
+
 ### 4. Start the Application
 
 ```bash
