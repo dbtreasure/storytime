@@ -60,6 +60,18 @@ const JobDetails: React.FC = () => {
     }
   }, [dispatch, jobId]);
 
+  // Debug job progress
+  useEffect(() => {
+    if (selectedJob) {
+      console.log('Job details:', {
+        id: selectedJob.id,
+        status: selectedJob.status,
+        progress: selectedJob.progress,
+        steps: selectedJob.steps?.map(s => ({ name: s.step_name, status: s.status, progress: s.progress }))
+      });
+    }
+  }, [selectedJob]);
+
   const handleCancelJob = async () => {
     if (!jobId) return;
     
@@ -357,13 +369,13 @@ const JobDetails: React.FC = () => {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Overall Progress</h2>
             <span className="text-sm text-gray-500">
-              {Math.round(selectedJob.progress)}%
+              {selectedJob.status === 'COMPLETED' ? '100' : Math.round(selectedJob.progress)}%
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-3">
             <div
               className="bg-blue-600 h-3 rounded-full transition-all duration-300"
-              style={{ width: `${selectedJob.progress}%` }}
+              style={{ width: `${selectedJob.status === 'COMPLETED' ? 100 : selectedJob.progress}%` }}
             />
           </div>
         </Card>

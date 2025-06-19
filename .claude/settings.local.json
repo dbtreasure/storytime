@@ -39,7 +39,10 @@
       "mcp__playwright__browser_press_key",
       "Bash(codex full-auto:*)",
       "mcp__playwright__browser_navigate_back",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "mcp__playwright__browser_select_option",
+      "Bash(docker-compose logs:*)",
+      "mcp__playwright__browser_snapshot"
     ],
     "deny": []
   }

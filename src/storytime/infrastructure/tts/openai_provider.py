@@ -15,8 +15,7 @@ load_dotenv()
 class OpenAIProvider(TTSProvider):
     """TTS provider for OpenAI API (v1.0+). 
     
-    Uses gpt-4o-mini-tts by default - OpenAI's latest, most natural-sounding TTS model
-    with support for voice customization and emotional expression.
+    Uses tts-1-hd by default - OpenAI's high-definition TTS model for better quality.
     """
 
     name: str = "openai"
@@ -66,28 +65,24 @@ class OpenAIProvider(TTSProvider):
         *,
         text: str,
         voice: str,  # Matched to one of the IDs above
-        style: str | None = None,  # Style prompts supported by gpt-4o-mini-tts for voice customization
+        style: str | None = None,  # Style parameter is ignored for OpenAI (not supported)
         format: ResponseFormat = "mp3",  # mp3, opus, aac, flac, wav, pcm
         out_path: Path,
-        model: str = "gpt-4o-mini-tts",  # Can be tts-1, tts-1-hd, or gpt-4o-mini-tts
+        model: str = "tts-1-hd",  # Can be tts-1 or tts-1-hd
     ) -> None:
-        """Synthesize audio using OpenAI TTS API with gpt-4o-mini-tts model."""
+        """Synthesize audio using OpenAI TTS API."""
 
-        # For gpt-4o-mini-tts, style can be used for voice customization
-        if style and model != "gpt-4o-mini-tts":
-            print(f"Note: Style parameter only supported by gpt-4o-mini-tts model, not {model}.")
+        # OpenAI TTS API does not support style parameter
+        if style:
+            print(f"Note: Style parameter is not supported by OpenAI TTS API and will be ignored.")
 
-        # Prepare API call parameters
+        # Prepare API call parameters (no style parameter for OpenAI)
         api_params = {
             "model": model,
             "voice": voice,  # type: ignore[arg-type]
             "input": text,
             "response_format": format,
         }
-        
-        # Add style for gpt-4o-mini-tts model
-        if style and model == "gpt-4o-mini-tts":
-            api_params["style"] = style
 
         # API call returns a streaming binary response
         response = self.client.audio.speech.create(**api_params)

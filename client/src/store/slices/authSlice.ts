@@ -13,7 +13,7 @@ interface AuthState {
 const initialState: AuthState = {
   user: null,
   isAuthenticated: false,
-  isLoading: false,
+  isLoading: true, // Start as loading until auth is initialized
   error: null,
 };
 
@@ -89,6 +89,7 @@ const authSlice = createSlice({
           localStorage.removeItem('user');
         }
       }
+      state.isLoading = false; // Auth initialization complete
     },
   },
   extraReducers: (builder) => {

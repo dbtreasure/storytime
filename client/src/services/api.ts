@@ -150,9 +150,16 @@ class ApiClient {
 
   // Audio endpoints
   async getAudioStream(jobId: string): Promise<StreamingUrl> {
-    const response = await this.client.get<StreamingUrl>(
+    const response = await this.client.get<any>(
       `/api/v1/audio/${jobId}/stream`
     );
+    console.log('getAudioStream raw response:', response.data);
+    
+    // Handle the actual response structure
+    if (response.data && typeof response.data === 'object') {
+      return response.data as StreamingUrl;
+    }
+    
     return response.data;
   }
 
