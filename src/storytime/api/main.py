@@ -55,6 +55,17 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/", tags=["Utility"])
+async def root() -> dict[str, str]:
+    """Root endpoint with API info."""
+    return {
+        "message": "StorytimeTTS API",
+        "version": "0.1.0",
+        "docs": "/docs",
+        "health": "/health"
+    }
+
+
 @app.get("/up", tags=["Utility"])
 async def up() -> dict[str, str]:
     """Health check endpoint for kamal-proxy."""
