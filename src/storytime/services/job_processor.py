@@ -29,8 +29,8 @@ class JobProcessor:
         self.tts_generator = tts_generator or TTSGenerator()
 
     async def process_job(self, job_id: str) -> JobResponse:
-        """Process a simple text-to-audio job."""
-        logger.info(f"Starting simple TTS job processing for job_id={job_id}")
+        """Process a job based on its type."""
+        logger.info(f"Starting job processing for job_id={job_id}")
 
         # Get job from database
         job = await self._get_job(job_id)
@@ -41,8 +41,17 @@ class JobProcessor:
         await self._update_job_status(job_id, JobStatus.PROCESSING, started_at=datetime.utcnow())
 
         try:
-            # Process the job (simple text-to-audio)
-            result = await self._process_text_to_audio_job(job)
+            # Determine job type and process accordingly
+            job_type = job.config.get("job_type", "text_to_audio") if job.config else "text_to_audio"
+            
+            if job_type == "book_processing":
+                # Import here to avoid circular dependency
+                from storytime.services.book_processor import BookProcessor
+                book_processor = BookProcessor(self.db_session, self.spaces_client, self)
+                result = await book_processor._execute_book_workflow(job)
+            else:
+                # Default to simple text-to-audio
+                result = await self._process_text_to_audio_job(job)
 
             # Update job status to completed
             await self._update_job_status(
@@ -224,6 +233,7 @@ class JobProcessor:
         error_message: str | None = None,
         started_at: datetime | None = None,
         completed_at: datetime | None = None,
+        step_metadata: dict[str, Any] | None = None,
     ) -> None:
         """Update job step status and metadata."""
         update_data = {"status": status, "updated_at": datetime.utcnow()}
@@ -236,6 +246,8 @@ class JobProcessor:
             update_data["started_at"] = started_at
         if completed_at is not None:
             update_data["completed_at"] = completed_at
+        if step_metadata is not None:
+            update_data["step_metadata"] = step_metadata
 
         await self.db_session.execute(
             update(JobStep).where(JobStep.id == step_id).values(**update_data)

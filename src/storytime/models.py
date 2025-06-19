@@ -58,16 +58,30 @@ class ProcessingConfig(BaseModel):
     enable_observability: bool = Field(True, description="Enable tracing and metrics")
 
 
+class JobType(str, Enum):
+    """Types of jobs that can be processed."""
+    
+    TEXT_TO_AUDIO = "text_to_audio"
+    BOOK_PROCESSING = "book_processing"
+    CHAPTER_MULTI_VOICE = "chapter_multi_voice"
+
+
 class CreateJobRequest(BaseModel):
-    """Request model for creating a text-to-audio job."""
+    """Request model for creating a job."""
 
     title: str = Field(..., description="Job title")
     description: str | None = Field(None, description="Job description")
     content: str | None = Field(None, description="Text content")
     file_key: str | None = Field(None, description="File key for uploaded text file")
+    
+    # Job type configuration
+    job_type: JobType = Field(JobType.TEXT_TO_AUDIO, description="Type of job to create")
 
     # Voice configuration
     voice_config: VoiceConfig | None = Field(None, description="Voice configuration")
+    
+    # Book processing specific
+    processing_mode: str = Field("single_voice", description="Processing mode for book chapters")
 
 
 class JobStepResponse(BaseModel):
