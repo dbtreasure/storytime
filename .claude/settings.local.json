@@ -19,7 +19,8 @@
       "WebFetch(domain:stackoverflow.com)",
       "WebFetch(domain:github.com)",
       "mcp__linear__list_issue_statuses",
-      "mcp__linear__get_issue_git_branch_name"
+      "mcp__linear__get_issue_git_branch_name",
+      "Bash(ruff format:*)"
     ],
     "deny": []
   }

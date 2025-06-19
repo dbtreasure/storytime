@@ -8,7 +8,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from storytime.api.auth import get_current_user
-from storytime.database import Job, JobStatus, User, get_db
+from storytime.database import Job, JobStatus, User, PlaybackProgress, get_db
 from storytime.infrastructure.spaces import SpacesClient
 
 logger = logging.getLogger(__name__)
@@ -48,11 +48,15 @@ async def get_streaming_url(
         expires_in=3600  # 1 hour default
     )
     
+    # Get resume information if available
+    resume_info = await _get_resume_info(job_id, current_user.id, db)
+    
     return {
         "streaming_url": streaming_url,
         "expires_at": (datetime.utcnow() + timedelta(seconds=3600)).isoformat(),
         "file_key": job.output_file_key,
-        "content_type": "audio/mpeg"
+        "content_type": "audio/mpeg",
+        "resume_info": resume_info
     }
 
 
@@ -177,3 +181,32 @@ async def _get_user_job(job_id: str, user_id: str, db: AsyncSession) -> Job:
         )
     
     return job
+
+
+async def _get_resume_info(job_id: str, user_id: str, db: AsyncSession) -> dict:
+    """Get resume information for the job."""
+    result = await db.execute(
+        select(PlaybackProgress).where(
+            and_(
+                PlaybackProgress.job_id == job_id,
+                PlaybackProgress.user_id == user_id
+            )
+        )
+    )
+    progress = result.scalar_one_or_none()
+    
+    if not progress:
+        return {
+            "has_progress": False,
+            "resume_position": 0.0,
+            "percentage_complete": 0.0
+        }
+    
+    return {
+        "has_progress": True,
+        "resume_position": progress.resume_position,
+        "percentage_complete": progress.percentage_complete,
+        "last_played_at": progress.last_played_at.isoformat(),
+        "current_chapter_id": progress.current_chapter_id,
+        "current_chapter_position": progress.current_chapter_position
+    }

@@ -60,7 +60,7 @@ class ProcessingConfig(BaseModel):
 
 class JobType(str, Enum):
     """Types of jobs that can be processed."""
-    
+
     TEXT_TO_AUDIO = "text_to_audio"
     BOOK_PROCESSING = "book_processing"
     CHAPTER_MULTI_VOICE = "chapter_multi_voice"
@@ -73,13 +73,13 @@ class CreateJobRequest(BaseModel):
     description: str | None = Field(None, description="Job description")
     content: str | None = Field(None, description="Text content")
     file_key: str | None = Field(None, description="File key for uploaded text file")
-    
+
     # Job type configuration
     job_type: JobType = Field(JobType.TEXT_TO_AUDIO, description="Type of job to create")
 
     # Voice configuration
     voice_config: VoiceConfig | None = Field(None, description="Voice configuration")
-    
+
     # Book processing specific
     processing_mode: str = Field("single_voice", description="Processing mode for book chapters")
 
@@ -149,3 +149,57 @@ class JobFilters(BaseModel):
     status: JobStatus | None = None
     created_after: datetime | None = None
     created_before: datetime | None = None
+
+
+# =============================================================================
+# Playback Progress Models
+# =============================================================================
+
+
+class UpdateProgressRequest(BaseModel):
+    """Request model for updating playback progress."""
+
+    position_seconds: float = Field(..., ge=0.0, description="Current playback position in seconds")
+    duration_seconds: float | None = Field(
+        None, ge=0.0, description="Total audio duration in seconds"
+    )
+    current_chapter_id: str | None = Field(
+        None, description="Current chapter ID for multi-chapter books"
+    )
+    current_chapter_position: float = Field(
+        0.0, ge=0.0, description="Position within current chapter"
+    )
+
+
+class PlaybackProgressResponse(BaseModel):
+    """Response model for playback progress."""
+
+    id: str
+    user_id: str
+    job_id: str
+
+    # Progress data
+    position_seconds: float
+    duration_seconds: float | None = None
+    percentage_complete: float
+
+    # Chapter tracking
+    current_chapter_id: str | None = None
+    current_chapter_position: float
+
+    # Metadata
+    is_completed: bool
+    last_played_at: datetime
+    created_at: datetime
+    updated_at: datetime
+
+
+class ResumeInfoResponse(BaseModel):
+    """Response model for resume information."""
+
+    has_progress: bool
+    resume_position: float = 0.0
+    percentage_complete: float = 0.0
+    last_played_at: datetime | None = None
+    current_chapter_id: str | None = None
+    current_chapter_position: float = 0.0
