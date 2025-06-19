@@ -98,8 +98,8 @@ export const useAudioPlayer = () => {
         if (audioRef.current) {
           dispatch(updateProgress({
             jobId: currentJobId,
-            position: audioRef.current.currentTime,
-            chapter: currentChapter || undefined,
+            positionSeconds: audioRef.current.currentTime,
+            currentChapterId: currentChapter || undefined,
           }));
         }
       }, 10000); // Update every 10 seconds

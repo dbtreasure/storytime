@@ -1,9 +1,10 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { User, LoginRequest, RegisterRequest, AuthResponse } from '../../types/api';
+import { AuthResponse } from '../../types/api';
+import { UserResponse, UserLogin, UserCreate } from '../../generated';
 import apiClient from '../../services/api';
 
 interface AuthState {
-  user: User | null;
+  user: UserResponse | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
@@ -19,7 +20,7 @@ const initialState: AuthState = {
 // Async thunks
 export const login = createAsyncThunk(
   'auth/login',
-  async (credentials: LoginRequest, { rejectWithValue }) => {
+  async (credentials: UserLogin, { rejectWithValue }) => {
     try {
       const response = await apiClient.login(credentials);
       localStorage.setItem('access_token', response.access_token);
@@ -35,7 +36,7 @@ export const login = createAsyncThunk(
 
 export const register = createAsyncThunk(
   'auth/register',
-  async (userData: RegisterRequest, { rejectWithValue }) => {
+  async (userData: UserCreate, { rejectWithValue }) => {
     try {
       const response = await apiClient.register(userData);
       localStorage.setItem('access_token', response.access_token);
@@ -127,7 +128,7 @@ const authSlice = createSlice({
 
     // Get current user
     builder
-      .addCase(getCurrentUser.fulfilled, (state, action: PayloadAction<User>) => {
+      .addCase(getCurrentUser.fulfilled, (state, action: PayloadAction<UserResponse>) => {
         state.user = action.payload;
         state.isAuthenticated = true;
       })
