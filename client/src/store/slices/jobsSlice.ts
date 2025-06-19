@@ -1,10 +1,11 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { Job, JobRequest, PaginatedResponse } from '../../types/api';
+import { PaginatedResponse } from '../../types/api';
+import { JobResponse, CreateJobRequest } from '../../generated';
 import apiClient from '../../services/api';
 
 interface JobsState {
-  jobs: Job[];
-  currentJob: Job | null;
+  jobs: JobResponse[];
+  currentJob: JobResponse | null;
   isLoading: boolean;
   isCreating: boolean;
   error: string | null;
@@ -71,7 +72,7 @@ export const fetchJob = createAsyncThunk(
 
 export const createJob = createAsyncThunk(
   'jobs/createJob',
-  async (jobData: JobRequest, { rejectWithValue }) => {
+  async (jobData: CreateJobRequest, { rejectWithValue }) => {
     try {
       const job = await apiClient.createJob(jobData);
       return job;
@@ -118,13 +119,13 @@ const jobsSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
-    setCurrentJob: (state, action: PayloadAction<Job | null>) => {
+    setCurrentJob: (state, action: PayloadAction<JobResponse | null>) => {
       state.currentJob = action.payload;
     },
     setFilters: (state, action: PayloadAction<JobsState['filters']>) => {
       state.filters = action.payload;
     },
-    updateJobInList: (state, action: PayloadAction<Job>) => {
+    updateJobInList: (state, action: PayloadAction<JobResponse>) => {
       const index = state.jobs.findIndex(job => job.id === action.payload.id);
       if (index !== -1) {
         state.jobs[index] = action.payload;
@@ -132,8 +133,8 @@ const jobsSlice = createSlice({
     },
     updateJobStatus: (state, action: PayloadAction<{
       jobId: string;
-      status: Job['status'];
-      steps?: Job['steps'];
+      status: JobResponse['status'];
+      steps?: JobResponse['steps'];
     }>) => {
       const { jobId, status, steps } = action.payload;
       
@@ -162,7 +163,7 @@ const jobsSlice = createSlice({
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(fetchJobs.fulfilled, (state, action: PayloadAction<PaginatedResponse<Job>>) => {
+      .addCase(fetchJobs.fulfilled, (state, action: PayloadAction<PaginatedResponse<JobResponse>>) => {
         state.isLoading = false;
         state.jobs = action.payload.items;
         state.pagination = {
@@ -183,7 +184,7 @@ const jobsSlice = createSlice({
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(fetchJob.fulfilled, (state, action: PayloadAction<Job>) => {
+      .addCase(fetchJob.fulfilled, (state, action: PayloadAction<JobResponse>) => {
         state.isLoading = false;
         state.currentJob = action.payload;
         
@@ -204,7 +205,7 @@ const jobsSlice = createSlice({
         state.isCreating = true;
         state.error = null;
       })
-      .addCase(createJob.fulfilled, (state, action: PayloadAction<Job>) => {
+      .addCase(createJob.fulfilled, (state, action: PayloadAction<JobResponse>) => {
         state.isCreating = false;
         state.jobs.unshift(action.payload);
         state.currentJob = action.payload;
@@ -232,10 +233,10 @@ const jobsSlice = createSlice({
       });
 
     // Refresh job steps
-    builder
-      .addCase(refreshJobSteps.fulfilled, (state, action: PayloadAction<{
+      builder
+        .addCase(refreshJobSteps.fulfilled, (state, action: PayloadAction<{
         jobId: string;
-        steps: Job['steps'];
+        steps: JobResponse['steps'];
       }>) => {
         const { jobId, steps } = action.payload;
         

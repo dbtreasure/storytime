@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { PlaybackProgress, AudioMetadata, StreamingUrl } from '../../types/api';
+import { AudioMetadata, StreamingUrl } from '../../types/api';
+import { PlaybackProgressResponse, UpdateProgressRequest } from '../../generated';
 import apiClient from '../../services/api';
 
 interface AudioState {
@@ -9,15 +10,15 @@ interface AudioState {
   duration: number;
   volume: number;
   currentJobId: string | null;
-  currentChapter: number | null;
+  currentChapter: string | null;
   
   // Audio metadata
   metadata: AudioMetadata | null;
   streamingUrl: string | null;
   
   // Progress tracking
-  progress: PlaybackProgress | null;
-  recentProgress: PlaybackProgress[];
+  progress: PlaybackProgressResponse | null;
+  recentProgress: PlaybackProgressResponse[];
   
   // UI state
   isLoading: boolean;
@@ -72,14 +73,14 @@ export const updateProgress = createAsyncThunk(
   'audio/updateProgress',
   async (params: {
     jobId: string;
-    position: number;
-    chapter?: number;
+    positionSeconds: number;
+    currentChapterId?: string;
   }, { rejectWithValue }) => {
     try {
       const progress = await apiClient.updateProgress(params.jobId, {
-        position: params.position,
-        chapter: params.chapter,
-      });
+        position_seconds: params.positionSeconds,
+        current_chapter_id: params.currentChapterId,
+      } as UpdateProgressRequest);
       return progress;
     } catch (error: any) {
       return rejectWithValue(
@@ -142,7 +143,7 @@ const audioSlice = createSlice({
       state.volume = volume;
     },
     
-    setCurrentChapter: (state, action: PayloadAction<number | null>) => {
+    setCurrentChapter: (state, action: PayloadAction<string | null>) => {
       state.currentChapter = action.payload;
     },
     
@@ -186,8 +187,8 @@ const audioSlice = createSlice({
         
         // Set position from progress if available
         if (progress) {
-          state.currentPosition = progress.position;
-          state.currentChapter = progress.chapter || null;
+          state.currentPosition = progress.position_seconds;
+          state.currentChapter = progress.current_chapter_id || null;
         } else {
           state.currentPosition = 0;
           state.currentChapter = null;
@@ -200,13 +201,13 @@ const audioSlice = createSlice({
 
     // Update progress
     builder
-      .addCase(updateProgress.fulfilled, (state, action: PayloadAction<PlaybackProgress>) => {
+      .addCase(updateProgress.fulfilled, (state, action: PayloadAction<PlaybackProgressResponse>) => {
         state.progress = action.payload;
       });
 
     // Fetch recent progress
     builder
-      .addCase(fetchRecentProgress.fulfilled, (state, action: PayloadAction<PlaybackProgress[]>) => {
+      .addCase(fetchRecentProgress.fulfilled, (state, action: PayloadAction<PlaybackProgressResponse[]>) => {
         state.recentProgress = action.payload;
       });
 

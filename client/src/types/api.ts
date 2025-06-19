@@ -1,3 +1,5 @@
+import { UserResponse } from '../generated';
+
 // API Response Types
 export interface ApiResponse<T = any> {
   data: T;
@@ -90,9 +92,11 @@ export interface RegisterRequest {
   password: string;
 }
 
+
 export interface AuthResponse {
-  user: User;
+  user: UserResponse;
   access_token: string;
+  token_type: string;
 }
 
 // Progress Types

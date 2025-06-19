@@ -1,18 +1,21 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import {
-  ApiResponse,
   PaginatedResponse,
-  Job,
-  JobRequest,
-  User,
-  LoginRequest,
-  RegisterRequest,
-  AuthResponse,
-  PlaybackProgress,
-  UpdateProgressRequest,
   AudioMetadata,
-  StreamingUrl
+  StreamingUrl,
+  AuthResponse,
 } from '../types/api';
+import {
+  JobResponse,
+  JobListResponse,
+  CreateJobRequest,
+  UserLogin,
+  UserCreate,
+  UserResponse,
+  Token,
+  PlaybackProgressResponse,
+  UpdateProgressRequest,
+} from '../generated';
 
 class ApiClient {
   private client: AxiosInstance;
@@ -59,8 +62,8 @@ class ApiClient {
   }
 
   // Authentication endpoints
-  async login(credentials: LoginRequest): Promise<AuthResponse> {
-    const response = await this.client.post<{access_token: string, token_type: string}>(
+  async login(credentials: UserLogin): Promise<AuthResponse> {
+    const response = await this.client.post<Token>(
       '/api/v1/auth/login',
       credentials
     );
@@ -68,17 +71,17 @@ class ApiClient {
     // Set the token for future requests
     this.setToken(response.data.access_token);
     
-    // Get user info after login
     const user = await this.getCurrentUser();
-    
+
     return {
       user,
-      access_token: response.data.access_token
+      access_token: response.data.access_token,
+      token_type: response.data.token_type,
     };
   }
 
-  async register(userData: RegisterRequest): Promise<AuthResponse> {
-    const response = await this.client.post<User>(
+  async register(userData: UserCreate): Promise<AuthResponse> {
+    await this.client.post<UserResponse>(
       '/api/v1/auth/register',
       userData
     );
@@ -92,14 +95,14 @@ class ApiClient {
     return authResponse;
   }
 
-  async getCurrentUser(): Promise<User> {
-    const response = await this.client.get<User>('/api/v1/auth/me');
+  async getCurrentUser(): Promise<UserResponse> {
+    const response = await this.client.get<UserResponse>('/api/v1/auth/me');
     return response.data;
   }
 
   // Job endpoints
-  async createJob(jobData: JobRequest): Promise<Job> {
-    const response = await this.client.post<Job>(
+  async createJob(jobData: CreateJobRequest): Promise<JobResponse> {
+    const response = await this.client.post<JobResponse>(
       '/api/v1/jobs/',
       jobData
     );
@@ -111,18 +114,12 @@ class ApiClient {
     limit?: number;
     status?: string;
     job_type?: string;
-  }): Promise<PaginatedResponse<Job>> {
-    const response = await this.client.get<{
-      jobs: Job[];
-      total: number;
-      page: number;
-      page_size: number;
-      total_pages: number;
-    }>(
+  }): Promise<PaginatedResponse<JobResponse>> {
+    const response = await this.client.get<JobListResponse>(
       '/api/v1/jobs/',
       { params }
     );
-    
+
     // Transform backend response to match client interface
     return {
       items: response.data.jobs,
@@ -133,37 +130,37 @@ class ApiClient {
     };
   }
 
-  async getJob(jobId: string): Promise<Job> {
-    const response = await this.client.get<ApiResponse<Job>>(
+  async getJob(jobId: string): Promise<JobResponse> {
+    const response = await this.client.get<JobResponse>(
       `/api/v1/jobs/${jobId}`
     );
-    return response.data.data;
+    return response.data;
   }
 
   async cancelJob(jobId: string): Promise<void> {
     await this.client.delete(`/api/v1/jobs/${jobId}`);
   }
 
-  async getJobSteps(jobId: string): Promise<Job['steps']> {
-    const response = await this.client.get<ApiResponse<Job['steps']>>(
+  async getJobSteps(jobId: string): Promise<JobResponse['steps']> {
+    const response = await this.client.get<JobResponse['steps']>(
       `/api/v1/jobs/${jobId}/steps`
     );
-    return response.data.data;
+    return response.data;
   }
 
   // Audio endpoints
   async getAudioStream(jobId: string): Promise<StreamingUrl> {
-    const response = await this.client.get<ApiResponse<StreamingUrl>>(
+    const response = await this.client.get<StreamingUrl>(
       `/api/v1/audio/${jobId}/stream`
     );
-    return response.data.data;
+    return response.data;
   }
 
   async getAudioMetadata(jobId: string): Promise<AudioMetadata> {
-    const response = await this.client.get<ApiResponse<AudioMetadata>>(
+    const response = await this.client.get<AudioMetadata>(
       `/api/v1/audio/${jobId}/metadata`
     );
-    return response.data.data;
+    return response.data;
   }
 
   async getPlaylist(jobId: string): Promise<string> {
@@ -172,33 +169,33 @@ class ApiClient {
   }
 
   // Progress endpoints
-  async getProgress(jobId: string): Promise<PlaybackProgress> {
-    const response = await this.client.get<ApiResponse<PlaybackProgress>>(
+  async getProgress(jobId: string): Promise<PlaybackProgressResponse | null> {
+    const response = await this.client.get<PlaybackProgressResponse | null>(
       `/api/v1/progress/${jobId}`
     );
-    return response.data.data;
+    return response.data;
   }
 
   async updateProgress(
     jobId: string,
     progress: UpdateProgressRequest
-  ): Promise<PlaybackProgress> {
-    const response = await this.client.put<ApiResponse<PlaybackProgress>>(
+  ): Promise<PlaybackProgressResponse> {
+    const response = await this.client.put<PlaybackProgressResponse>(
       `/api/v1/progress/${jobId}`,
       progress
     );
-    return response.data.data;
+    return response.data;
   }
 
   async resetProgress(jobId: string): Promise<void> {
     await this.client.delete(`/api/v1/progress/${jobId}`);
   }
 
-  async getRecentProgress(): Promise<PlaybackProgress[]> {
-    const response = await this.client.get<ApiResponse<PlaybackProgress[]>>(
+  async getRecentProgress(): Promise<PlaybackProgressResponse[]> {
+    const response = await this.client.get<PlaybackProgressResponse[]>(
       '/api/v1/progress/user/recent'
     );
-    return response.data.data;
+    return response.data;
   }
 
   // File upload helper
@@ -211,7 +208,7 @@ class ApiClient {
         'Content-Type': 'multipart/form-data',
       },
     });
-    return response.data.data;
+    return response.data;
   }
 }
 
