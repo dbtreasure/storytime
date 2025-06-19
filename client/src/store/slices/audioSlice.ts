@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { current } from 'immer';
 import { AudioMetadata, StreamingUrl } from '../../types/api';
 import { PlaybackProgressResponse, UpdateProgressRequest } from '../../generated';
 import apiClient from '../../services/api';
@@ -130,7 +131,8 @@ const audioSlice = createSlice({
   initialState,
   reducers: {
     setAudioElement: (state, action: PayloadAction<HTMLAudioElement | null>) => {
-      state.audioElement = action.payload;
+      // Cast to avoid Immer type issues with DOM elements
+      (state as any).audioElement = action.payload;
     },
     
     setPlaying: (state, action: PayloadAction<boolean>) => {

@@ -14,6 +14,10 @@ export const store = configureStore({
       serializableCheck: {
         ignoredActions: ['audio/setAudioElement'],
         ignoredPaths: ['audio.audioElement'],
+        ignoredActionsPaths: ['payload'],
+      },
+      immutableCheck: {
+        ignoredPaths: ['audio.audioElement'],
       },
     }),
 });

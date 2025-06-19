@@ -39,12 +39,12 @@ const initialState: JobsState = {
 // Async thunks
 export const fetchJobs = createAsyncThunk(
   'jobs/fetchJobs',
-  async (params?: {
+  async (params: {
     page?: number;
     limit?: number;
     status?: string;
     job_type?: string;
-  }, { rejectWithValue }) => {
+  } = {}, { rejectWithValue }) => {
     try {
       const response = await apiClient.getJobs(params);
       return response;
