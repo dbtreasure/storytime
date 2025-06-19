@@ -1,8 +1,16 @@
 # syntax=docker/dockerfile:1
 FROM python:3.11-slim
 
-# Install OS dependencies
-RUN apt-get update && apt-get install -y build-essential ffmpeg libpq-dev gcc && rm -rf /var/lib/apt/lists/*
+# Install OS dependencies including Node.js
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    ffmpeg \
+    libpq-dev \
+    gcc \
+    curl \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create app directory
 WORKDIR /app
@@ -13,8 +21,15 @@ COPY pyproject.toml /app/
 # Install uv and use it to install all dependencies from pyproject.toml
 RUN pip install uv && uv pip install --system --requirements pyproject.toml
 
-# Copy application code
+# Build React client
+COPY client /app/client
+WORKDIR /app/client
+RUN npm install && npm run build
+
+# Copy application code and built client
+WORKDIR /app
 COPY src /app/src
+RUN mkdir -p /app/static && cp -r /app/client/dist/* /app/static/
 
 # Expose API port
 EXPOSE 8000

@@ -1,7 +1,9 @@
 import logging
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from storytime.database import create_all
 
@@ -43,27 +45,21 @@ async def on_startup():
         logging.getLogger(__name__).error(f"DB bootstrap failed: {e}")
 
 
-app.include_router(auth_router)
-app.include_router(jobs_router)
-app.include_router(streaming_router)
-app.include_router(progress_router)
+app.include_router(auth_router, prefix="/api")
+app.include_router(jobs_router, prefix="/api")
+app.include_router(streaming_router, prefix="/api")
+app.include_router(progress_router, prefix="/api")
+
+# Serve React client static files
+static_dir = "/app/static"
+if os.path.exists(static_dir):
+    app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
 
 
-@app.get("/health", tags=["Utility"])
+@app.get("/api/health", tags=["Utility"])
 async def health() -> dict[str, str]:
     """Return basic service health status."""
     return {"status": "ok"}
-
-
-@app.get("/", tags=["Utility"])
-async def root() -> dict[str, str]:
-    """Root endpoint with API info."""
-    return {
-        "message": "StorytimeTTS API",
-        "version": "0.1.0",
-        "docs": "/docs",
-        "health": "/health"
-    }
 
 
 @app.get("/up", tags=["Utility"])

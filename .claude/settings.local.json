@@ -42,7 +42,8 @@
       "Bash(npm run build:*)",
       "mcp__playwright__browser_select_option",
       "Bash(docker-compose logs:*)",
-      "mcp__playwright__browser_snapshot"
+      "mcp__playwright__browser_snapshot",
+      "Bash(/opt/homebrew/lib/ruby/gems/3.4.0/bin/kamal app logs --lines 50)"
     ],
     "deny": []
   }
