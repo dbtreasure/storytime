@@ -23,8 +23,6 @@ servers:
       traefik.http.routers.web.rule: Host(`plinytheai.com`)
       traefik.http.routers.web.tls: true
       traefik.http.routers.web.entrypoints: websecure
-    options:
-      network: "kamal"
 
 # Environment variables
 env:
