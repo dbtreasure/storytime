@@ -1,0 +1,91 @@
+# Kamal deployment configuration for StorytimeTTS
+
+# Main service configuration
+service: storytime
+
+# Docker image configuration
+image: storytime/app
+
+# Registry for storing images
+registry:
+  server: registry.digitalocean.com/storytime
+  username:
+    - KAMAL_REGISTRY_USERNAME
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+# Servers configuration
+servers:
+  web:
+    hosts:
+      - 129.212.136.218
+    labels:
+      traefik.http.routers.web.rule: Host(`plinytheai.com`)
+      traefik.http.routers.web.tls: true
+      traefik.http.routers.web.entrypoints: websecure
+    options:
+      network: "kamal"
+
+# Environment variables
+env:
+  clear:
+    ENV: production
+    TTS_PROVIDER: openai
+    TTS_MAX_CONCURRENCY: 8
+  secret:
+    - DATABASE_URL
+    - OPENAI_API_KEY
+    - ELEVENLABS_API_KEY
+    - DO_SPACES_KEY
+    - DO_SPACES_SECRET
+    - DO_SPACES_ENDPOINT
+    - DO_SPACES_BUCKET
+    - JWT_SECRET_KEY
+    - CELERY_BROKER_URL
+    - KAMAL_REGISTRY_PASSWORD
+    - KAMAL_REGISTRY_USERNAME
+
+# Accessories (external services like databases)
+accessories:
+  db:
+    image: postgres:16
+    host: 129.212.136.218
+    port: 5432
+    env:
+      clear:
+        POSTGRES_USER: postgres
+        POSTGRES_DB: storytime
+      secret:
+        - POSTGRES_PASSWORD
+    volumes:
+      - /var/lib/postgresql/data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    host: 129.212.136.218
+    port: 6379
+    volumes:
+      - /var/lib/redis/data:/data
+
+  client:
+    image: storytime/client
+    host: 129.212.136.218
+    port: 3000
+    env:
+      clear:
+        NODE_ENV: production
+        VITE_API_BASE_URL: https://plinytheai.com
+
+# Kamal proxy configuration
+proxy:
+  ssl: true
+  host: plinytheai.com
+  app_port: 8000
+  healthcheck:
+    path: /up
+    interval: 10
+
+# Builder configuration
+builder:
+  arch: amd64
+

@@ -1,5 +1,19 @@
 version: "3.9"
 services:
+  client:
+    build: 
+      context: ./client
+      target: development
+    ports:
+      - "3000:5173"
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_API_BASE_URL=http://localhost:8000
+    depends_on:
+      - api
   api:
     build: .
     ports:

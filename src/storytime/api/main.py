@@ -53,3 +53,9 @@ app.include_router(progress_router)
 async def health() -> dict[str, str]:
     """Return basic service health status."""
     return {"status": "ok"}
+
+
+@app.get("/up", tags=["Utility"])
+async def up() -> dict[str, str]:
+    """Health check endpoint for kamal-proxy."""
+    return {"status": "ok"}
