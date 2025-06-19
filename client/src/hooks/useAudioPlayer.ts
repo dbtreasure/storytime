@@ -5,6 +5,7 @@ import {
   setPlaying,
   setCurrentPosition,
   setDuration,
+  setVolume as setVolumeAction,
   seekTo,
   updateProgress,
   loadAudio,
@@ -70,12 +71,13 @@ export const useAudioPlayer = () => {
     };
   }, [dispatch]);
 
-  // Update audio source when streaming URL changes
+  // Update audio source when streaming URL changes (no auto-play)
   useEffect(() => {
     if (audioRef.current && streamingUrl) {
       audioRef.current.src = streamingUrl;
+      // Don't auto-play - let the AudioPlayer component control playback
     }
-  }, [streamingUrl]);
+  }, [streamingUrl, dispatch]);
 
   // Update volume
   useEffect(() => {
@@ -151,6 +153,11 @@ export const useAudioPlayer = () => {
     dispatch(loadAudio(jobId));
   }, [dispatch]);
 
+  const setVolume = useCallback((volume: number) => {
+    const clampedVolume = Math.max(0, Math.min(1, volume));
+    dispatch(setVolumeAction(clampedVolume));
+  }, [dispatch]);
+
   // Skip forward/backward
   const skipForward = useCallback((seconds: number = 10) => {
     seek(Math.min(currentPosition + seconds, duration));
@@ -192,6 +199,7 @@ export const useAudioPlayer = () => {
     nextChapter,
     previousChapter,
     loadJob,
+    setVolume,
     
     // Computed values
     progress: duration > 0 ? (currentPosition / duration) * 100 : 0,

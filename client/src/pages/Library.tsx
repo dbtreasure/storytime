@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
 import { fetchJobs } from '../store/slices/jobsSlice';
+import { useAudioPlayer } from '../hooks/useAudioPlayer';
+import AudioPlayer from '../components/AudioPlayer';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
@@ -12,6 +14,7 @@ import { Alert } from '../components/ui/Alert';
 import {
   BookOpenIcon,
   PlayIcon,
+  PauseIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
   CalendarIcon,
@@ -35,7 +38,8 @@ interface AudioBook {
 const Library: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { jobs, loading, error } = useAppSelector((state) => state.jobs);
+  const { jobs, isLoading: loading, error } = useAppSelector((state) => state.jobs);
+  const audioPlayer = useAudioPlayer();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('createdAt');
@@ -45,6 +49,7 @@ const Library: React.FC = () => {
   useEffect(() => {
     dispatch(fetchJobs({ status: 'COMPLETED' }));
   }, [dispatch]);
+
 
   // Filter completed jobs to get audiobooks
   const audiobooks: AudioBook[] = jobs
@@ -113,10 +118,39 @@ const Library: React.FC = () => {
     }
   };
 
+  const handlePlayAudio = (bookId: string) => {
+    console.log('handlePlayAudio called:', { 
+      bookId, 
+      currentJobId: audioPlayer.currentJobId, 
+      isPlaying: audioPlayer.isPlaying, 
+      isLoading: audioPlayer.isLoading 
+    });
+    
+    if (audioPlayer.currentJobId === bookId && audioPlayer.isPlaying) {
+      audioPlayer.pause();
+    } else if (audioPlayer.currentJobId === bookId && !audioPlayer.isPlaying) {
+      audioPlayer.play();
+    } else {
+      audioPlayer.loadJob(bookId);
+    }
+  };
+
+  const isCurrentlyPlaying = (bookId: string) => {
+    return audioPlayer.currentJobId === bookId && audioPlayer.isPlaying;
+  };
+
+  const isCurrentBook = (bookId: string) => {
+    return audioPlayer.currentJobId === bookId;
+  };
+
   const renderGridView = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {filteredAudiobooks.map((book) => (
-        <Card key={book.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+        <Card 
+          key={book.id} 
+          className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+          onClick={() => navigate(`/library/${book.id}`)}
+        >
           <div className="aspect-w-16 aspect-h-9 bg-gradient-to-br from-blue-500 to-purple-600 relative">
             <div className="absolute inset-0 flex items-center justify-center">
               <BookOpenIcon className="h-12 w-12 text-white opacity-80" />
@@ -171,10 +205,20 @@ const Library: React.FC = () => {
             
             <Button
               className="w-full"
-              onClick={() => navigate(`/library/${book.id}`)}
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent card navigation
+                handlePlayAudio(book.id);
+              }}
+              disabled={audioPlayer.isLoading && isCurrentBook(book.id)}
             >
-              <PlayIcon className="h-4 w-4 mr-2" />
-              {book.progress > 0 ? 'Continue' : 'Play'}
+              {audioPlayer.isLoading && isCurrentBook(book.id) ? (
+                <Spinner size="sm" />
+              ) : isCurrentlyPlaying(book.id) ? (
+                <PauseIcon className="h-4 w-4 mr-2" />
+              ) : (
+                <PlayIcon className="h-4 w-4 mr-2" />
+              )}
+              {isCurrentlyPlaying(book.id) ? 'Pause' : book.progress > 0 ? 'Continue' : 'Play'}
             </Button>
           </div>
         </Card>
@@ -185,7 +229,11 @@ const Library: React.FC = () => {
   const renderListView = () => (
     <div className="space-y-4">
       {filteredAudiobooks.map((book) => (
-        <Card key={book.id} className="p-6 hover:shadow-lg transition-shadow">
+        <Card 
+          key={book.id} 
+          className="p-6 hover:shadow-lg transition-shadow cursor-pointer"
+          onClick={() => navigate(`/library/${book.id}`)}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4 flex-1">
               <div className="flex-shrink-0">
@@ -239,10 +287,20 @@ const Library: React.FC = () => {
             
             <div className="flex items-center space-x-2 ml-4">
               <Button
-                onClick={() => navigate(`/library/${book.id}`)}
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent card navigation
+                  handlePlayAudio(book.id);
+                }}
+                disabled={audioPlayer.isLoading && isCurrentBook(book.id)}
               >
-                <PlayIcon className="h-4 w-4 mr-2" />
-                {book.progress > 0 ? 'Continue' : 'Play'}
+                {audioPlayer.isLoading && isCurrentBook(book.id) ? (
+                  <Spinner size="sm" />
+                ) : isCurrentlyPlaying(book.id) ? (
+                  <PauseIcon className="h-4 w-4 mr-2" />
+                ) : (
+                  <PlayIcon className="h-4 w-4 mr-2" />
+                )}
+                {isCurrentlyPlaying(book.id) ? 'Pause' : book.progress > 0 ? 'Continue' : 'Play'}
               </Button>
             </div>
           </div>
@@ -435,6 +493,7 @@ const Library: React.FC = () => {
           </Card>
         </div>
       )}
+
     </div>
   );
 };

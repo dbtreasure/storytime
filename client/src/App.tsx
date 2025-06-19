@@ -13,10 +13,16 @@ import Upload from './pages/Upload';
 import Jobs from './pages/Jobs';
 import JobDetails from './pages/JobDetails';
 import Library from './pages/Library';
+import BookDetails from './pages/BookDetails';
 
 // Protected Route component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, isLoading } = useAppSelector((state) => state.auth);
+  
+  // Wait for auth initialization to complete
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
   
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -82,6 +88,11 @@ function AppContent() {
         <Route path="/library" element={
           <ProtectedRoute>
             <Library />
+          </ProtectedRoute>
+        } />
+        <Route path="/library/:jobId" element={
+          <ProtectedRoute>
+            <BookDetails />
           </ProtectedRoute>
         } />
         

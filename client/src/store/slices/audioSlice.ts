@@ -49,19 +49,26 @@ export const loadAudio = createAsyncThunk(
   'audio/loadAudio',
   async (jobId: string, { rejectWithValue }) => {
     try {
+      console.log('loadAudio starting for jobId:', jobId);
+      
       const [streamingData, metadata, progress] = await Promise.all([
         apiClient.getAudioStream(jobId),
         apiClient.getAudioMetadata(jobId),
         apiClient.getProgress(jobId).catch(() => null), // Progress might not exist
       ]);
       
+      console.log('loadAudio responses:', { streamingData, metadata, progress });
+      console.log('streamingData.url:', streamingData.url);
+      console.log('full streamingData:', streamingData);
+      
       return {
         jobId,
-        streamingUrl: streamingData.url,
+        streamingUrl: streamingData.streaming_url || streamingData.url,
         metadata,
         progress,
       };
     } catch (error: any) {
+      console.error('loadAudio failed:', error);
       return rejectWithValue(
         error.response?.data?.message || 'Failed to load audio'
       );
@@ -172,10 +179,12 @@ const audioSlice = createSlice({
     // Load audio
     builder
       .addCase(loadAudio.pending, (state) => {
+        console.log('loadAudio.pending');
         state.isLoading = true;
         state.error = null;
       })
       .addCase(loadAudio.fulfilled, (state, action) => {
+        console.log('loadAudio.fulfilled', action.payload);
         const { jobId, streamingUrl, metadata, progress } = action.payload;
         
         state.isLoading = false;
@@ -195,6 +204,7 @@ const audioSlice = createSlice({
         }
       })
       .addCase(loadAudio.rejected, (state, action) => {
+        console.log('loadAudio.rejected', action.payload);
         state.isLoading = false;
         state.error = action.payload as string;
       });
