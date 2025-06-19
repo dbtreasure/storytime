@@ -262,6 +262,15 @@ class BookProcessor:
         # Commit all child jobs
         await self.db_session.commit()
 
+        # Schedule all child jobs for processing
+        from storytime.worker.tasks import process_job
+        for job_id in child_job_ids:
+            try:
+                process_job.delay(job_id)
+                logger.info(f"Scheduled child job {job_id} for processing")
+            except Exception as e:
+                logger.warning(f"Could not schedule child job {job_id}: {e}")
+
         return child_job_ids
 
     async def aggregate_chapter_results(self, job_id: str) -> dict[str, Any]:
