@@ -53,7 +53,7 @@ async def create_job(
             config={
                 "job_type": request.job_type.value,
                 "content": request.content,
-                "voice_config": request.voice_config.dict() if request.voice_config else {},
+                "voice_config": request.voice_config.model_dump() if request.voice_config else {},
                 "processing_mode": request.processing_mode,
             },
             input_file_key=request.file_key,

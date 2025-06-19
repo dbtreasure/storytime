@@ -20,7 +20,24 @@
       "WebFetch(domain:github.com)",
       "mcp__linear__list_issue_statuses",
       "mcp__linear__get_issue_git_branch_name",
-      "Bash(ruff format:*)"
+      "Bash(ruff format:*)",
+      "Bash(sed:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker-compose restart:*)",
+      "Bash(echo \"🔍 Checking more worker activity...\" docker logs storytime-worker-1 --tail 30)",
+      "mcp__linear__create_issue",
+      "WebFetch(domain:tailwindcss.com)",
+      "mcp__playwright__browser_navigate",
+      "Bash(curl:*)",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_network_requests",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_tab_new",
+      "mcp__playwright__browser_press_key",
+      "Bash(codex full-auto:*)"
     ],
     "deny": []
   }

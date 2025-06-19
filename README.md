@@ -1,215 +1,335 @@
-# 📚 StorytimeTTS - Novel to Audio Pipeline
+# 📚 StorytimeTTS - AI-Powered Audiobook Generation Platform
 
-Transform classic literature into immersive audiobooks using AI! This application parses novel text into structured segments and generates high-quality audio with character-specific voices.
+Transform text content into high-quality audiobooks with intelligent processing! StorytimeTTS has evolved into a streamlined, unified job management platform supporting both simple text-to-audio conversion and intelligent book processing with automatic chapter detection.
 
-## 🌟 Features
+## 🌟 Current Features
 
-- **📖 Smart Text Parsing**: Uses Google Gemini to identify dialogue vs narration
-- **🎭 Character Recognition**: Automatically detects speakers and assigns appropriate voices
-- **🎙️ Multi-Voice Audio**: OpenAI TTS with different voices for each character
-- **🎵 Structured Output**: Complete chapter MP3 + organized individual segments
+- **🎯 Unified Job Management**: Single API for all audiobook processing types
+- **📖 Intelligent Book Processing**: Automatic chapter detection and structure analysis
+- **🔄 Resume Functionality**: Chapter-level progress tracking for long-form content
+- **🎙️ Multi-Provider TTS**: OpenAI and ElevenLabs voice synthesis
+- **🔒 Secure Storage**: Private file storage with DigitalOcean Spaces
+- **⚡ Background Processing**: Scalable Celery-based job execution
+- **📊 Progress Tracking**: Real-time job status and step-by-step monitoring
 
-## 🏗️ Architecture
+## 🏗️ System Architecture
 
+### **REST API Endpoints**
 ```
-Text Input → Gemini API → Structured Data → OpenAI TTS → Audio Files
-                ↓              ↓             ↓
-          [Character      [TextSegment    [MP3 Files
-           Detection]      Objects]       + Playlist]
+/api/v1/jobs/          - Complete job lifecycle management
+/api/v1/audio/         - Audio streaming with resume support
+/api/v1/progress/      - Playback progress and resume functionality
+/api/v1/auth/          - JWT-based authentication
+```
+
+### **Processing Workflows**
+```
+Simple Text → Job Creation → TTS Processing → Audio Output → Secure Storage
+
+Book Processing → Chapter Detection → Parallel Processing → Audio Generation → Result Aggregation
+
+Multi-Chapter → Chapter Analysis → Child Jobs → Parallel Execution → Progress Tracking → Assembly
 ```
 
 ## 🚀 Quick Start
 
-### 1. Clone and Setup
+### 1. Environment Setup
 
 ```bash
+# Clone repository
 git clone <repository-url>
 cd storytime
-pip install -r requirements.txt
+
+# Install dependencies (preferred method)
+uv sync
+
+# Alternative installation
+pip install -e .
 ```
 
-### 2. Get API Keys
+### 2. Required Services
 
-- **Google Gemini**: [Get key here](https://makersuite.google.com/app/apikey)
-- **OpenAI**: [Get key here](https://platform.openai.com/api-keys)
+- **PostgreSQL**: Database for job and user management
+- **Redis**: Task queue for background processing
+- **DigitalOcean Spaces**: File storage (or AWS S3 compatible)
 
-### 3. Set Environment Variables
+### 3. Environment Variables
 
 ```bash
-export GOOGLE_API_KEY="your_google_api_key"
+# Database
+export DATABASE_URL="postgresql://user:pass@localhost/storytime"
+
+# AI Services
 export OPENAI_API_KEY="your_openai_api_key"
+export ELEVENLABS_API_KEY="your_elevenlabs_api_key"  # Optional
+
+# File Storage
+export DO_SPACES_KEY="your_spaces_access_key"
+export DO_SPACES_SECRET="your_spaces_secret_key"
+export DO_SPACES_ENDPOINT="your_spaces_endpoint"
+export DO_SPACES_BUCKET="your_bucket_name"
+
+# Authentication
+export JWT_SECRET_KEY="your_jwt_secret_key"
+
+# Background Processing
+export CELERY_BROKER_URL="redis://localhost:6379/0"
+
+# Optional Configuration
+export TTS_PROVIDER="openai"  # or "eleven"
+export TTS_MAX_CONCURRENCY="8"
 ```
 
-### 4. Test the Pipeline
+### 4. Start the Application
 
 ```bash
-# Test parsing only (free)
-python test_parser.py
+# Start the FastAPI server
+cd src && python -m storytime.api.main
 
-# Test complete pipeline (uses credits)
-python test_full_pipeline.py
+# Or with uvicorn directly
+uvicorn storytime.api.main:app --reload --host 0.0.0.0 --port 8000
+
+# Start Celery worker (separate terminal)
+celery -A storytime.worker.celery_app worker --loglevel=info
+```
+
+### 5. Run Tests
+
+```bash
+# Run all tests
+python -m pytest tests/ -v
+
+# Run with coverage
+python -m pytest tests/ --cov=src/storytime
+
+# Code quality checks
+ruff check .
+ruff format .
 ```
 
 ## 📋 Core Components
 
-### 🧠 Text Parser (`chapter_parser.py`)
+### **🎯 Unified Job System**
+- **Job Types**: TEXT_TO_AUDIO, BOOK_PROCESSING, CHAPTER_MULTI_VOICE
+- **Step Tracking**: Granular progress monitoring with detailed error handling
+- **Resume Support**: Chapter-level progress for long-form content
 
-- Analyzes novel text with Gemini AI
-- Identifies speakers and emotional context
-- Creates structured `TextSegment` objects
+### **📖 Book Intelligence**
+- **Chapter Detection**: Multiple strategies (numbered, roman numerals, content-based)
+- **Content Analysis**: Automatic structure recognition for various book formats
+- **Parallel Processing**: Concurrent chapter processing for faster results
 
-### 🎙️ TTS Generator (`tts_generator.py`)
+### **🎙️ TTS Processing**
+- **Smart Chunking**: Respects API limits with sentence/word boundary splitting
+- **Voice Selection**: Configurable voice assignment per provider
+- **Audio Concatenation**: Seamless stitching of audio segments
 
-- Converts segments to audio using OpenAI TTS
-- Smart voice selection based on character traits
-- Generates organized audio files and playlists
+### **🔒 Secure Infrastructure**
+- **Private Storage**: All files stored with private ACL for security
+- **JWT Authentication**: Secure user session management
+- **Pre-signed URLs**: Temporary access for downloads and streaming
 
-### 📊 Data Models (`models.py`)
+## 🎭 Supported Job Types
 
-- Pydantic models for type-safe data handling
-- Structured representation of chapters and segments
+### **1. Simple Text-to-Audio**
+```python
+{
+    "job_type": "TEXT_TO_AUDIO",
+    "text": "Your text content here...",
+    "voice_config": {
+        "provider": "openai",
+        "voice": "nova"
+    }
+}
+```
 
-## 🎭 Voice Mapping
+### **2. Book Processing**
+```python
+{
+    "job_type": "BOOK_PROCESSING", 
+    "text": "Full book content...",
+    "processing_config": {
+        "max_concurrency": 4
+    }
+}
+```
 
-| Character Type     | Voice   | Description          |
-| ------------------ | ------- | -------------------- |
-| Narrator           | `echo`  | Neutral, clear voice |
-| Male Characters    | `onyx`  | Deep male voice      |
-| Female Characters  | `nova`  | Clear female voice   |
-| Elderly Characters | `fable` | Distinguished voice  |
-| Default            | `alloy` | Fallback voice       |
+### **3. Multi-Chapter Processing**
+```python
+{
+    "job_type": "CHAPTER_MULTI_VOICE",
+    "text": "Chapter content...",
+    "voice_config": {
+        "provider": "elevenlabs",
+        "character_voices": {...}
+    }
+}
+```
 
-## 💰 Cost Estimates
+## 📊 API Usage Examples
 
-### Gemini API (Parsing)
+### **Create a Job**
+```bash
+curl -X POST "http://localhost:8000/api/v1/jobs/" \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     -d '{
+       "job_type": "TEXT_TO_AUDIO",
+       "text": "Hello, this is a test of the text-to-speech system.",
+       "voice_config": {
+         "provider": "openai",
+         "voice": "nova"
+       }
+     }'
+```
 
-- **Free tier**: 15 requests/minute
-- **Cost**: $0.00 for moderate usage
+### **Check Job Status**
+```bash
+curl "http://localhost:8000/api/v1/jobs/{job_id}" \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
 
-### OpenAI TTS
+### **Stream Audio**
+```bash
+curl "http://localhost:8000/api/v1/audio/{job_id}/stream" \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
 
-- **Rate**: $0.015 per 1,000 characters
-- **War & Peace Chapter 1**: ~$0.50-1.00
-- **Full novel**: ~$50-100
+### **Update Progress**
+```bash
+curl -X PUT "http://localhost:8000/api/v1/progress/{job_id}" \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     -d '{
+       "position": 120.5,
+       "chapter": 1
+     }'
+```
 
 ## 📁 Output Structure
 
 ```
-audio_output/
-├── chapter_01_complete.mp3          (Complete chapter audio)
-├── chapter_01/                      (Individual segments)
-│   ├── ch01_001_Anna_Pavlovna_Scherer.mp3
-│   ├── ch01_002_narrator.mp3
-│   ├── ch01_003_Prince_Vasili_Kuragin.mp3
-│   └── chapter_01_playlist.m3u
-└── chapter_02_complete.mp3
+digitalocean_spaces/
+├── jobs/{job_id}/
+│   ├── input.txt              (Original text)
+│   ├── result.json            (Processing metadata)
+│   └── output.mp3             (Final audio)
+├── chapters/{job_id}/
+│   ├── chapter_01.mp3         (Individual chapters)
+│   ├── chapter_02.mp3
+│   └── playlist.m3u           (M3U playlist)
+└── temp/
+    └── processing_files/      (Temporary processing files)
 ```
 
-## 🔧 Advanced Usage
+## 🔧 Development
 
-### Generate Full Chapter Audio
+### **Database Migrations**
+```bash
+# Create migration
+alembic revision --autogenerate -m "Description"
 
-```python
-from chapter_parser import ChapterParser
-from tts_generator import generate_chapter_audio
-
-# Parse chapter
-parser = ChapterParser()
-chapter = parser.parse_chapter_from_file("chapter_1.txt", 1)
-
-# Generate all audio
-audio_files = generate_chapter_audio(chapter)
-print(f"Generated {len(audio_files)} files")
+# Apply migrations
+alembic upgrade head
 ```
 
-### Custom Voice Selection
+### **Docker Development**
+```bash
+# Build and run with docker-compose
+docker-compose up --build
 
-```python
-generator = TTSGenerator()
-generator.voice_mapping["male"] = "fable"  # Use distinguished voice for males
+# Run individual container
+docker build -t storytime .
+docker run -p 8000:8000 storytime
 ```
 
-### Batch Processing
+### **Code Quality**
+```bash
+# Lint and format
+ruff check .
+ruff format .
 
-```python
-for i in range(1, 11):  # Process chapters 1-10
-    chapter = parser.parse_chapter_from_file(f"chapter_{i}.txt", i)
-    generate_chapter_audio(chapter, output_dir=f"book_audio/chapter_{i}")
+# Type checking
+mypy src/
 ```
 
-## 📊 Example Output
+## 💰 Cost Estimates
 
-### Chapter Analysis
+### **OpenAI TTS**
+- **Rate**: $0.015 per 1,000 characters
+- **Average chapter**: ~$0.50-2.00
+- **Full novel**: ~$50-200
 
-```
-✅ Successfully parsed Chapter 1: Anna Pavlovna's Salon
-📊 Total segments: 35
-👥 Characters found: Prince Vasíli Kurágin, Anna Pávlovna Schérer
-📈 Analysis:
-   Narrator segments: 11
-   Character dialogue segments: 24
-   Dialogue ratio: 68.6%
-```
+### **ElevenLabs TTS**
+- **Rate**: Varies by plan and usage
+- **Character limits**: Plan-dependent
+- **Voice cloning**: Premium feature
 
-### Audio Generation
-
-```
-🎵 Generating audio for Chapter 1: Anna Pavlovna's Salon
-🎙️  Generating audio for segment 1: [Anna Pávlovna Schérer]
-   Voice: nova | Text: "Well, Prince, so Genoa and Lucca are now just family estates...
-   ✅ Saved: ch01_001_Anna_Pavlovna_Scherer.mp3
-```
-
-## 🛠️ Configuration
-
-### Available Models
-
-- **Gemini**: `gemini-1.5-flash` (default)
-- **OpenAI TTS**: `tts-1` (default), `tts-1-hd` (higher quality)
-
-### Audio Formats
-
-- MP3 (default), WAV, FLAC, AAC, Opus, PCM
-
-### Voice Options
-
-- `alloy`, `echo`, `fable`, `onyx`, `nova`, `shimmer`
+### **Infrastructure**
+- **DigitalOcean Spaces**: $5/month + transfer costs
+- **Database**: $15-50/month depending on size
+- **Redis**: $15-25/month for managed service
 
 ## 🐛 Troubleshooting
 
-### Common Issues
+### **Common Issues**
 
-1. **"'str' object has no attribute 'value'"**
+1. **Database Connection Errors**
+   ```bash
+   # Check database connection
+   psql $DATABASE_URL
+   
+   # Run migrations
+   alembic upgrade head
+   ```
 
-   - Fixed in current version - Pydantic enum handling
+2. **Celery Worker Issues**
+   ```bash
+   # Check Redis connection
+   redis-cli ping
+   
+   # Restart worker
+   celery -A storytime.worker.celery_app worker --loglevel=debug
+   ```
 
-2. **API Rate Limits**
+3. **File Storage Issues**
+   ```bash
+   # Test DigitalOcean Spaces connection
+   python -c "from storytime.infrastructure.spaces import SpacesClient; print('Connected')"
+   ```
 
-   - Gemini: 15 requests/minute (free tier)
-   - OpenAI: 50 requests/minute (paid tier)
+4. **TTS Provider Errors**
+   - Verify API keys are valid
+   - Check rate limits and quotas
+   - Monitor character usage
 
-3. **High Costs**
-   - Test with small samples first
-   - Monitor character counts
-   - Use `tts-1` instead of `tts-1-hd` for testing
+## 📊 Monitoring & Observability
 
-## 📚 Example with War and Peace
+### **Job Tracking**
+- Real-time job status updates
+- Step-by-step progress monitoring
+- Detailed error reporting and logging
 
-The included `chapter_1.txt` contains the opening of Tolstoy's War and Peace, demonstrating:
+### **Performance Metrics**
+- Processing time per job type
+- TTS provider usage statistics
+- Database query performance
 
-- Complex character dialogue
-- French aristocratic society
-- Multiple speakers in conversation
-- Rich descriptive narration
-
-Perfect for testing the AI's ability to parse classical literature!
+### **Error Handling**
+- Automatic retry logic with exponential backoff
+- Graceful degradation for provider outages
+- Comprehensive error logging
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Add tests for new functionality
+5. Run the test suite (`pytest tests/`)
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
 
 ## 📄 License
 
@@ -217,64 +337,25 @@ MIT License - See LICENSE file for details
 
 ## 🙏 Acknowledgments
 
-- **Google Gemini** for advanced text analysis
-- **OpenAI** for high-quality text-to-speech
-- **Tolstoy** for the timeless literature
-- **Pydantic** for type-safe data models
+- **OpenAI** for high-quality text-to-speech services
+- **ElevenLabs** for advanced voice synthesis capabilities
+- **FastAPI** for the excellent async web framework
+- **Pydantic** for type-safe data validation
+- **SQLAlchemy** for robust database operations
+- **Celery** for reliable background job processing
 
 ---
 
-**Ready to bring classic literature to life? Start with `python test_full_pipeline.py`!** 🎧📚
+**Ready to transform text into engaging audiobooks? Start with the API at `http://localhost:8000/docs`!** 🎧📚
 
-## Junjo-Native Pipeline Overview
+## 🚧 Recent Updates
 
-- **Chapter parsing** and **audio generation** are orchestrated with [Junjo](https://junjo.ai), enabling modular, observable, and testable workflows.
-- **Parallelism:**
-  - Gemini API calls (for parsing) are fully async.
-  - Audio synthesis for each segment is run in parallel using a Junjo fan-out workflow and a thread pool.
-  - Concurrency is tunable via the `TTS_MAX_CONCURRENCY` environment variable (default: 8).
-- **Observability:**
-  - All workflow nodes log their inputs, outputs, errors, and timing metrics to OpenTelemetry/Braintrust.
-  - Per-segment and per-node timings are visible in the Braintrust UI.
-- **Error Handling:**
-  - TTS synthesis is retried up to 3 times with exponential backoff.
-  - Errors are surfaced in API job status and Braintrust traces.
+- ✅ **CORE-49**: Implemented playback progress tracking with resume functionality
+- ✅ **CORE-55**: Enhanced security with private ACL for all file uploads
+- ✅ **CORE-50**: Added audio streaming API with resume support
+- ✅ **CORE-54**: Completed legacy dependency cleanup and modernization
+- ✅ **Unified Job System**: Streamlined all processing through single job management API
+- ✅ **Book Intelligence**: Added automatic chapter detection and parallel processing
+- ✅ **Background Processing**: Implemented scalable Celery-based job execution
 
-## Key Environment Variables
-
-| Variable                      | Description                                    | Default        |
-| ----------------------------- | ---------------------------------------------- | -------------- |
-| `TTS_PROVIDER`                | Which TTS provider to use (`openai`, `eleven`) | openai         |
-| `TTS_MAX_CONCURRENCY`         | Max parallel audio jobs (int)                  | 8              |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | OpenTelemetry/Braintrust endpoint              |                |
-| `GOOGLE_API_KEY`              | Gemini API key                                 |                |
-| `GEMINI_MODEL`                | Gemini model name                              | gemini-1.5-pro |
-| `CHAPTER_OUTPUT_DIR`          | Where to write chapter data                    | chapter_data   |
-
-## Usage Example
-
-```python
-from storytime.workflows.audio_generation import build_audio_workflow
-from storytime.services.tts_generator import TTSGenerator
-
-# ...parse chapter as before...
-tts = TTSGenerator()
-wf = build_audio_workflow(chapter, tts, max_concurrency=8)
-await wf.execute()
-state = await wf.get_state_json()
-print("Stitched file:", state["stitched_path"])
-```
-
-## Features
-
-- Modular, testable Junjo workflows for parsing and audio
-- Parallel audio generation for fast chapter synthesis
-- Full observability with Braintrust/OTEL (inputs, outputs, errors, timings)
-- Configurable concurrency and provider selection
-- Robust error handling and retries for TTS
-
----
-
-For more, see the code and docstrings in `src/storytime/workflows/` and `src/storytime/services/`.
-
-> **Note:** The old imperative ChapterParser pipeline is now fully deprecated. All chapter parsing in the API and CLI uses the Junjo workflow for modularity, observability, and maintainability.
+For detailed development guidance, see [CLAUDE.md](CLAUDE.md)

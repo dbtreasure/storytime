@@ -1,0 +1,23 @@
+Migrate React TypeScript client from manual API types to auto-generated OpenAPI types.
+
+TASKS:
+1. Update src/services/api.ts:
+   - Remove ApiResponse<T> wrapper assumption 
+   - Import generated types from src/generated
+   - Fix axios responses to expect direct responses
+   - Update method signatures
+
+2. Key type replacements:
+   - Job -> JobResponse
+   - PlaybackProgress -> PlaybackProgressResponse  
+   - LoginRequest -> UserLogin
+   - RegisterRequest -> UserCreate
+   - User -> UserResponse
+
+3. Fix field names:
+   - position -> position_seconds
+   - chapter -> current_chapter_id
+
+4. Remove all .data.data patterns, use just .data
+
+Generated types are in: src/generated/types.gen.ts
