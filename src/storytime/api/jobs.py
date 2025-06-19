@@ -16,6 +16,7 @@ from storytime.models import (
     JobListResponse,
     JobResponse,
     JobStepResponse,
+    JobType,
 )
 
 # JobProcessor is now simplified and always available
@@ -50,8 +51,10 @@ async def create_job(
             status=JobStatus.PENDING,
             progress=0.0,
             config={
+                "job_type": request.job_type.value,
                 "content": request.content,
                 "voice_config": request.voice_config.dict() if request.voice_config else {},
+                "processing_mode": request.processing_mode,
             },
             input_file_key=request.file_key,
         )
@@ -264,6 +267,40 @@ async def get_job_audio(
     except Exception as e:
         logger.error(f"Failed to get audio for job {job_id}: {e!s}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to get job audio: {e!s}")
+
+
+@router.get("/{job_id}/chapters")
+async def get_book_chapters(
+    job_id: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """Get chapter processing results for a book job."""
+    logger.info(f"Getting chapters for book job {job_id} for user {current_user.id}")
+
+    try:
+        # Verify job exists and belongs to user
+        job = await _get_user_job(job_id, current_user.id, db)
+
+        # Check if this is a book processing job
+        job_type = job.config.get("job_type") if job.config else None
+        if job_type != JobType.BOOK_PROCESSING.value:
+            raise HTTPException(
+                status_code=400, detail="This endpoint is only for book processing jobs"
+            )
+
+        # Get aggregated chapter results
+        from storytime.services.book_processor import BookProcessor
+        book_processor = BookProcessor(db, SpacesClient())
+        results = await book_processor.aggregate_chapter_results(job_id)
+
+        return results
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to get chapters for job {job_id}: {e!s}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get book chapters: {e!s}")
 
 
 # Helper functions

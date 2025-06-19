@@ -27,6 +27,29 @@ ruff format .
 mypy src/
 ```
 
+# Delegate to Codex
+
+When the task involves code generation, refactoring, tests, CI setup, PR generation, or multi-step engineering work, delegate to OpenAI Codex. Codex offers:
+
+- ☁️ **Cloud-based sandboxed execution**: runs in separate environments, reads/edits files, launches linters/tests, and can even push PRs  [oai_citation:0‡openai.com](https://openai.com/index/introducing-codex/?utm_source=chatgpt.com) [oai_citation:1‡devops.com](https://devops.com/openai-codex-transforming-software-development-with-ai-agents/?utm_source=chatgpt.com).
+- 🛠 **Multi-step task orchestration**: Codex can break tasks into sub‑tasks and run them in parallel, each with logs and verifiable outputs .
+- 🌐 **Controlled internet access**: it can install dependencies or run tests that require network, with granular permissions  [oai_citation:2‡help.openai.com](https://help.openai.com/en/articles/11428266-codex-changelog?utm_source=chatgpt.com).
+- 💬 **Clear commentary**: provides terminal logs, test results, and diff summaries to trace each action  [oai_citation:3‡openai.com](https://openai.com/index/introducing-codex/?utm_source=chatgpt.com).
+
+**Instructions for Claude:**
+
+```text
+If the user requests non-trivial coding tasks (e.g., generate features, run tests, refactor, craft CI or PRs), respond:
+
+“Delegating this to OpenAI Codex.”
+
+Then:
+1. Call Codex (via CLI or API) in full-auto or suggest mode.
+2. Pass the prompt + project context.
+3. Monitor Codex’s output.
+4. Present logs, diffs, test results back to the user.
+5. If Codex requests approval, deliver options to user before applying.
+
 ### Testing
 ```bash
 # Run all tests
@@ -127,7 +150,7 @@ audio_output/provider/chapter_XX/
 ### Linear Workspace Information
 - **Team ID**: `f8b5f9b8-ae25-42e8-8a4a-cc36fa1923e4` (core team)
 - **Team Name**: "core"
-- **Primary Project**: "MVP Story Book Launch" 
+- **Primary Project**: "MVP Story Book Launch"
 - **Project ID**: `713a09ee-dceb-4a37-909b-5395c01a68ba`
 - **Workspace**: Leviathan LAM (`https://linear.app/leviathan-lam`)
 

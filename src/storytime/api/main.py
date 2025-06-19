@@ -8,6 +8,7 @@ from storytime.database import create_all
 from .auth import router as auth_router
 from .jobs import router as jobs_router
 from .streaming import router as streaming_router
+from .progress import router as progress_router
 from .middleware import LoggingMiddleware
 from .settings import get_settings
 
@@ -45,6 +46,7 @@ async def on_startup():
 app.include_router(auth_router)
 app.include_router(jobs_router)
 app.include_router(streaming_router)
+app.include_router(progress_router)
 
 
 @app.get("/health", tags=["Utility"])
