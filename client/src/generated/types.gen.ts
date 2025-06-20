@@ -63,6 +63,35 @@ export type AudioMetadataResponse = {
 };
 
 /**
+ * BookChaptersResponse
+ * Aggregated chapter results for a book job.
+ */
+export type BookChaptersResponse = {
+    /**
+     * Total Chapters
+     */
+    total_chapters: number;
+    /**
+     * Completed Chapters
+     */
+    completed_chapters: number;
+    /**
+     * Failed Chapters
+     */
+    failed_chapters: number;
+    /**
+     * Total Duration Seconds
+     */
+    total_duration_seconds: number;
+    /**
+     * Chapters
+     */
+    chapters: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+/**
  * CreateJobRequest
  * Request model for creating a job.
  */
@@ -110,6 +139,29 @@ export type HttpValidationError = {
      * Detail
      */
     detail?: Array<ValidationError>;
+};
+
+/**
+ * JobAudioResponse
+ * Response model for job audio download and streaming URLs.
+ */
+export type JobAudioResponse = {
+    /**
+     * Download Url
+     */
+    download_url: string;
+    /**
+     * Streaming Url
+     */
+    streaming_url: string;
+    /**
+     * File Key
+     */
+    file_key: string;
+    /**
+     * Content Type
+     */
+    content_type: string;
 };
 
 /**
@@ -280,6 +332,17 @@ export type JobStepResponse = {
  * Types of jobs that can be processed.
  */
 export type JobType = 'text_to_audio' | 'book_processing' | 'chapter_multi_voice';
+
+/**
+ * MessageResponse
+ * Generic message response.
+ */
+export type MessageResponse = {
+    /**
+     * Message
+     */
+    message: string;
+};
 
 /**
  * PlaybackProgressResponse
@@ -693,12 +756,9 @@ export type CancelJobApiV1JobsJobIdDeleteError = CancelJobApiV1JobsJobIdDeleteEr
 
 export type CancelJobApiV1JobsJobIdDeleteResponses = {
     /**
-     * Response Cancel Job Api V1 Jobs  Job Id  Delete
      * Successful Response
      */
-    200: {
-        [key: string]: string;
-    };
+    200: MessageResponse;
 };
 
 export type CancelJobApiV1JobsJobIdDeleteResponse = CancelJobApiV1JobsJobIdDeleteResponses[keyof CancelJobApiV1JobsJobIdDeleteResponses];
@@ -789,8 +849,10 @@ export type GetJobAudioApiV1JobsJobIdAudioGetResponses = {
     /**
      * Successful Response
      */
-    200: unknown;
+    200: JobAudioResponse;
 };
+
+export type GetJobAudioApiV1JobsJobIdAudioGetResponse = GetJobAudioApiV1JobsJobIdAudioGetResponses[keyof GetJobAudioApiV1JobsJobIdAudioGetResponses];
 
 export type GetBookChaptersApiV1JobsJobIdChaptersGetData = {
     body?: never;
@@ -817,8 +879,10 @@ export type GetBookChaptersApiV1JobsJobIdChaptersGetResponses = {
     /**
      * Successful Response
      */
-    200: unknown;
+    200: BookChaptersResponse;
 };
+
+export type GetBookChaptersApiV1JobsJobIdChaptersGetResponse = GetBookChaptersApiV1JobsJobIdChaptersGetResponses[keyof GetBookChaptersApiV1JobsJobIdChaptersGetResponses];
 
 export type GetStreamingUrlApiV1AudioJobIdStreamGetData = {
     body?: never;
@@ -931,12 +995,9 @@ export type ResetProgressApiV1ProgressJobIdDeleteError = ResetProgressApiV1Progr
 
 export type ResetProgressApiV1ProgressJobIdDeleteResponses = {
     /**
-     * Response Reset Progress Api V1 Progress  Job Id  Delete
      * Successful Response
      */
-    200: {
-        [key: string]: string;
-    };
+    200: MessageResponse;
 };
 
 export type ResetProgressApiV1ProgressJobIdDeleteResponse = ResetProgressApiV1ProgressJobIdDeleteResponses[keyof ResetProgressApiV1ProgressJobIdDeleteResponses];
@@ -1144,5 +1205,5 @@ export type UpUpGetResponses = {
 export type UpUpGetResponse = UpUpGetResponses[keyof UpUpGetResponses];
 
 export type ClientOptions = {
-    baseURL: 'http://localhost:8000' | (string & {});
+    baseURL: `${string}://${string}` | (string & {});
 };

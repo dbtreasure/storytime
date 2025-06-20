@@ -57,7 +57,7 @@ export const formDataBodySerializer = {
 
 export const jsonBodySerializer = {
   bodySerializer: <T>(body: T) =>
-    JSON.stringify(body, (_key, value) =>
+    JSON.stringify(body, (key, value) =>
       typeof value === 'bigint' ? value.toString() : value,
     ),
 };
