@@ -238,18 +238,21 @@ NEVER proactively create documentation files (*.md) or README files. Only create
 
 When working with API endpoints in this codebase:
 
-  1. ALWAYS define proper Pydantic response models in the FastAPI backend (src/storytime/models.py)
-  2. ALWAYS use response_model=MyResponseModel in FastAPI route decorators
-  3. ALWAYS regenerate client types with `npm run generate-api` after API changes
-  4. NEVER manually write types in client/src/types/api.ts that duplicate OpenAPI schemas
-  5. ALWAYS import and use generated types from client/src/generated/
+  **TYPE SAFETY APPROACH: Pydantic → Zod → TypeScript**
+  
+  We use Zod schemas for runtime validation and TypeScript type inference instead of OpenAPI generators,
+  which have proven unreliable with complex schema references.
 
-  The root cause of API integration bugs is manual type definitions that don't match the actual API responses. Property name
-  mismatches (like streaming_url vs url) happen when we bypass the OpenAPI contract.
+  1. ALWAYS define proper Pydantic response models in the FastAPI backend (src/storytime/models.py)
+  2. ALWAYS use response_model=MyResponseModel in FastAPI route decorators  
+  3. ALWAYS maintain corresponding Zod schemas in client/src/schemas/index.ts
+  4. ALWAYS use Zod schemas for runtime validation in API client methods
+  5. ALWAYS import types from client/src/schemas/ (not generated/)
 
   WORKFLOW:
   - Backend: Add Pydantic model → Use in route decorator → Restart API
-  - Frontend: Run generate-api → Import generated types → Use in API client
-  - NEVER: Hand-write interface definitions for API responses
-
-  This ensures type safety and prevents property name mismatches between API and client.
+  - Frontend: Add corresponding Zod schema → Use .parse() in API client → Import inferred types
+  - Runtime safety: Zod validates API responses and catches schema mismatches early
+  
+  This approach provides both compile-time type safety AND runtime validation while avoiding
+  OpenAPI generator bugs with complex schema references (anyOf + $ref combinations).

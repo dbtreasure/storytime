@@ -95,7 +95,7 @@ const BookDetails: React.FC = () => {
   // result_data and config are loosely typed in the generated schema
   const provider = book.config?.voice_config?.provider || 'openai';
   const chapters = book.result_data?.chapters?.length || 0;
-  const duration = book.result_data?.duration as number | undefined;
+  const duration = book.result_data?.duration;
 
   return (
     <div className="p-6 max-w-4xl mx-auto">

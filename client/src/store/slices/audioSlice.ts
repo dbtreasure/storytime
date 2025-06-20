@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { AudioMetadataResponse } from '../../generated';
-import { PlaybackProgressResponse, UpdateProgressRequest } from '../../generated';
+import { AudioMetadataResponse, PlaybackProgressResponse, UpdateProgressRequest } from '../../schemas';
 import apiClient from '../../services/api';
 
 interface AudioState {

@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { PaginatedResponse } from '../../services/api';
-import { JobResponse, CreateJobRequest } from '../../generated';
+import { JobResponse, CreateJobRequest } from '../../schemas';
 import apiClient from '../../services/api';
 
 interface JobsState {
@@ -64,7 +64,7 @@ export const fetchJob = createAsyncThunk(
       return job;
     } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to fetch job'
+        (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to fetch job'
       );
     }
   }
@@ -78,7 +78,7 @@ export const createJob = createAsyncThunk(
       return job;
     } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to create job'
+        (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to create job'
       );
     }
   }
@@ -92,7 +92,7 @@ export const cancelJob = createAsyncThunk(
       return jobId;
     } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to cancel job'
+        (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to cancel job'
       );
     }
   }
@@ -106,7 +106,7 @@ export const refreshJobSteps = createAsyncThunk(
       return { jobId, steps };
     } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to refresh job steps'
+        (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to refresh job steps'
       );
     }
   }

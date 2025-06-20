@@ -23,10 +23,9 @@ repos:
     hooks:
       - id: client-typecheck
         name: TypeScript Type Check (Client)
-        entry: bash -c 'cd client && npm run typecheck'
+        entry: bash -c 'cd client && npx tsc --noEmit'
         language: system
         files: ^client/.*\.(ts|tsx)$
-        exclude: ^client/src/generated/.*
         pass_filenames: false
 
       - id: client-lint

@@ -14,8 +14,10 @@ from storytime.infrastructure.spaces import SpacesClient
 from storytime.models import (
     CreateJobRequest,
     JobAudioResponse,
+    JobConfig,
     JobListResponse,
     JobResponse,
+    JobResultData,
     JobStepResponse,
     JobType,
     BookChaptersResponse,
@@ -361,6 +363,15 @@ async def _get_job_response(job_id: str, db: AsyncSession) -> JobResponse:
         for step in steps
     ]
 
+    # Convert config and result_data to typed models
+    config = None
+    if job.config:
+        config = JobConfig(**job.config)
+    
+    result_data = None
+    if job.result_data:
+        result_data = JobResultData(**job.result_data)
+    
     return JobResponse(
         id=job.id,
         user_id=job.user_id,
@@ -369,8 +380,8 @@ async def _get_job_response(job_id: str, db: AsyncSession) -> JobResponse:
         status=job.status,
         progress=job.progress,
         error_message=job.error_message,
-        config=job.config,
-        result_data=job.result_data,
+        config=config,
+        result_data=result_data,
         input_file_key=job.input_file_key,
         output_file_key=job.output_file_key,
         created_at=job.created_at,

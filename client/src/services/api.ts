@@ -12,17 +12,27 @@ export interface AuthResponse {
   access_token: string;
   token_type: string;
 }
-import { StreamingUrlResponse, AudioMetadataResponse } from '../generated';
 import {
   JobResponse,
   JobListResponse,
   CreateJobRequest,
+  PlaybackProgressResponse,
+  UpdateProgressRequest,
+  StreamingUrlResponse,
+  AudioMetadataResponse,
+  JobResponseSchema,
+  JobListResponseSchema,
+  StreamingUrlResponseSchema,
+  AudioMetadataResponseSchema,
+  PlaybackProgressResponseSchema,
+} from '../schemas';
+
+// Keep these simple types from generated (they work fine)
+import {
   UserLogin,
   UserCreate,
   UserResponse,
   Token,
-  PlaybackProgressResponse,
-  UpdateProgressRequest,
 } from '../generated';
 
 class ApiClient {
@@ -142,7 +152,8 @@ class ApiClient {
     const response = await this.client.get<JobResponse>(
       `/api/v1/jobs/${jobId}`
     );
-    return response.data;
+    // Runtime validation with Zod
+    return JobResponseSchema.parse(response.data);
   }
 
   async cancelJob(jobId: string): Promise<void> {
@@ -162,14 +173,16 @@ class ApiClient {
       `/api/v1/audio/${jobId}/stream`
     );
     console.log('getAudioStream raw response:', response.data);
-    return response.data;
+    // Runtime validation with Zod
+    return StreamingUrlResponseSchema.parse(response.data);
   }
 
   async getAudioMetadata(jobId: string): Promise<AudioMetadataResponse> {
     const response = await this.client.get<AudioMetadataResponse>(
       `/api/v1/audio/${jobId}/metadata`
     );
-    return response.data;
+    // Runtime validation with Zod
+    return AudioMetadataResponseSchema.parse(response.data);
   }
 
   async getPlaylist(jobId: string): Promise<string> {

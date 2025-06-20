@@ -18,7 +18,7 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
 } from '@heroicons/react/24/outline';
-import { JobStepResponse } from '../generated';
+import { JobStepResponse } from '../schemas';
 
 interface TaskTreeNode {
   id: string;
