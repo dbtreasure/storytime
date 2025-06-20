@@ -264,6 +264,7 @@ class BookProcessor:
 
         # Schedule all child jobs for processing
         from storytime.worker.tasks import process_job
+
         for job_id in child_job_ids:
             try:
                 process_job.delay(job_id)

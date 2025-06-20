@@ -91,7 +91,7 @@ export const updateProgress = createAsyncThunk(
       return progress;
     } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to update progress'
+        (error as any).response?.data?.message || 'Failed to update progress'
       );
     }
   }
@@ -105,7 +105,7 @@ export const fetchRecentProgress = createAsyncThunk(
       return progress;
     } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to fetch recent progress'
+        (error as any).response?.data?.message || 'Failed to fetch recent progress'
       );
     }
   }
@@ -119,7 +119,7 @@ export const resetProgress = createAsyncThunk(
       return jobId;
     } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to reset progress'
+        (error as any).response?.data?.message || 'Failed to reset progress'
       );
     }
   }
@@ -130,8 +130,8 @@ const audioSlice = createSlice({
   initialState,
   reducers: {
     setAudioElement: (state, action: PayloadAction<HTMLAudioElement | null>) => {
-      // Cast to avoid Immer type issues with DOM elements
-      state.audioElement = action.payload as HTMLAudioElement | null;
+      // Cast through unknown to satisfy Immer's WritableDraft type
+      state.audioElement = action.payload as unknown as typeof state.audioElement;
     },
 
     setPlaying: (state, action: PayloadAction<boolean>) => {

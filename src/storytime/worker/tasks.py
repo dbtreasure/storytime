@@ -39,5 +39,3 @@ async def _process_job_async(self, job_id):
         except Exception as e:
             logging.error(f"[Celery] Job {job_id} failed: {e!s}", exc_info=True)
             raise  # Let Celery handle retry
-
-
