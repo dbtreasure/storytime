@@ -25,6 +25,8 @@ RUN pip install uv && uv pip install --system --requirements pyproject.toml
 COPY client /app/client
 WORKDIR /app/client
 ARG CACHEBUST=1
+ARG VITE_API_BASE_URL=https://plinytheai.com
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 RUN npm cache clean --force && \
     rm -rf node_modules package-lock.json && \
     npm install @rollup/rollup-linux-x64-gnu && \
