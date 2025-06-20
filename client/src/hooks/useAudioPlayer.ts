@@ -15,7 +15,7 @@ export const useAudioPlayer = () => {
   const dispatch = useAppDispatch();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   const {
     isPlaying,
     currentPosition,
@@ -74,8 +74,11 @@ export const useAudioPlayer = () => {
   // Update audio source when streaming URL changes (no auto-play)
   useEffect(() => {
     if (audioRef.current && streamingUrl) {
+      console.log('Setting audio source to:', streamingUrl);
       audioRef.current.src = streamingUrl;
       // Don't auto-play - let the AudioPlayer component control playback
+    } else if (audioRef.current && !streamingUrl) {
+      console.log('No streaming URL available, audio src not set');
     }
   }, [streamingUrl, dispatch]);
 
@@ -188,7 +191,7 @@ export const useAudioPlayer = () => {
     currentChapter,
     isLoading,
     error,
-    
+
     // Controls
     play,
     pause,
@@ -200,7 +203,7 @@ export const useAudioPlayer = () => {
     previousChapter,
     loadJob,
     setVolume,
-    
+
     // Computed values
     progress: duration > 0 ? (currentPosition / duration) * 100 : 0,
     remainingTime: duration - currentPosition,

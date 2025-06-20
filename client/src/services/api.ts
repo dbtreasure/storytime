@@ -22,6 +22,7 @@ import {
   JobResponseSchema,
   StreamingUrlResponseSchema,
   AudioMetadataResponseSchema,
+  JobListResponse,
 } from '../schemas';
 
 // Keep these simple types from generated (they work fine)
@@ -171,7 +172,9 @@ class ApiClient {
     );
     console.log('getAudioStream raw response:', response.data);
     // Runtime validation with Zod
-    return StreamingUrlResponseSchema.parse(response.data);
+    const parsed = StreamingUrlResponseSchema.parse(response.data);
+    console.log('getAudioStream parsed response:', parsed);
+    return parsed;
   }
 
   async getAudioMetadata(jobId: string): Promise<AudioMetadataResponse> {

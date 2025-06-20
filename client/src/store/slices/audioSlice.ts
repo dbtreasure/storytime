@@ -60,6 +60,10 @@ export const loadAudio = createAsyncThunk(
       console.log('streamingData.streaming_url:', streamingData.streaming_url);
       console.log('full streamingData:', streamingData);
 
+      if (!streamingData.streaming_url) {
+        throw new Error('No streaming URL returned from API');
+      }
+
       return {
         jobId,
         streamingUrl: streamingData.streaming_url,
