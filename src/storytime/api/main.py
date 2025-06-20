@@ -62,15 +62,17 @@ if os.path.exists(static_dir):
     async def vite_svg():
         return FileResponse(f"{static_dir}/vite.svg")
 
-    # Catch-all route for React Router (SPA fallback)
-    @app.get("/{full_path:path}")
+    # Catch-all route for React Router (SPA fallback) - but exclude API routes
+    @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(request: Request, full_path: str):
-        # Don't handle API routes
-        if full_path.startswith("api/"):
-            return {"detail": "Not Found"}
+        # Only serve SPA for non-API routes
+        if not full_path.startswith("api/"):
+            return FileResponse(f"{static_dir}/index.html")
 
-        # Serve index.html for all non-API routes
-        return FileResponse(f"{static_dir}/index.html")
+        # For API routes, return 404 to let FastAPI handle them properly
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail="Not found")
 
 
 @app.get("/api/health", tags=["Utility"])
