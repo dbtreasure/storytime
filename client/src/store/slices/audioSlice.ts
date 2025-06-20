@@ -1,5 +1,10 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { AudioMetadataResponse, PlaybackProgressResponse, UpdateProgressRequest } from '../../schemas';
+import {
+  AudioMetadataResponse,
+  PlaybackProgressResponse,
+  UpdateProgressRequest,
+  StreamingUrlResponse,
+} from '../../schemas';
 import apiClient from '../../services/api';
 
 interface AudioState {
@@ -44,6 +49,10 @@ const initialState: AudioState = {
 };
 
 // Async thunks
+interface StreamingUrlResponseWithLegacy extends StreamingUrlResponse {
+  streamingUrl?: string;
+}
+
 export const loadAudio = createAsyncThunk(
   'audio/loadAudio',
   async (jobId: string, { rejectWithValue }) => {
@@ -57,16 +66,22 @@ export const loadAudio = createAsyncThunk(
       ]);
 
       console.log('loadAudio responses:', { streamingData, metadata, progress });
-      console.log('streamingData.streaming_url:', streamingData.streaming_url);
       console.log('full streamingData:', streamingData);
 
-      if (!streamingData.streaming_url) {
-        throw new Error('No streaming URL returned from API');
+      const { streamingUrl: camelUrl, streaming_url } =
+        streamingData as StreamingUrlResponseWithLegacy;
+      const streamingUrl = camelUrl ?? streaming_url;
+      if (!streamingUrl) {
+        throw new Error(
+          `No streaming URL returned from API. Received: ${JSON.stringify(
+            streamingData
+          )}`
+        );
       }
 
       return {
         jobId,
-        streamingUrl: streamingData.streaming_url,
+        streamingUrl,
         metadata,
         progress,
       };
