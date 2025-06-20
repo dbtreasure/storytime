@@ -7,7 +7,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from storytime.worker.tasks import process_job
+
 from storytime.api.auth import get_current_user
 from storytime.database import Job, JobStatus, JobStep, User, get_db
 from storytime.infrastructure.spaces import SpacesClient
@@ -18,6 +18,7 @@ from storytime.models import (
     JobStepResponse,
     JobType,
 )
+from storytime.worker.tasks import process_job
 
 # JobProcessor is now simplified and always available
 
@@ -257,7 +258,7 @@ async def get_job_audio(
             "download_url": download_url,
             "streaming_url": streaming_url,
             "file_key": job.output_file_key,
-            "content_type": "audio/mpeg"
+            "content_type": "audio/mpeg",
         }
 
     except HTTPException:
@@ -289,6 +290,7 @@ async def get_book_chapters(
 
         # Get aggregated chapter results
         from storytime.services.book_processor import BookProcessor
+
         book_processor = BookProcessor(db, SpacesClient())
         results = await book_processor.aggregate_chapter_results(job_id)
 

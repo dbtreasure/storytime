@@ -1,10 +1,9 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance } from 'axios';
 import {
   PaginatedResponse,
-  AudioMetadata,
-  StreamingUrl,
   AuthResponse,
 } from '../types/api';
+import { StreamingUrlResponse, AudioMetadataResponse } from '../generated';
 import {
   JobResponse,
   JobListResponse,
@@ -23,7 +22,7 @@ class ApiClient {
 
   constructor() {
     this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-    
+
     this.client = axios.create({
       baseURL: this.baseURL,
       headers: {
@@ -67,10 +66,10 @@ class ApiClient {
       '/api/v1/auth/login',
       credentials
     );
-    
+
     // Set the token for future requests
     this.setToken(response.data.access_token);
-    
+
     const user = await this.getCurrentUser();
 
     return {
@@ -85,13 +84,13 @@ class ApiClient {
       '/api/v1/auth/register',
       userData
     );
-    
+
     // Register doesn't return a token, so login after registration
     const authResponse = await this.login({
       email: userData.email,
       password: userData.password
     });
-    
+
     return authResponse;
   }
 
@@ -103,7 +102,7 @@ class ApiClient {
   // Job endpoints
   async createJob(jobData: CreateJobRequest): Promise<JobResponse> {
     const response = await this.client.post<JobResponse>(
-      '/api/v1/jobs/',
+      '/api/v1/jobs',
       jobData
     );
     return response.data;
@@ -116,7 +115,7 @@ class ApiClient {
     job_type?: string;
   }): Promise<PaginatedResponse<JobResponse>> {
     const response = await this.client.get<JobListResponse>(
-      '/api/v1/jobs/',
+      '/api/v1/jobs',
       { params }
     );
 
@@ -149,22 +148,16 @@ class ApiClient {
   }
 
   // Audio endpoints
-  async getAudioStream(jobId: string): Promise<StreamingUrl> {
-    const response = await this.client.get<any>(
+  async getAudioStream(jobId: string): Promise<StreamingUrlResponse> {
+    const response = await this.client.get<StreamingUrlResponse>(
       `/api/v1/audio/${jobId}/stream`
     );
     console.log('getAudioStream raw response:', response.data);
-    
-    // Handle the actual response structure
-    if (response.data && typeof response.data === 'object') {
-      return response.data as StreamingUrl;
-    }
-    
     return response.data;
   }
 
-  async getAudioMetadata(jobId: string): Promise<AudioMetadata> {
-    const response = await this.client.get<AudioMetadata>(
+  async getAudioMetadata(jobId: string): Promise<AudioMetadataResponse> {
+    const response = await this.client.get<AudioMetadataResponse>(
       `/api/v1/audio/${jobId}/metadata`
     );
     return response.data;

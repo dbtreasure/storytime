@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { current } from 'immer';
-import { AudioMetadata, StreamingUrl } from '../../types/api';
+import { AudioMetadataResponse } from '../../generated';
 import { PlaybackProgressResponse, UpdateProgressRequest } from '../../generated';
 import apiClient from '../../services/api';
 
@@ -12,19 +11,19 @@ interface AudioState {
   volume: number;
   currentJobId: string | null;
   currentChapter: string | null;
-  
+
   // Audio metadata
-  metadata: AudioMetadata | null;
+  metadata: AudioMetadataResponse | null;
   streamingUrl: string | null;
-  
+
   // Progress tracking
   progress: PlaybackProgressResponse | null;
   recentProgress: PlaybackProgressResponse[];
-  
+
   // UI state
   isLoading: boolean;
   error: string | null;
-  
+
   // Audio element (not serializable)
   audioElement: HTMLAudioElement | null;
 }
@@ -51,27 +50,27 @@ export const loadAudio = createAsyncThunk(
   async (jobId: string, { rejectWithValue }) => {
     try {
       console.log('loadAudio starting for jobId:', jobId);
-      
+
       const [streamingData, metadata, progress] = await Promise.all([
         apiClient.getAudioStream(jobId),
         apiClient.getAudioMetadata(jobId),
         apiClient.getProgress(jobId).catch(() => null), // Progress might not exist
       ]);
-      
+
       console.log('loadAudio responses:', { streamingData, metadata, progress });
-      console.log('streamingData.url:', streamingData.url);
+      console.log('streamingData.streaming_url:', streamingData.streaming_url);
       console.log('full streamingData:', streamingData);
-      
+
       return {
         jobId,
-        streamingUrl: streamingData.streaming_url || streamingData.url,
+        streamingUrl: streamingData.streaming_url,
         metadata,
         progress,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('loadAudio failed:', error);
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to load audio'
+        (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to load audio'
       );
     }
   }
@@ -90,7 +89,7 @@ export const updateProgress = createAsyncThunk(
         current_chapter_id: params.currentChapterId,
       } as UpdateProgressRequest);
       return progress;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
         error.response?.data?.message || 'Failed to update progress'
       );
@@ -104,7 +103,7 @@ export const fetchRecentProgress = createAsyncThunk(
     try {
       const progress = await apiClient.getRecentProgress();
       return progress;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
         error.response?.data?.message || 'Failed to fetch recent progress'
       );
@@ -118,7 +117,7 @@ export const resetProgress = createAsyncThunk(
     try {
       await apiClient.resetProgress(jobId);
       return jobId;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
         error.response?.data?.message || 'Failed to reset progress'
       );
@@ -132,35 +131,35 @@ const audioSlice = createSlice({
   reducers: {
     setAudioElement: (state, action: PayloadAction<HTMLAudioElement | null>) => {
       // Cast to avoid Immer type issues with DOM elements
-      (state as any).audioElement = action.payload;
+      state.audioElement = action.payload as HTMLAudioElement | null;
     },
-    
+
     setPlaying: (state, action: PayloadAction<boolean>) => {
       state.isPlaying = action.payload;
     },
-    
+
     setCurrentPosition: (state, action: PayloadAction<number>) => {
       state.currentPosition = action.payload;
     },
-    
+
     setDuration: (state, action: PayloadAction<number>) => {
       state.duration = action.payload;
     },
-    
+
     setVolume: (state, action: PayloadAction<number>) => {
       const volume = Math.max(0, Math.min(1, action.payload));
       state.volume = volume;
     },
-    
+
     setCurrentChapter: (state, action: PayloadAction<string | null>) => {
       state.currentChapter = action.payload;
     },
-    
+
     seekTo: (state, action: PayloadAction<number>) => {
       const position = Math.max(0, Math.min(state.duration, action.payload));
       state.currentPosition = position;
     },
-    
+
     clearAudio: (state) => {
       state.isPlaying = false;
       state.currentPosition = 0;
@@ -172,7 +171,7 @@ const audioSlice = createSlice({
       state.progress = null;
       state.audioElement = null;
     },
-    
+
     clearError: (state) => {
       state.error = null;
     },
@@ -188,14 +187,14 @@ const audioSlice = createSlice({
       .addCase(loadAudio.fulfilled, (state, action) => {
         console.log('loadAudio.fulfilled', action.payload);
         const { jobId, streamingUrl, metadata, progress } = action.payload;
-        
+
         state.isLoading = false;
         state.currentJobId = jobId;
         state.streamingUrl = streamingUrl;
         state.metadata = metadata;
         state.progress = progress;
-        state.duration = metadata.duration;
-        
+        state.duration = metadata.duration || 0;
+
         // Set position from progress if available
         if (progress) {
           state.currentPosition = progress.position_seconds;
@@ -232,7 +231,7 @@ const audioSlice = createSlice({
           state.currentPosition = 0;
           state.currentChapter = null;
         }
-        
+
         // Remove from recent progress
         state.recentProgress = state.recentProgress.filter(p => p.job_id !== jobId);
       });

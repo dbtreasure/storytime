@@ -235,3 +235,21 @@ Do what has been asked; nothing more, nothing less.
 NEVER create files unless they're absolutely necessary for achieving your goal.
 ALWAYS prefer editing an existing file to creating a new one.
 NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+
+When working with API endpoints in this codebase:
+
+  1. ALWAYS define proper Pydantic response models in the FastAPI backend (src/storytime/models.py)
+  2. ALWAYS use response_model=MyResponseModel in FastAPI route decorators
+  3. ALWAYS regenerate client types with `npm run generate-api` after API changes
+  4. NEVER manually write types in client/src/types/api.ts that duplicate OpenAPI schemas
+  5. ALWAYS import and use generated types from client/src/generated/
+
+  The root cause of API integration bugs is manual type definitions that don't match the actual API responses. Property name
+  mismatches (like streaming_url vs url) happen when we bypass the OpenAPI contract.
+
+  WORKFLOW:
+  - Backend: Add Pydantic model → Use in route decorator → Restart API
+  - Frontend: Run generate-api → Import generated types → Use in API client
+  - NEVER: Hand-write interface definitions for API responses
+
+  This ensures type safety and prevents property name mismatches between API and client.

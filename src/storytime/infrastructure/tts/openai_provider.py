@@ -13,8 +13,8 @@ load_dotenv()
 
 
 class OpenAIProvider(TTSProvider):
-    """TTS provider for OpenAI API (v1.0+). 
-    
+    """TTS provider for OpenAI API (v1.0+).
+
     Uses tts-1-hd by default - OpenAI's high-definition TTS model for better quality.
     """
 
@@ -74,7 +74,7 @@ class OpenAIProvider(TTSProvider):
 
         # OpenAI TTS API does not support style parameter
         if style:
-            print(f"Note: Style parameter is not supported by OpenAI TTS API and will be ignored.")
+            print("Note: Style parameter is not supported by OpenAI TTS API and will be ignored.")
 
         # Prepare API call parameters (no style parameter for OpenAI)
         api_params = {

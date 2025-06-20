@@ -123,6 +123,10 @@ export interface AudioMetadata {
 }
 
 export interface StreamingUrl {
-  url: string;
+  streaming_url: string;
   expires_at: string;
+  file_key: string;
+  content_type: string;
+  resume_info?: any;
+  source_job_id?: string;
 }

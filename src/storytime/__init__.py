@@ -6,15 +6,15 @@ single-voice text-to-audio system.
 """
 
 from .models import (
-    JobStatus,
     CreateJobRequest,
     JobResponse,
+    JobStatus,
     VoiceConfig,
 )
 
 __all__ = [
-    "JobStatus",
     "CreateJobRequest",
     "JobResponse",
+    "JobStatus",
     "VoiceConfig",
 ]

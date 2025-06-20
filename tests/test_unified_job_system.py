@@ -17,7 +17,6 @@ from storytime.models import (
 from storytime.services.job_processor import JobProcessor
 
 
-
 class TestJobProcessor:
     """Tests for the job processor service."""
 
@@ -73,7 +72,7 @@ class TestJobProcessor:
     async def test_create_job_step(self, job_processor, mock_db_session):
         """Test creating a job step for progress tracking."""
         job_id = str(uuid4())
-        
+
         # Mock the add and commit operations
         mock_db_session.add = AsyncMock()
         mock_db_session.commit = AsyncMock()
@@ -109,6 +108,7 @@ class TestJobProcessor:
 
         # Mock job step for progress tracking
         from storytime.database import JobStep
+
         mock_step = JobStep(
             id=str(uuid4()),
             job_id=sample_job.id,
@@ -166,7 +166,7 @@ class TestJobAPI:
             description=None,
             content="Content",
             file_key=None,
-            voice_config=voice_config
+            voice_config=voice_config,
         )
 
         assert request_with_voice.voice_config is not None
@@ -202,8 +202,6 @@ class TestJobAPI:
         assert job.progress == 1.0
         assert len(job.steps) == 1
         assert job.steps[0].step_name == "test_step"
-
-
 
 
 @pytest.mark.asyncio

@@ -26,9 +26,9 @@ export const login = createAsyncThunk(
       localStorage.setItem('access_token', response.access_token);
       localStorage.setItem('user', JSON.stringify(response.user));
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data?.message || 'Login failed'
+        (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Login failed'
       );
     }
   }
@@ -79,7 +79,7 @@ const authSlice = createSlice({
     initializeAuth: (state) => {
       const token = localStorage.getItem('access_token');
       const userStr = localStorage.getItem('user');
-      
+
       if (token && userStr) {
         try {
           state.user = JSON.parse(userStr);

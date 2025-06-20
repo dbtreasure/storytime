@@ -203,3 +203,35 @@ class ResumeInfoResponse(BaseModel):
     last_played_at: datetime | None = None
     current_chapter_id: str | None = None
     current_chapter_position: float = 0.0
+
+
+class StreamingUrlResponse(BaseModel):
+    """Response model for audio streaming URLs."""
+
+    streaming_url: str = Field(..., description="Pre-signed URL for streaming audio")
+    expires_at: str = Field(..., description="ISO timestamp when URL expires")
+    file_key: str = Field(..., description="Storage key for the audio file")
+    content_type: str = Field(..., description="MIME type of the audio file")
+    resume_info: ResumeInfoResponse = Field(..., description="Resume information for the user")
+    source_job_id: str | None = Field(
+        None, description="ID of the child job that provided the audio"
+    )
+
+
+class AudioMetadataResponse(BaseModel):
+    """Response model for audio metadata."""
+
+    job_id: str
+    title: str
+    status: JobStatus
+    format: str
+    duration: float | None = None
+    file_size: int | None = None
+    created_at: str | None = None
+    completed_at: str | None = None
+    chapters: list[dict] = Field(default_factory=list)
+    resume_position: float = 0.0
+    percentage_complete: float = 0.0
+    last_played_at: datetime | None = None
+    current_chapter_id: str | None = None
+    current_chapter_position: float = 0.0

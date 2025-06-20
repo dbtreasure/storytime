@@ -1,18 +1,18 @@
 """Tests for audio streaming API endpoints."""
 
-import pytest
-from datetime import datetime, timedelta
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
+import pytest
 from fastapi import HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from storytime.api.streaming import (
-    get_streaming_url,
+    _get_user_job,
     get_audio_metadata,
     get_playlist,
-    _get_user_job,
+    get_streaming_url,
 )
 from storytime.database import Job, JobStatus, User
 
@@ -65,22 +65,22 @@ def mock_db_session():
 async def test_get_streaming_url_success(mock_user, mock_completed_job, mock_db_session):
     """Test successful streaming URL generation."""
     job_id = mock_completed_job.id
-    
+
     # Mock database query
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = mock_completed_job
     mock_db_session.execute.return_value = mock_result
-    
+
     # Mock SpacesClient
     with patch("storytime.api.streaming.SpacesClient") as mock_spaces_client:
         mock_client_instance = mock_spaces_client.return_value
         mock_client_instance.get_streaming_url = AsyncMock(
             return_value="https://example.com/streaming-url"
         )
-        
+
         # Call the endpoint function
         result = await get_streaming_url(job_id, mock_user, mock_db_session)
-        
+
         # Verify the result
         assert "streaming_url" in result
         assert result["streaming_url"] == "https://example.com/streaming-url"
@@ -88,11 +88,10 @@ async def test_get_streaming_url_success(mock_user, mock_completed_job, mock_db_
         assert "file_key" in result
         assert result["file_key"] == mock_completed_job.output_file_key
         assert result["content_type"] == "audio/mpeg"
-        
+
         # Verify SpacesClient was called correctly
         mock_client_instance.get_streaming_url.assert_called_once_with(
-            key=mock_completed_job.output_file_key,
-            expires_in=3600
+            key=mock_completed_job.output_file_key, expires_in=3600
         )
 
 
@@ -100,16 +99,16 @@ async def test_get_streaming_url_success(mock_user, mock_completed_job, mock_db_
 async def test_get_streaming_url_job_not_complete(mock_user, mock_incomplete_job, mock_db_session):
     """Test streaming URL request for incomplete job."""
     job_id = mock_incomplete_job.id
-    
+
     # Mock database query
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = mock_incomplete_job
     mock_db_session.execute.return_value = mock_result
-    
+
     # Call should raise HTTPException
     with pytest.raises(HTTPException) as exc_info:
         await get_streaming_url(job_id, mock_user, mock_db_session)
-    
+
     assert exc_info.value.status_code == 400
     assert "not completed" in str(exc_info.value.detail)
 
@@ -118,15 +117,15 @@ async def test_get_streaming_url_job_not_complete(mock_user, mock_incomplete_job
 async def test_get_audio_metadata_success(mock_user, mock_completed_job, mock_db_session):
     """Test successful audio metadata retrieval."""
     job_id = mock_completed_job.id
-    
+
     # Mock database query
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = mock_completed_job
     mock_db_session.execute.return_value = mock_result
-    
+
     # Call the endpoint function
     result = await get_audio_metadata(job_id, mock_user, mock_db_session)
-    
+
     # Verify the result
     assert result["job_id"] == job_id
     assert result["title"] == mock_completed_job.title
@@ -142,22 +141,22 @@ async def test_get_audio_metadata_success(mock_user, mock_completed_job, mock_db
 async def test_get_playlist_single_file(mock_user, mock_completed_job, mock_db_session):
     """Test playlist generation for single-file audio."""
     job_id = mock_completed_job.id
-    
+
     # Mock database query
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = mock_completed_job
     mock_db_session.execute.return_value = mock_result
-    
+
     # Mock SpacesClient
     with patch("storytime.api.streaming.SpacesClient") as mock_spaces_client:
         mock_client_instance = mock_spaces_client.return_value
         mock_client_instance.get_streaming_url = AsyncMock(
             return_value="https://example.com/streaming-url"
         )
-        
+
         # Call the endpoint function
         result = await get_playlist(job_id, mock_user, mock_db_session)
-        
+
         # Verify the playlist format
         assert isinstance(result, Response)
         assert result.media_type == "audio/x-mpegurl"
@@ -171,7 +170,7 @@ async def test_get_playlist_single_file(mock_user, mock_completed_job, mock_db_s
 async def test_get_playlist_multi_chapter(mock_user, mock_completed_job, mock_db_session):
     """Test playlist generation for multi-chapter audio."""
     job_id = mock_completed_job.id
-    
+
     # Add chapter data to the job
     mock_completed_job.result_data = {
         "chapters": [
@@ -189,12 +188,12 @@ async def test_get_playlist_multi_chapter(mock_user, mock_completed_job, mock_db
             },
         ]
     }
-    
+
     # Mock database query
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = mock_completed_job
     mock_db_session.execute.return_value = mock_result
-    
+
     # Mock SpacesClient
     with patch("storytime.api.streaming.SpacesClient") as mock_spaces_client:
         mock_client_instance = mock_spaces_client.return_value
@@ -204,10 +203,10 @@ async def test_get_playlist_multi_chapter(mock_user, mock_completed_job, mock_db
                 "https://example.com/chapter2-url",
             ]
         )
-        
+
         # Call the endpoint function
         result = await get_playlist(job_id, mock_user, mock_db_session)
-        
+
         # Verify the playlist format
         assert isinstance(result, Response)
         assert result.media_type == "audio/x-mpegurl"
@@ -224,15 +223,15 @@ async def test_get_user_job_not_found(mock_user, mock_db_session):
     """Test _get_user_job when job doesn't exist."""
     job_id = str(uuid4())
     user_id = mock_user.id
-    
+
     # Mock database query returning None
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None
     mock_db_session.execute.return_value = mock_result
-    
+
     # Call should raise HTTPException
     with pytest.raises(HTTPException) as exc_info:
         await _get_user_job(job_id, user_id, mock_db_session)
-    
+
     assert exc_info.value.status_code == 404
     assert "not found" in str(exc_info.value.detail)

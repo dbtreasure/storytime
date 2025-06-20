@@ -1,9 +1,8 @@
 from __future__ import annotations
 
+import logging
 import os
 import tempfile
-import logging
-from typing import List
 
 from dotenv import load_dotenv
 from pydub import AudioSegment
@@ -92,65 +91,69 @@ class TTSGenerator:
         """Generate audio by chunking text and concatenating results."""
         chunks = self._chunk_text(text, max_chars)
         logger.info(f"Split text into {len(chunks)} chunks for TTS processing")
-        
+
         audio_segments = []
-        
+
         for i, chunk in enumerate(chunks):
-            logger.debug(f"Processing chunk {i+1}/{len(chunks)} ({len(chunk)} chars)")
+            logger.debug(f"Processing chunk {i + 1}/{len(chunks)} ({len(chunk)} chars)")
             chunk_audio = await self._generate_single_chunk(chunk, voice_id)
-            
+
             # Convert to AudioSegment for concatenation
             with tempfile.NamedTemporaryFile(suffix=".mp3") as tmp_file:
                 tmp_file.write(chunk_audio)
                 tmp_file.flush()
                 segment = AudioSegment.from_mp3(tmp_file.name)
                 audio_segments.append(segment)
-        
+
         # Concatenate all segments
         logger.info(f"Concatenating {len(audio_segments)} audio segments")
         combined_audio = audio_segments[0]
         for segment in audio_segments[1:]:
             combined_audio += segment
-        
+
         # Export to bytes
         with tempfile.NamedTemporaryFile(suffix=".mp3") as tmp_file:
             combined_audio.export(tmp_file.name, format="mp3")
             with open(tmp_file.name, "rb") as f:
                 return f.read()
 
-    def _chunk_text(self, text: str, max_chars: int) -> List[str]:
+    def _chunk_text(self, text: str, max_chars: int) -> list[str]:
         """Split text into chunks that respect sentence boundaries when possible."""
         if len(text) <= max_chars:
             return [text]
-        
+
         chunks = []
         current_chunk = ""
-        
+
         # Split on sentences first
-        sentences = text.replace('\n\n', ' [PARAGRAPH] ').split('. ')
-        
+        sentences = text.replace("\n\n", " [PARAGRAPH] ").split(". ")
+
         for sentence in sentences:
             sentence = sentence.strip()
             if not sentence:
                 continue
-                
+
             # Restore paragraph breaks
-            sentence = sentence.replace('[PARAGRAPH]', '\n\n')
-            
+            sentence = sentence.replace("[PARAGRAPH]", "\n\n")
+
             # Add period back if it was removed (except for last sentence)
-            if not sentence.endswith('.') and not sentence.endswith('!') and not sentence.endswith('?'):
-                sentence += '.'
-            
+            if (
+                not sentence.endswith(".")
+                and not sentence.endswith("!")
+                and not sentence.endswith("?")
+            ):
+                sentence += "."
+
             # Check if adding this sentence would exceed the limit
-            test_chunk = current_chunk + (' ' if current_chunk else '') + sentence
-            
+            test_chunk = current_chunk + (" " if current_chunk else "") + sentence
+
             if len(test_chunk) <= max_chars:
                 current_chunk = test_chunk
             else:
                 # Current chunk is full, start a new one
                 if current_chunk:
                     chunks.append(current_chunk.strip())
-                
+
                 # If single sentence is too long, split it further
                 if len(sentence) > max_chars:
                     word_chunks = self._chunk_by_words(sentence, max_chars)
@@ -158,31 +161,30 @@ class TTSGenerator:
                     current_chunk = word_chunks[-1]  # Start new chunk with last part
                 else:
                     current_chunk = sentence
-        
+
         # Add the final chunk
         if current_chunk:
             chunks.append(current_chunk.strip())
-        
+
         return chunks
 
-    def _chunk_by_words(self, text: str, max_chars: int) -> List[str]:
+    def _chunk_by_words(self, text: str, max_chars: int) -> list[str]:
         """Split text by words when sentence-based chunking isn't sufficient."""
         words = text.split()
         chunks = []
         current_chunk = ""
-        
+
         for word in words:
-            test_chunk = current_chunk + (' ' if current_chunk else '') + word
-            
+            test_chunk = current_chunk + (" " if current_chunk else "") + word
+
             if len(test_chunk) <= max_chars:
                 current_chunk = test_chunk
             else:
                 if current_chunk:
                     chunks.append(current_chunk)
                 current_chunk = word
-        
+
         if current_chunk:
             chunks.append(current_chunk)
-        
-        return chunks
 
+        return chunks

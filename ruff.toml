@@ -6,7 +6,7 @@ target-version = "py311"
 [lint]
 # Enable comprehensive rules to replace multiple tools:
 # E/W = pycodestyle (replaces flake8)
-# F = pyflakes (replaces flake8) 
+# F = pyflakes (replaces flake8)
 # I = isort (replaces isort)
 # UP = pyupgrade
 # B = flake8-bugbear
@@ -16,6 +16,7 @@ target-version = "py311"
 select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
 ignore = [
     "E501",  # Line too long (handled by formatter)
+    "B008",  # Do not perform function call in argument defaults (FastAPI Depends pattern)
 ]
 fixable = ["ALL"]
 unfixable = []
@@ -25,4 +26,4 @@ unfixable = []
 quote-style = "double"
 indent-style = "space"
 line-ending = "auto"
-skip-magic-trailing-comma = false 
+skip-magic-trailing-comma = false

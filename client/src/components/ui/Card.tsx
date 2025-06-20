@@ -9,23 +9,23 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   hover?: boolean;
 }
 
-const Card: React.FC<CardProps> = ({
+const Card = ({
   children,
   className,
   padding = 'md',
   shadow = 'md',
   hover = false,
   ...props
-}) => {
+}: CardProps) => {
   const baseClasses = 'bg-white rounded-lg border border-gray-200';
-  
+
   const paddingClasses = {
     none: '',
     sm: 'p-3',
     md: 'p-4',
     lg: 'p-6'
   };
-  
+
   const shadowClasses = {
     none: '',
     sm: 'shadow-sm',
@@ -70,10 +70,10 @@ interface CardTitleProps {
   as?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
 }
 
-const CardTitle: React.FC<CardTitleProps> = ({ 
-  children, 
-  className, 
-  as: Component = 'h3' 
+const CardTitle: React.FC<CardTitleProps> = ({
+  children,
+  className,
+  as: Component = 'h3'
 }) => {
   return (
     <Component className={clsx('text-lg font-semibold text-gray-900', className)}>
@@ -109,10 +109,17 @@ const CardFooter: React.FC<CardFooterProps> = ({ children, className }) => {
 };
 
 // Compound component pattern
-Card.Header = CardHeader;
-Card.Title = CardTitle;
-Card.Content = CardContent;
-Card.Footer = CardFooter;
+interface CardComponent extends React.FC<CardProps> {
+  Header: typeof CardHeader;
+  Title: typeof CardTitle;
+  Content: typeof CardContent;
+  Footer: typeof CardFooter;
+}
+
+(Card as CardComponent).Header = CardHeader;
+(Card as CardComponent).Title = CardTitle;
+(Card as CardComponent).Content = CardContent;
+(Card as CardComponent).Footer = CardFooter;
 
 export default Card;
 export { Card };

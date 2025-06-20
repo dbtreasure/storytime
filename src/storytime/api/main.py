@@ -1,18 +1,19 @@
 import logging
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from storytime.database import create_all
 
 from .auth import router as auth_router
 from .jobs import router as jobs_router
-from .streaming import router as streaming_router
-from .progress import router as progress_router
 from .middleware import LoggingMiddleware
+from .progress import router as progress_router
 from .settings import get_settings
+from .streaming import router as streaming_router
 
 settings = get_settings()
 
@@ -45,15 +46,31 @@ async def on_startup():
         logging.getLogger(__name__).error(f"DB bootstrap failed: {e}")
 
 
-app.include_router(auth_router, prefix="/api")
-app.include_router(jobs_router, prefix="/api")
-app.include_router(streaming_router, prefix="/api")
-app.include_router(progress_router, prefix="/api")
+app.include_router(auth_router)
+app.include_router(jobs_router)
+app.include_router(streaming_router)
+app.include_router(progress_router)
 
 # Serve React client static files
 static_dir = "/app/static"
 if os.path.exists(static_dir):
-    app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
+    # Mount static assets at /assets
+    app.mount("/assets", StaticFiles(directory=f"{static_dir}/assets"), name="assets")
+
+    # Serve other static files
+    @app.get("/vite.svg")
+    async def vite_svg():
+        return FileResponse(f"{static_dir}/vite.svg")
+
+    # Catch-all route for React Router (SPA fallback)
+    @app.get("/{full_path:path}")
+    async def serve_spa(request: Request, full_path: str):
+        # Don't handle API routes
+        if full_path.startswith("api/"):
+            return {"detail": "Not Found"}
+
+        # Serve index.html for all non-API routes
+        return FileResponse(f"{static_dir}/index.html")
 
 
 @app.get("/api/health", tags=["Utility"])

@@ -71,7 +71,7 @@ const Upload: React.FC = () => {
 
     const files = Array.from(e.dataTransfer.files);
     handleFiles(files);
-  }, []);
+  }, [handleFiles]);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -79,7 +79,7 @@ const Upload: React.FC = () => {
   };
 
   const handleFiles = async (files: File[]) => {
-    const textFile = files.find(file => 
+    const textFile = files.find(file =>
       file.type === 'text/plain' || file.name.endsWith('.txt')
     );
 
@@ -99,7 +99,7 @@ const Upload: React.FC = () => {
         const title = textFile.name.replace(/\.[^/.]+$/, '');
         setValue('title', title);
       }
-    } catch (err) {
+    } catch {
       setError('Failed to read file content');
     }
   };
@@ -116,7 +116,7 @@ const Upload: React.FC = () => {
     try {
       // Transform form data to match API interface
       const jobType = data.jobType === 'full_audiobook' ? 'book_processing' : 'text_to_audio';
-      
+
       const result = await dispatch(createJob({
         job_type: jobType,
         content: data.textContent, // Backend expects 'content' not 'text'
@@ -128,8 +128,8 @@ const Upload: React.FC = () => {
       })).unwrap();
 
       navigate(`/jobs/${result.id}`);
-    } catch (err: any) {
-      setError(err.message || 'Failed to create job. Please try again.');
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Failed to create job. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -156,7 +156,7 @@ const Upload: React.FC = () => {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             Job Configuration
           </h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">

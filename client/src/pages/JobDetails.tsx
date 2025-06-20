@@ -36,10 +36,10 @@ const JobDetails: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { currentJob: selectedJob, isLoading: loading, error } = useAppSelector((state) => state.jobs);
-  
+
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [cancelling, setCancelling] = useState(false);
-  
+
   // Convert JobStepResponse to TaskTreeNode format
   const convertStepsToTasks = (steps: JobStepResponse[]): TaskTreeNode[] => {
     return steps.map(step => ({
@@ -74,7 +74,7 @@ const JobDetails: React.FC = () => {
 
   const handleCancelJob = async () => {
     if (!jobId) return;
-    
+
     setCancelling(true);
     try {
       await dispatch(cancelJob(jobId)).unwrap();
@@ -177,11 +177,11 @@ const JobDetails: React.FC = () => {
                 )}
               </button>
             )}
-            
+
             <div className="mr-3 flex-shrink-0">
               {getStatusIcon(task.status)}
             </div>
-            
+
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-2">
                 <h4 className="text-sm font-medium text-gray-900 truncate">
@@ -191,7 +191,7 @@ const JobDetails: React.FC = () => {
                   {task.status}
                 </Badge>
               </div>
-              
+
               <div className="mt-1 flex items-center space-x-4 text-xs text-gray-500">
                 {task.startTime && (
                   <span>
@@ -204,7 +204,7 @@ const JobDetails: React.FC = () => {
                   </span>
                 )}
               </div>
-              
+
               {task.progress !== undefined && task.status === 'running' && (
                 <div className="mt-2">
                   <div className="w-full bg-gray-200 rounded-full h-1.5">
@@ -215,7 +215,7 @@ const JobDetails: React.FC = () => {
                   </div>
                 </div>
               )}
-              
+
               {task.error && (
                 <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
                   <strong>Error:</strong> {task.error}
@@ -224,9 +224,9 @@ const JobDetails: React.FC = () => {
             </div>
           </div>
         </div>
-        
-        {task.children && 
-         task.children.length > 0 && 
+
+        {task.children &&
+         task.children.length > 0 &&
          expandedTasks.has(task.id) && (
           <div className="mt-2">
             {renderTaskTree(task.children, level + 1)}
@@ -277,7 +277,7 @@ const JobDetails: React.FC = () => {
             <ArrowLeftIcon className="h-4 w-4 mr-2" />
             Back to Jobs
           </Button>
-          
+
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
               {selectedJob.title || `Job ${selectedJob.id.slice(0, 8)}`}
@@ -287,7 +287,7 @@ const JobDetails: React.FC = () => {
             </p>
           </div>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           {selectedJob.status === 'COMPLETED' && (
             <Button
@@ -297,7 +297,7 @@ const JobDetails: React.FC = () => {
               Play Audiobook
             </Button>
           )}
-          
+
           {canCancel && (
             <Button
               variant="outline"
@@ -342,7 +342,7 @@ const JobDetails: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Provider</p>
               <p className="text-lg font-semibold text-gray-900 mt-1">
-                {selectedJob.config?.provider || 'OpenAI'}
+                {(selectedJob.config as any)?.provider || 'OpenAI'}
               </p>
             </div>
           </div>

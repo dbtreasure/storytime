@@ -6,7 +6,6 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-import asyncio
 from unittest.mock import AsyncMock
 
 
@@ -16,20 +15,15 @@ def test_imports():
 
     try:
         # Test model imports
-        from storytime.models import JobStatus, CreateJobRequest, VoiceConfig
         print("✅ Model imports successful")
 
         # Test simplified job processor import
-        from storytime.services.job_processor import JobProcessor
         print("✅ Job processor import successful")
 
         # Test API imports
-        from storytime.api.jobs import router as jobs_router
-        from storytime.api.auth import router as auth_router
         print("✅ API imports successful")
 
         # Test simplified worker imports
-        from storytime.worker.tasks import process_job
         print("✅ Worker imports successful")
 
         return True
@@ -45,7 +39,7 @@ def test_job_processor():
 
     try:
         from storytime.services.job_processor import JobProcessor
-        
+
         # Mock dependencies
         mock_session = AsyncMock()
         mock_spaces = AsyncMock()
@@ -146,13 +140,13 @@ def test_tts_generator():
 
     try:
         from storytime.services.tts_generator import TTSGenerator
-        
+
         # Test initialization (will use OpenAI by default)
         generator = TTSGenerator()
-        
+
         assert generator.provider is not None
         assert generator.provider_name in ["openai", "eleven"]
-        
+
         print("✅ TTS generator initialization works")
         return True
 

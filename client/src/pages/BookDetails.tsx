@@ -92,9 +92,9 @@ const BookDetails: React.FC = () => {
   }
 
   const title = book.title || `Audiobook ${book.id.slice(0, 8)}`;
-  const provider = book.voice_config?.provider || 'openai';
-  const chapters = book.result?.chapters?.length || 0;
-  const duration = book.result?.duration;
+  const provider = book.config?.voice_config?.provider || 'openai';
+  const chapters = book.result_data?.chapters?.length || 0;
+  const duration = book.result_data?.duration;
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -116,12 +116,12 @@ const BookDetails: React.FC = () => {
               <BookOpenIcon className="h-16 w-16 text-white opacity-90" />
             </div>
           </div>
-          
+
           <div className="flex-1 min-w-0">
             <h1 className="text-4xl font-bold text-gray-900 mb-2">
               {title}
             </h1>
-            
+
             <div className="flex items-center space-x-4 mb-4">
               <Badge className={getProviderColor(provider)}>
                 {provider}
@@ -132,20 +132,20 @@ const BookDetails: React.FC = () => {
                 </span>
               )}
             </div>
-            
+
             <div className="space-y-2 text-sm text-gray-600">
               <div className="flex items-center">
                 <CalendarIcon className="h-4 w-4 mr-2" />
                 Created {formatDate(book.created_at)}
               </div>
-              
+
               {duration && (
                 <div className="flex items-center">
                   <ClockIcon className="h-4 w-4 mr-2" />
                   {formatDuration(duration)}
                 </div>
               )}
-              
+
               <div className="flex items-center">
                 <SpeakerWaveIcon className="h-4 w-4 mr-2" />
                 AI-generated with {provider} voices

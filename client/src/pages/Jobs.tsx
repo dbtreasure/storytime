@@ -23,18 +23,18 @@ import {
 const Jobs: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { jobs, loading, error } = useAppSelector((state) => state.jobs);
-  
+  const { jobs, isLoading, error } = useAppSelector((state) => state.jobs);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('createdAt');
   const [currentPage, setCurrentPage] = useState(1);
   const [cancellingJobs, setCancellingJobs] = useState<Set<string>>(new Set());
-  
+
   const jobsPerPage = 10;
 
   useEffect(() => {
-    dispatch(fetchJobs());
+    dispatch(fetchJobs({}));
   }, [dispatch]);
 
   const handleCancelJob = async (jobId: string) => {
@@ -127,7 +127,7 @@ const Jobs: React.FC = () => {
     return status === 'PENDING' || status === 'PROCESSING';
   };
 
-  if (loading && jobs.length === 0) {
+  if (isLoading && jobs.length === 0) {
     return (
       <div className="flex justify-center items-center h-64">
         <Spinner size="lg" />
@@ -165,7 +165,7 @@ const Jobs: React.FC = () => {
               />
             </div>
           </div>
-          
+
           <div className="flex gap-4">
             <div className="min-w-[140px]">
               <Select
@@ -180,7 +180,7 @@ const Jobs: React.FC = () => {
                 ]}
               />
             </div>
-            
+
             <div className="min-w-[140px]">
               <Select
                 value={sortBy}
@@ -195,7 +195,7 @@ const Jobs: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="flex items-center justify-between mt-4">
           <p className="text-sm text-gray-500">
             Showing {filteredJobs.length} of {jobs.length} jobs
@@ -217,7 +217,7 @@ const Jobs: React.FC = () => {
             {jobs.length === 0 ? 'No jobs yet' : 'No jobs match your filters'}
           </h3>
           <p className="mt-2 text-gray-500">
-            {jobs.length === 0 
+            {jobs.length === 0
               ? 'Get started by creating your first audiobook job.'
               : 'Try adjusting your search or filter criteria.'
             }
@@ -241,7 +241,7 @@ const Jobs: React.FC = () => {
                     <div className="flex-shrink-0">
                       {getStatusIcon(job.status)}
                     </div>
-                    
+
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-3">
                         <h3 className="text-lg font-medium text-gray-900 truncate">
@@ -251,22 +251,22 @@ const Jobs: React.FC = () => {
                           {job.status.toLowerCase()}
                         </Badge>
                       </div>
-                      
+
                       <div className="mt-1 flex items-center space-x-4 text-sm text-gray-500">
                         <span>ID: {job.id.slice(0, 8)}</span>
                         <span>•</span>
                         <span>Created: {formatDate(job.created_at)}</span>
-                        {job.voice_config?.provider && (
+                        {(job.config as any)?.voice_config?.provider && (
                           <>
                             <span>•</span>
-                            <span>Provider: {job.voice_config.provider}</span>
+                            <span>Provider: {(job.config as any).voice_config.provider}</span>
                           </>
                         )}
                       </div>
-                      
+
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2 ml-4">
                     {job.status === 'COMPLETED' && (
                       <Button
@@ -278,7 +278,7 @@ const Jobs: React.FC = () => {
                         Play
                       </Button>
                     )}
-                    
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -287,7 +287,7 @@ const Jobs: React.FC = () => {
                       <EyeIcon className="h-4 w-4 mr-1" />
                       View
                     </Button>
-                    
+
                     {canCancelJob(job.status) && (
                       <Button
                         variant="outline"
@@ -315,7 +315,7 @@ const Jobs: React.FC = () => {
               <p className="text-sm text-gray-500">
                 Showing {startIndex + 1} to {Math.min(startIndex + jobsPerPage, filteredJobs.length)} of {filteredJobs.length} results
               </p>
-              
+
               <div className="flex space-x-2">
                 <Button
                   variant="outline"
@@ -325,7 +325,7 @@ const Jobs: React.FC = () => {
                 >
                   Previous
                 </Button>
-                
+
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                   const pageNum = i + 1;
                   return (
@@ -339,7 +339,7 @@ const Jobs: React.FC = () => {
                     </Button>
                   );
                 })}
-                
+
                 <Button
                   variant="outline"
                   size="sm"

@@ -4,11 +4,8 @@ import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import {
   SpeakerWaveIcon,
-  SpeakerXMarkIcon,
   BackwardIcon,
   ForwardIcon,
-  StopIcon,
-  ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 
 interface AudioPlayerProps {
@@ -164,7 +161,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
               className="absolute top-0 left-0 h-full bg-blue-600 rounded-full transition-all duration-150"
               style={{ width: `${progressPercentage}%` }}
             />
-            
+
             {/* Scrub handle */}
             <div
               className="absolute top-1/2 transform -translate-y-1/2 w-4 h-4 bg-white border-2 border-blue-600 rounded-full shadow-sm cursor-grab active:cursor-grabbing"

@@ -29,7 +29,7 @@ const Navbar: React.FC<NavbarProps> = ({ className = '' }) => {
   };
 
   const runningJobsCount = jobs.filter(
-    job => job.status === 'running' || job.status === 'pending'
+    job => job.status === 'PROCESSING' || job.status === 'PENDING'
   ).length;
 
   const navigationItems = [
@@ -121,14 +121,14 @@ const Navbar: React.FC<NavbarProps> = ({ className = '' }) => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">
-              {user?.firstName} {user?.lastName}
+              {user?.email}
             </p>
             <p className="text-xs text-gray-500 truncate">
-              {user?.email}
+              User ID: {user?.id}
             </p>
           </div>
         </div>
-        
+
         <Button
           variant="outline"
           size="sm"

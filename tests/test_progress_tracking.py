@@ -1,14 +1,15 @@
 """Tests for playback progress tracking API endpoints."""
 
-import pytest
 from datetime import datetime
 from uuid import uuid4
 
-from storytime.database import Job, JobStatus, User, PlaybackProgress
+import pytest
+
+from storytime.database import PlaybackProgress
 from storytime.models import (
-    UpdateProgressRequest,
     PlaybackProgressResponse,
     ResumeInfoResponse,
+    UpdateProgressRequest,
 )
 
 
@@ -18,11 +19,11 @@ class TestProgressModel:
     def test_is_completed_property(self):
         """Test is_completed property."""
         progress = PlaybackProgress()
-        
+
         # Not completed
         progress.percentage_complete = 0.5
         assert progress.is_completed is False
-        
+
         # Completed
         progress.percentage_complete = 0.96
         assert progress.is_completed is True
@@ -31,16 +32,16 @@ class TestProgressModel:
         """Test resume_position property."""
         progress = PlaybackProgress()
         progress.position_seconds = 125.5
-        
+
         assert progress.resume_position == 125.5
 
     def test_update_progress_method(self):
         """Test update_progress method."""
         progress = PlaybackProgress()
-        
+
         # Update with duration
         progress.update_progress(60.0, 120.0)
-        
+
         assert progress.position_seconds == 60.0
         assert progress.duration_seconds == 120.0
         assert progress.percentage_complete == 0.5
@@ -50,10 +51,10 @@ class TestProgressModel:
         """Test update_progress method without duration."""
         progress = PlaybackProgress()
         progress.duration_seconds = 120.0  # Set existing duration
-        
+
         # Update without new duration
         progress.update_progress(90.0)
-        
+
         assert progress.position_seconds == 90.0
         assert progress.duration_seconds == 120.0
         assert progress.percentage_complete == 0.75
@@ -61,10 +62,10 @@ class TestProgressModel:
     def test_update_progress_negative_position(self):
         """Test update_progress with negative position."""
         progress = PlaybackProgress()
-        
+
         # Negative position should be clamped to 0
         progress.update_progress(-10.0, 120.0)
-        
+
         assert progress.position_seconds == 0.0
         assert progress.percentage_complete == 0.0
 
@@ -77,13 +78,13 @@ async def test_progress_api_integration():
         position_seconds=60.0,
         duration_seconds=120.0,
         current_chapter_id="chapter-1",
-        current_chapter_position=30.0
+        current_chapter_position=30.0,
     )
-    
+
     assert request.position_seconds == 60.0
     assert request.duration_seconds == 120.0
     assert request.current_chapter_id == "chapter-1"
-    
+
     # Test response model creation
     response = PlaybackProgressResponse(
         id=str(uuid4()),
@@ -99,10 +100,10 @@ async def test_progress_api_integration():
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
     )
-    
+
     assert response.position_seconds == 60.0
     assert response.percentage_complete == 0.5
-    
+
     # Test resume info response
     resume_info = ResumeInfoResponse(
         has_progress=True,
@@ -110,8 +111,8 @@ async def test_progress_api_integration():
         percentage_complete=0.5,
         last_played_at=datetime.utcnow(),
         current_chapter_id="chapter-1",
-        current_chapter_position=30.0
+        current_chapter_position=30.0,
     )
-    
+
     assert resume_info.has_progress is True
     assert resume_info.resume_position == 60.0

@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
 import { fetchJobs } from '../store/slices/jobsSlice';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
-import AudioPlayer from '../components/AudioPlayer';
+// import AudioPlayer from '../components/AudioPlayer';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
@@ -40,7 +40,7 @@ const Library: React.FC = () => {
   const dispatch = useAppDispatch();
   const { jobs, isLoading: loading, error } = useAppSelector((state) => state.jobs);
   const audioPlayer = useAudioPlayer();
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('createdAt');
   const [filterBy, setFilterBy] = useState('all');
@@ -58,9 +58,9 @@ const Library: React.FC = () => {
       id: job.id,
       title: job.title || `Audiobook ${job.id.slice(0, 8)}`,
       createdAt: job.created_at,
-      ttsProvider: job.voice_config?.provider || 'openai',
-      chapters: job.result?.chapters?.length || 0,
-      duration: job.result?.duration,
+      ttsProvider: (job.config as any)?.voice_config?.provider || 'openai',
+      chapters: (job.result_data as any)?.chapters?.length || 0,
+      duration: (job.result_data as any)?.duration,
       progress: 0, // Progress would come from separate progress API
       description: undefined,
     }));
@@ -70,10 +70,10 @@ const Library: React.FC = () => {
     .filter(book => {
       const matchesSearch = book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            book.id.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesFilter = filterBy === 'all' || 
+      const matchesFilter = filterBy === 'all' ||
                            (filterBy === 'openai' && book.ttsProvider === 'openai') ||
                            (filterBy === 'elevenlabs' && book.ttsProvider === 'elevenlabs') ||
-                           (filterBy === 'in_progress' && book.progress > 0 && book.progress < 100) ||
+                           (filterBy === 'in_progress' && book.progress && book.progress > 0 && book.progress < 100) ||
                            (filterBy === 'completed' && book.progress === 100);
       return matchesSearch && matchesFilter;
     })
@@ -119,13 +119,13 @@ const Library: React.FC = () => {
   };
 
   const handlePlayAudio = (bookId: string) => {
-    console.log('handlePlayAudio called:', { 
-      bookId, 
-      currentJobId: audioPlayer.currentJobId, 
-      isPlaying: audioPlayer.isPlaying, 
-      isLoading: audioPlayer.isLoading 
+    console.log('handlePlayAudio called:', {
+      bookId,
+      currentJobId: audioPlayer.currentJobId,
+      isPlaying: audioPlayer.isPlaying,
+      isLoading: audioPlayer.isLoading
     });
-    
+
     if (audioPlayer.currentJobId === bookId && audioPlayer.isPlaying) {
       audioPlayer.pause();
     } else if (audioPlayer.currentJobId === bookId && !audioPlayer.isPlaying) {
@@ -146,8 +146,8 @@ const Library: React.FC = () => {
   const renderGridView = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {filteredAudiobooks.map((book) => (
-        <Card 
-          key={book.id} 
+        <Card
+          key={book.id}
           className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
           onClick={() => navigate(`/library/${book.id}`)}
         >
@@ -161,25 +161,25 @@ const Library: React.FC = () => {
               </Badge>
             </div>
           </div>
-          
+
           <div className="p-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
               {book.title}
             </h3>
-            
+
             <div className="space-y-2 text-sm text-gray-500 mb-4">
               <div className="flex items-center">
                 <CalendarIcon className="h-4 w-4 mr-2" />
                 {formatDate(book.createdAt)}
               </div>
-              
+
               {book.duration && (
                 <div className="flex items-center">
                   <ClockIcon className="h-4 w-4 mr-2" />
                   {formatDuration(book.duration)}
                 </div>
               )}
-              
+
               {book.chapters && book.chapters > 0 && (
                 <div className="flex items-center">
                   <BookOpenIcon className="h-4 w-4 mr-2" />
@@ -188,21 +188,21 @@ const Library: React.FC = () => {
               )}
             </div>
 
-            {book.progress > 0 && (
+            {book.progress && book.progress > 0 && (
               <div className="mb-4">
                 <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                   <span>Progress</span>
-                  <span>{Math.round(book.progress)}%</span>
+                  <span>{Math.round(book.progress || 0)}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
                     className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${book.progress}%` }}
+                    style={{ width: `${book.progress || 0}%` }}
                   />
                 </div>
               </div>
             )}
-            
+
             <Button
               className="w-full"
               onClick={(e) => {
@@ -218,7 +218,7 @@ const Library: React.FC = () => {
               ) : (
                 <PlayIcon className="h-4 w-4 mr-2" />
               )}
-              {isCurrentlyPlaying(book.id) ? 'Pause' : book.progress > 0 ? 'Continue' : 'Play'}
+              {isCurrentlyPlaying(book.id) ? 'Pause' : book.progress && book.progress > 0 ? 'Continue' : 'Play'}
             </Button>
           </div>
         </Card>
@@ -229,8 +229,8 @@ const Library: React.FC = () => {
   const renderListView = () => (
     <div className="space-y-4">
       {filteredAudiobooks.map((book) => (
-        <Card 
-          key={book.id} 
+        <Card
+          key={book.id}
           className="p-6 hover:shadow-lg transition-shadow cursor-pointer"
           onClick={() => navigate(`/library/${book.id}`)}
         >
@@ -241,7 +241,7 @@ const Library: React.FC = () => {
                   <BookOpenIcon className="h-8 w-8 text-white" />
                 </div>
               </div>
-              
+
               <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-3 mb-1">
                   <h3 className="text-lg font-semibold text-gray-900 truncate">
@@ -251,7 +251,7 @@ const Library: React.FC = () => {
                     {book.ttsProvider}
                   </Badge>
                 </div>
-                
+
                 <div className="flex items-center space-x-4 text-sm text-gray-500">
                   <span>{formatDate(book.createdAt)}</span>
                   {book.duration && (
@@ -268,23 +268,23 @@ const Library: React.FC = () => {
                   )}
                 </div>
 
-                {book.progress > 0 && (
+                {book.progress && book.progress > 0 && (
                   <div className="mt-2 max-w-xs">
                     <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                       <span>Progress</span>
-                      <span>{Math.round(book.progress)}%</span>
+                      <span>{Math.round(book.progress || 0)}%</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-1.5">
                       <div
                         className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
-                        style={{ width: `${book.progress}%` }}
+                        style={{ width: `${book.progress || 0}%` }}
                       />
                     </div>
                   </div>
                 )}
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-2 ml-4">
               <Button
                 onClick={(e) => {
@@ -300,7 +300,7 @@ const Library: React.FC = () => {
                 ) : (
                   <PlayIcon className="h-4 w-4 mr-2" />
                 )}
-                {isCurrentlyPlaying(book.id) ? 'Pause' : book.progress > 0 ? 'Continue' : 'Play'}
+                {isCurrentlyPlaying(book.id) ? 'Pause' : book.progress && book.progress > 0 ? 'Continue' : 'Play'}
               </Button>
             </div>
           </div>
@@ -347,7 +347,7 @@ const Library: React.FC = () => {
               />
             </div>
           </div>
-          
+
           <div className="flex gap-4">
             <div className="min-w-[140px]">
               <Select
@@ -362,7 +362,7 @@ const Library: React.FC = () => {
                 ]}
               />
             </div>
-            
+
             <div className="min-w-[140px]">
               <Select
                 value={sortBy}
@@ -375,7 +375,7 @@ const Library: React.FC = () => {
                 ]}
               />
             </div>
-            
+
             <div className="flex border border-gray-300 rounded-lg">
               <button
                 onClick={() => setViewMode('grid')}
@@ -396,7 +396,7 @@ const Library: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="flex items-center justify-between mt-4">
           <p className="text-sm text-gray-500">
             {filteredAudiobooks.length} of {audiobooks.length} audiobooks
@@ -467,7 +467,7 @@ const Library: React.FC = () => {
             <p className="text-2xl font-bold text-gray-900">{audiobooks.length}</p>
             <p className="text-sm text-gray-500">Total Books</p>
           </Card>
-          
+
           <Card className="p-4 text-center">
             <ClockIcon className="mx-auto h-8 w-8 text-green-600 mb-2" />
             <p className="text-2xl font-bold text-gray-900">
@@ -475,7 +475,7 @@ const Library: React.FC = () => {
             </p>
             <p className="text-sm text-gray-500">Total Duration</p>
           </Card>
-          
+
           <Card className="p-4 text-center">
             <SpeakerWaveIcon className="mx-auto h-8 w-8 text-purple-600 mb-2" />
             <p className="text-2xl font-bold text-gray-900">
@@ -483,7 +483,7 @@ const Library: React.FC = () => {
             </p>
             <p className="text-sm text-gray-500">OpenAI Books</p>
           </Card>
-          
+
           <Card className="p-4 text-center">
             <SpeakerWaveIcon className="mx-auto h-8 w-8 text-orange-600 mb-2" />
             <p className="text-2xl font-bold text-gray-900">

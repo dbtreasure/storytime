@@ -42,11 +42,14 @@ class JobProcessor:
 
         try:
             # Determine job type and process accordingly
-            job_type = job.config.get("job_type", "text_to_audio") if job.config else "text_to_audio"
-            
+            job_type = (
+                job.config.get("job_type", "text_to_audio") if job.config else "text_to_audio"
+            )
+
             if job_type == "book_processing":
                 # Import here to avoid circular dependency
                 from storytime.services.book_processor import BookProcessor
+
                 book_processor = BookProcessor(self.db_session, self.spaces_client, self)
                 result = await book_processor._execute_book_workflow(job)
             else:
@@ -99,12 +102,11 @@ class JobProcessor:
 
             # Generate audio using simple TTS
             audio_data = await self.tts_generator.generate_simple_audio(
-                text=text_content,
-                voice_config=voice_config
+                text=text_content, voice_config=voice_config
             )
 
             # Upload audio to storage
-            audio_key = f"jobs/{str(job.id)}/audio.mp3"
+            audio_key = f"jobs/{job.id!s}/audio.mp3"
             await self.spaces_client.upload_audio_file(audio_key, audio_data)
 
             # Calculate audio metadata
@@ -121,10 +123,7 @@ class JobProcessor:
 
             # Complete step
             await self._update_job_step(
-                step.id,
-                StepStatus.COMPLETED,
-                progress=1.0,
-                completed_at=datetime.utcnow()
+                step.id, StepStatus.COMPLETED, progress=1.0, completed_at=datetime.utcnow()
             )
 
             # Update overall job progress
@@ -134,16 +133,13 @@ class JobProcessor:
                 "processing_type": "single_voice",
                 "audio_key": audio_key,
                 "text_length": len(text_content),
-                "voice_config": voice_config
+                "voice_config": voice_config,
             }
 
         except Exception as e:
             # Mark step as failed
             await self._update_job_step(
-                step.id,
-                StepStatus.FAILED,
-                error_message=str(e),
-                completed_at=datetime.utcnow()
+                step.id, StepStatus.FAILED, error_message=str(e), completed_at=datetime.utcnow()
             )
             raise
 
@@ -177,34 +173,27 @@ class JobProcessor:
         if result_data is not None:
             update_data["result_data"] = result_data
 
-        await self.db_session.execute(
-            update(Job).where(Job.id == job_id).values(**update_data)
-        )
+        await self.db_session.execute(update(Job).where(Job.id == job_id).values(**update_data))
         await self.db_session.commit()
 
-    async def _update_job_output(self, job_id: str, output_file_key: str, metadata: dict | None = None) -> None:
+    async def _update_job_output(
+        self, job_id: str, output_file_key: str, metadata: dict | None = None
+    ) -> None:
         """Update job with output file reference and optional metadata."""
-        update_values = {
-            "output_file_key": output_file_key,
-            "updated_at": datetime.utcnow()
-        }
-        
+        update_values = {"output_file_key": output_file_key, "updated_at": datetime.utcnow()}
+
         # Add metadata to result_data if provided
         if metadata:
             # Get current job to preserve existing result_data
-            result = await self.db_session.execute(
-                select(Job).where(Job.id == job_id)
-            )
+            result = await self.db_session.execute(select(Job).where(Job.id == job_id))
             job = result.scalar_one()
-            
+
             # Merge metadata into result_data
             result_data = job.result_data or {}
             result_data.update(metadata)
             update_values["result_data"] = result_data
-        
-        await self.db_session.execute(
-            update(Job).where(Job.id == job_id).values(**update_values)
-        )
+
+        await self.db_session.execute(update(Job).where(Job.id == job_id).values(**update_values))
         await self.db_session.commit()
 
     async def _create_job_step(
@@ -306,4 +295,3 @@ class JobProcessor:
             duration=job.duration,
             steps=step_responses,
         )
-

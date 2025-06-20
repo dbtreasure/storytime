@@ -16,11 +16,10 @@ import {
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { user } = useAppSelector((state) => state.auth);
   const { jobs, isLoading: jobsLoading } = useAppSelector((state) => state.jobs);
 
   useEffect(() => {
-    dispatch(fetchJobs());
+    dispatch(fetchJobs({}));
   }, [dispatch]);
 
   const recentJobs = jobs.slice(0, 5);
@@ -75,7 +74,7 @@ const Dashboard: React.FC = () => {
           <CloudArrowUpIcon className="h-6 w-6" />
           <span>Upload New Story</span>
         </Button>
-        
+
         <Button
           variant="outline"
           size="lg"
@@ -85,7 +84,7 @@ const Dashboard: React.FC = () => {
           <BriefcaseIcon className="h-6 w-6" />
           <span>View All Jobs</span>
         </Button>
-        
+
         <Button
           variant="outline"
           size="lg"
@@ -238,7 +237,7 @@ const Dashboard: React.FC = () => {
               View Library
             </Button>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {completedJobs.slice(0, 3).map((job) => (
               <div

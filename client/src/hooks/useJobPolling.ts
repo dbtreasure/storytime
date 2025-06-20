@@ -20,14 +20,14 @@ export const useJobPolling = (options: UseJobPollingOptions = {}) => {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check if there are any active jobs that need polling
-  const hasActiveJobs = jobs.some(job => 
+  const hasActiveJobs = jobs.some(job =>
     job.status === 'PENDING' || job.status === 'PROCESSING'
   ) || (currentJob && (currentJob.status === 'PENDING' || currentJob.status === 'PROCESSING'));
 
   useEffect(() => {
     if (!enabled) return;
 
-    const shouldPoll = jobId ? 
+    const shouldPoll = jobId ?
       (currentJob?.status === 'PENDING' || currentJob?.status === 'PROCESSING') :
       hasActiveJobs;
 
@@ -38,7 +38,7 @@ export const useJobPolling = (options: UseJobPollingOptions = {}) => {
           dispatch(fetchJob(jobId));
         } else {
           // Poll job list
-          dispatch(fetchJobs());
+          dispatch(fetchJobs({}));
         }
       }, interval);
 
