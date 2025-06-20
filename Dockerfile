@@ -24,6 +24,7 @@ RUN pip install uv && uv pip install --system --requirements pyproject.toml
 # Build React client
 COPY client /app/client
 WORKDIR /app/client
+ARG CACHEBUST=1
 RUN npm cache clean --force && \
     rm -rf node_modules package-lock.json && \
     npm install @rollup/rollup-linux-x64-gnu && \
