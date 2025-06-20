@@ -70,6 +70,17 @@ cd src && python -m storytime.api.main
 uvicorn storytime.api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+### Client Build (for Static File Serving)
+```bash
+# Build React client for production
+cd client && npm run build
+
+# Copy built assets to static directory (for FastAPI static serving)
+cp -r client/dist/* static/
+
+# Note: static/ directory is in .gitignore - build assets are generated during deployment
+```
+
 ### Docker
 ```bash
 # Build and run with docker-compose

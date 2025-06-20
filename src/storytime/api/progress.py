@@ -1,6 +1,7 @@
 """Playback progress tracking API endpoints."""
 
 import logging
+import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -10,10 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from storytime.api.auth import get_current_user
 from storytime.database import Job, PlaybackProgress, User, get_db
 from storytime.models import (
+    MessageResponse,
     PlaybackProgressResponse,
     ResumeInfoResponse,
     UpdateProgressRequest,
-    MessageResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -73,43 +74,48 @@ async def update_progress(
     # Verify job exists and belongs to user
     await _verify_user_job(job_id, current_user.id, db)
 
-    # Get or create progress record
-    result = await db.execute(
-        select(PlaybackProgress).where(
-            and_(PlaybackProgress.job_id == job_id, PlaybackProgress.user_id == current_user.id)
-        )
+    # Use UPSERT to handle concurrent requests atomically
+    from sqlalchemy.dialects.postgresql import insert
+
+    # Calculate percentage
+    percentage_complete = 0.0
+    if request.duration_seconds and request.duration_seconds > 0:
+        percentage_complete = min(1.0, request.position_seconds / request.duration_seconds)
+
+    now = datetime.utcnow()
+
+    # Use PostgreSQL's INSERT ... ON CONFLICT DO UPDATE for atomic upsert
+    stmt = insert(PlaybackProgress).values(
+        id=str(uuid.uuid4()),
+        user_id=current_user.id,
+        job_id=job_id,
+        position_seconds=request.position_seconds,
+        duration_seconds=request.duration_seconds,
+        percentage_complete=percentage_complete,
+        current_chapter_id=request.current_chapter_id,
+        current_chapter_position=request.current_chapter_position or 0.0,
+        last_played_at=now,
+        created_at=now,
+        updated_at=now,
     )
-    progress = result.scalar_one_or_none()
 
-    if progress:
-        # Update existing progress
-        progress.update_progress(
-            position_seconds=request.position_seconds, duration_seconds=request.duration_seconds
-        )
-        if request.current_chapter_id is not None:
-            progress.current_chapter_id = request.current_chapter_id
-        progress.current_chapter_position = request.current_chapter_position
-        progress.updated_at = datetime.utcnow()
-    else:
-        # Create new progress record
-        progress = PlaybackProgress(
-            user_id=current_user.id,
-            job_id=job_id,
-            position_seconds=request.position_seconds,
-            duration_seconds=request.duration_seconds,
-            current_chapter_id=request.current_chapter_id,
-            current_chapter_position=request.current_chapter_position,
-        )
-        # Calculate percentage on creation
-        if request.duration_seconds and request.duration_seconds > 0:
-            progress.percentage_complete = min(
-                1.0, request.position_seconds / request.duration_seconds
-            )
+    # On conflict (unique constraint), update the existing record
+    stmt = stmt.on_conflict_do_update(
+        constraint="unique_user_job_progress",
+        set_={
+            "position_seconds": stmt.excluded.position_seconds,
+            "duration_seconds": stmt.excluded.duration_seconds,
+            "percentage_complete": stmt.excluded.percentage_complete,
+            "current_chapter_id": stmt.excluded.current_chapter_id,
+            "current_chapter_position": stmt.excluded.current_chapter_position,
+            "last_played_at": stmt.excluded.last_played_at,
+            "updated_at": stmt.excluded.updated_at,
+        },
+    ).returning(PlaybackProgress)
 
-        db.add(progress)
-
+    result = await db.execute(stmt)
+    progress = result.scalar_one()
     await db.commit()
-    await db.refresh(progress)
 
     return PlaybackProgressResponse(
         id=progress.id,

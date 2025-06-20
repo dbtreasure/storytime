@@ -98,9 +98,17 @@ export const useAudioPlayer = () => {
 
   // Progress update interval
   useEffect(() => {
+    console.log('Progress interval effect triggered:', { isPlaying, currentJobId, currentChapter });
     if (isPlaying && currentJobId) {
+      console.log('Setting up progress interval - will update every 10 seconds');
       progressIntervalRef.current = setInterval(() => {
         if (audioRef.current) {
+          console.log('Updating progress:', {
+            jobId: currentJobId,
+            currentTime: audioRef.current.currentTime,
+            duration: audioRef.current.duration,
+            paused: audioRef.current.paused
+          });
           dispatch(updateProgress({
             jobId: currentJobId,
             positionSeconds: audioRef.current.currentTime,

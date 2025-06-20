@@ -96,8 +96,11 @@ Desktop.ini
 *.tmp
 *.temp
 
+# Static build assets (generated during deployment)
+static/
+
 # API keys (backup safety)
 *.key
 api_keys.txt
-secrets.txt 
+secrets.txt
 .aider*

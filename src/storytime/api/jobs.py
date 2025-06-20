@@ -59,7 +59,7 @@ async def create_job(
             config={
                 "job_type": request.job_type.value,
                 "content": request.content,
-                "voice_config": request.voice_config.model_dump() if request.voice_config else {},
+                "voice_config": request.voice_config.model_dump() if request.voice_config else None,
                 "processing_mode": request.processing_mode,
             },
             input_file_key=request.file_key,
@@ -366,7 +366,11 @@ async def _get_job_response(job_id: str, db: AsyncSession) -> JobResponse:
     # Convert config and result_data to typed models
     config = None
     if job.config:
-        config = JobConfig(**job.config)
+        # Handle legacy jobs with empty voice_config dict
+        config_data = job.config.copy()
+        if config_data.get("voice_config") == {}:
+            config_data["voice_config"] = None
+        config = JobConfig(**config_data)
 
     result_data = None
     if job.result_data:

@@ -24,7 +24,12 @@ RUN pip install uv && uv pip install --system --requirements pyproject.toml
 # Build React client
 COPY client /app/client
 WORKDIR /app/client
-RUN npm install && npm run build
+ARG CACHEBUST=1
+RUN npm cache clean --force && \
+    rm -rf node_modules package-lock.json && \
+    npm install @rollup/rollup-linux-x64-gnu && \
+    npm install && \
+    npm run build
 
 # Copy application code and built client
 WORKDIR /app
@@ -38,4 +43,4 @@ EXPOSE 8000
 ENV PYTHONPATH=/app/src
 
 # Run the application
-CMD ["uvicorn", "src.storytime.api.main:app", "--host", "0.0.0.0", "--port", "8000"] 
+CMD ["uvicorn", "src.storytime.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
