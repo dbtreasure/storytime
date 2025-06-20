@@ -58,9 +58,9 @@ const Library: React.FC = () => {
       id: job.id,
       title: job.title || `Audiobook ${job.id.slice(0, 8)}`,
       createdAt: job.created_at,
-      ttsProvider: (job.config as any)?.voice_config?.provider || 'openai',
-      chapters: (job.result_data as any)?.chapters?.length || 0,
-      duration: (job.result_data as any)?.duration,
+      ttsProvider: job.config?.voice_config?.provider || 'openai',
+      chapters: job.result_data?.chapters?.length || 0,
+      duration: job.result_data?.duration,
       progress: 0, // Progress would come from separate progress API
       description: undefined,
     }));

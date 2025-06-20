@@ -13,10 +13,13 @@ from storytime.database import Job, JobStatus, JobStep, User, get_db
 from storytime.infrastructure.spaces import SpacesClient
 from storytime.models import (
     CreateJobRequest,
+    JobAudioResponse,
     JobListResponse,
     JobResponse,
     JobStepResponse,
     JobType,
+    BookChaptersResponse,
+    MessageResponse,
 )
 from storytime.worker.tasks import process_job
 
@@ -147,10 +150,12 @@ async def get_job(
         raise HTTPException(status_code=500, detail=f"Failed to get job: {e!s}")
 
 
-@router.delete("/{job_id}")
+@router.delete("/{job_id}", response_model=MessageResponse)
 async def cancel_job(
-    job_id: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
-) -> dict[str, str]:
+    job_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
     """Cancel a job."""
     logger.info(f"Cancelling job {job_id} for user {current_user.id}")
 
@@ -176,7 +181,7 @@ async def cancel_job(
         )
         await db.commit()
 
-        return {"message": "Job cancelled successfully"}
+        return MessageResponse(message="Job cancelled successfully")
 
     except HTTPException:
         raise
@@ -229,10 +234,12 @@ async def get_job_steps(
         raise HTTPException(status_code=500, detail=f"Failed to get job steps: {e!s}")
 
 
-@router.get("/{job_id}/audio")
+@router.get("/{job_id}/audio", response_model=JobAudioResponse)
 async def get_job_audio(
-    job_id: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
-):
+    job_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> JobAudioResponse:
     """Download or stream the audio result from a completed job."""
     logger.info(f"Getting audio for job {job_id} for user {current_user.id}")
 
@@ -254,12 +261,12 @@ async def get_job_audio(
         download_url = await spaces_client.get_presigned_download_url(job.output_file_key)
         streaming_url = await spaces_client.get_streaming_url(job.output_file_key)
 
-        return {
-            "download_url": download_url,
-            "streaming_url": streaming_url,
-            "file_key": job.output_file_key,
-            "content_type": "audio/mpeg",
-        }
+        return JobAudioResponse(
+            download_url=download_url,
+            streaming_url=streaming_url,
+            file_key=job.output_file_key,
+            content_type="audio/mpeg",
+        )
 
     except HTTPException:
         raise
@@ -270,10 +277,12 @@ async def get_job_audio(
         raise HTTPException(status_code=500, detail=f"Failed to get job audio: {e!s}")
 
 
-@router.get("/{job_id}/chapters")
+@router.get("/{job_id}/chapters", response_model=BookChaptersResponse)
 async def get_book_chapters(
-    job_id: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
-):
+    job_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> BookChaptersResponse:
     """Get chapter processing results for a book job."""
     logger.info(f"Getting chapters for book job {job_id} for user {current_user.id}")
 
@@ -294,7 +303,7 @@ async def get_book_chapters(
         book_processor = BookProcessor(db, SpacesClient())
         results = await book_processor.aggregate_chapter_results(job_id)
 
-        return results
+        return BookChaptersResponse(**results)
 
     except HTTPException:
         raise

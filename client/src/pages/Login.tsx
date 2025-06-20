@@ -38,8 +38,8 @@ const Login: React.FC = () => {
     try {
       await dispatch(login(data)).unwrap();
       navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.message || 'Failed to login. Please try again.');
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Failed to login. Please try again.');
     } finally {
       setIsLoading(false);
     }

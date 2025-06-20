@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { AuthResponse } from '../../types/api';
+import { AuthResponse } from '../../services/api';
 import { UserResponse, UserLogin, UserCreate } from '../../generated';
 import apiClient from '../../services/api';
 
@@ -42,9 +42,9 @@ export const register = createAsyncThunk(
       localStorage.setItem('access_token', response.access_token);
       localStorage.setItem('user', JSON.stringify(response.user));
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data?.message || 'Registration failed'
+        (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Registration failed'
       );
     }
   }
@@ -56,9 +56,9 @@ export const getCurrentUser = createAsyncThunk(
     try {
       const user = await apiClient.getCurrentUser();
       return user;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to get user'
+        (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to get user'
       );
     }
   }

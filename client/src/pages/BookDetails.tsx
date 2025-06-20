@@ -35,7 +35,7 @@ const BookDetails: React.FC = () => {
     if (jobId && book?.status === 'COMPLETED' && !audioPlayer.currentJobId) {
       audioPlayer.loadJob(jobId);
     }
-  }, [jobId, book?.status, audioPlayer.currentJobId, audioPlayer.loadJob]);
+  }, [jobId, book?.status, audioPlayer]);
 
   const formatDuration = (minutes?: number) => {
     if (!minutes) return 'Unknown';
@@ -92,9 +92,10 @@ const BookDetails: React.FC = () => {
   }
 
   const title = book.title || `Audiobook ${book.id.slice(0, 8)}`;
+  // result_data and config are loosely typed in the generated schema
   const provider = book.config?.voice_config?.provider || 'openai';
   const chapters = book.result_data?.chapters?.length || 0;
-  const duration = book.result_data?.duration;
+  const duration = book.result_data?.duration as number | undefined;
 
   return (
     <div className="p-6 max-w-4xl mx-auto">

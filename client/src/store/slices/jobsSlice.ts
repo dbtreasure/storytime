@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { PaginatedResponse } from '../../types/api';
+import { PaginatedResponse } from '../../services/api';
 import { JobResponse, CreateJobRequest } from '../../generated';
 import apiClient from '../../services/api';
 
@@ -48,9 +48,9 @@ export const fetchJobs = createAsyncThunk(
     try {
       const response = await apiClient.getJobs(params);
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to fetch jobs'
+        (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to fetch jobs'
       );
     }
   }
@@ -62,7 +62,7 @@ export const fetchJob = createAsyncThunk(
     try {
       const job = await apiClient.getJob(jobId);
       return job;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
         error.response?.data?.message || 'Failed to fetch job'
       );
@@ -76,7 +76,7 @@ export const createJob = createAsyncThunk(
     try {
       const job = await apiClient.createJob(jobData);
       return job;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
         error.response?.data?.message || 'Failed to create job'
       );
@@ -90,7 +90,7 @@ export const cancelJob = createAsyncThunk(
     try {
       await apiClient.cancelJob(jobId);
       return jobId;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
         error.response?.data?.message || 'Failed to cancel job'
       );
@@ -104,7 +104,7 @@ export const refreshJobSteps = createAsyncThunk(
     try {
       const steps = await apiClient.getJobSteps(jobId);
       return { jobId, steps };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
         error.response?.data?.message || 'Failed to refresh job steps'
       );
@@ -137,7 +137,7 @@ const jobsSlice = createSlice({
       steps?: JobResponse['steps'];
     }>) => {
       const { jobId, status, steps } = action.payload;
-      
+
       // Update in jobs list
       const jobIndex = state.jobs.findIndex(job => job.id === jobId);
       if (jobIndex !== -1) {
@@ -146,7 +146,7 @@ const jobsSlice = createSlice({
           state.jobs[jobIndex].steps = steps;
         }
       }
-      
+
       // Update current job
       if (state.currentJob?.id === jobId) {
         state.currentJob.status = status;
@@ -187,7 +187,7 @@ const jobsSlice = createSlice({
       .addCase(fetchJob.fulfilled, (state, action: PayloadAction<JobResponse>) => {
         state.isLoading = false;
         state.currentJob = action.payload;
-        
+
         // Also update in jobs list if it exists
         const index = state.jobs.findIndex(job => job.id === action.payload.id);
         if (index !== -1) {
@@ -219,13 +219,13 @@ const jobsSlice = createSlice({
     builder
       .addCase(cancelJob.fulfilled, (state, action: PayloadAction<string>) => {
         const jobId = action.payload;
-        
+
         // Update status in jobs list
         const jobIndex = state.jobs.findIndex(job => job.id === jobId);
         if (jobIndex !== -1) {
           state.jobs[jobIndex].status = 'CANCELLED';
         }
-        
+
         // Update current job
         if (state.currentJob?.id === jobId) {
           state.currentJob.status = 'CANCELLED';
@@ -239,13 +239,13 @@ const jobsSlice = createSlice({
         steps: JobResponse['steps'];
       }>) => {
         const { jobId, steps } = action.payload;
-        
+
         // Update in jobs list
         const jobIndex = state.jobs.findIndex(job => job.id === jobId);
         if (jobIndex !== -1) {
           state.jobs[jobIndex].steps = steps;
         }
-        
+
         // Update current job
         if (state.currentJob?.id === jobId) {
           state.currentJob.steps = steps;
