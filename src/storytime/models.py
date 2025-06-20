@@ -51,7 +51,7 @@ class VoiceConfig(BaseModel):
 
 class Chapter(BaseModel):
     """Chapter information for multi-chapter content."""
-    
+
     title: str = Field(..., description="Chapter title")
     order: int = Field(..., description="Chapter order/number")
     duration: float | None = Field(None, description="Chapter duration in seconds")
@@ -60,7 +60,7 @@ class Chapter(BaseModel):
 
 class JobConfig(BaseModel):
     """Job configuration data."""
-    
+
     voice_config: VoiceConfig | None = Field(None, description="Voice configuration")
     processing_config: ProcessingConfig | None = Field(None, description="Processing configuration")
     provider: str | None = Field(None, description="TTS provider (for backwards compatibility)")
@@ -68,11 +68,13 @@ class JobConfig(BaseModel):
 
 class JobResultData(BaseModel):
     """Job result data."""
-    
+
     duration: float | None = Field(None, description="Total duration in seconds")
     duration_seconds: float | None = Field(None, description="Total duration in seconds (alias)")
     file_size_bytes: int | None = Field(None, description="File size in bytes")
-    chapters: list[Chapter] | None = Field(None, description="Chapter information for multi-chapter content")
+    chapters: list[Chapter] | None = Field(
+        None, description="Chapter information for multi-chapter content"
+    )
     child_job_ids: list[str] | None = Field(None, description="Child job IDs for book processing")
 
 

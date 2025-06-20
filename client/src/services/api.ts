@@ -14,17 +14,14 @@ export interface AuthResponse {
 }
 import {
   JobResponse,
-  JobListResponse,
   CreateJobRequest,
   PlaybackProgressResponse,
   UpdateProgressRequest,
   StreamingUrlResponse,
   AudioMetadataResponse,
   JobResponseSchema,
-  JobListResponseSchema,
   StreamingUrlResponseSchema,
   AudioMetadataResponseSchema,
-  PlaybackProgressResponseSchema,
 } from '../schemas';
 
 // Keep these simple types from generated (they work fine)

@@ -12,7 +12,7 @@ export const VoiceConfigSchema = z.object({
   voice_settings: z.record(z.string()).optional(),
 });
 
-// Processing configuration 
+// Processing configuration
 export const ProcessingConfigSchema = z.object({
   max_concurrency: z.number().int().default(8),
   chunk_size: z.number().int().default(1000),

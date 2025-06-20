@@ -239,12 +239,12 @@ NEVER proactively create documentation files (*.md) or README files. Only create
 When working with API endpoints in this codebase:
 
   **TYPE SAFETY APPROACH: Pydantic → Zod → TypeScript**
-  
+
   We use Zod schemas for runtime validation and TypeScript type inference instead of OpenAPI generators,
   which have proven unreliable with complex schema references.
 
   1. ALWAYS define proper Pydantic response models in the FastAPI backend (src/storytime/models.py)
-  2. ALWAYS use response_model=MyResponseModel in FastAPI route decorators  
+  2. ALWAYS use response_model=MyResponseModel in FastAPI route decorators
   3. ALWAYS maintain corresponding Zod schemas in client/src/schemas/index.ts
   4. ALWAYS use Zod schemas for runtime validation in API client methods
   5. ALWAYS import types from client/src/schemas/ (not generated/)
@@ -253,6 +253,6 @@ When working with API endpoints in this codebase:
   - Backend: Add Pydantic model → Use in route decorator → Restart API
   - Frontend: Add corresponding Zod schema → Use .parse() in API client → Import inferred types
   - Runtime safety: Zod validates API responses and catches schema mismatches early
-  
+
   This approach provides both compile-time type safety AND runtime validation while avoiding
   OpenAPI generator bugs with complex schema references (anyOf + $ref combinations).

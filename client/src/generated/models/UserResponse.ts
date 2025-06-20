@@ -8,4 +8,3 @@ export type UserResponse = {
     email: string;
     created_at: string;
 };
-

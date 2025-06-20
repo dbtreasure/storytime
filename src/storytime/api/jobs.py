@@ -12,6 +12,7 @@ from storytime.api.auth import get_current_user
 from storytime.database import Job, JobStatus, JobStep, User, get_db
 from storytime.infrastructure.spaces import SpacesClient
 from storytime.models import (
+    BookChaptersResponse,
     CreateJobRequest,
     JobAudioResponse,
     JobConfig,
@@ -20,7 +21,6 @@ from storytime.models import (
     JobResultData,
     JobStepResponse,
     JobType,
-    BookChaptersResponse,
     MessageResponse,
 )
 from storytime.worker.tasks import process_job
@@ -82,7 +82,7 @@ async def create_job(
 
     except Exception as e:
         logger.error(f"Failed to create job: {e!s}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to create job: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Failed to create job: {e!s}") from e
 
 
 @router.get("", response_model=JobListResponse)
@@ -130,7 +130,7 @@ async def list_jobs(
 
     except Exception as e:
         logger.error(f"Failed to list jobs: {e!s}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to list jobs: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Failed to list jobs: {e!s}") from e
 
 
 @router.get("/{job_id}", response_model=JobResponse)
@@ -142,14 +142,14 @@ async def get_job(
 
     try:
         # Verify job exists and belongs to user
-        job = await _get_user_job(job_id, current_user.id, db)
+        await _get_user_job(job_id, current_user.id, db)
         return await _get_job_response(job_id, db)
 
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to get job {job_id}: {e!s}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get job: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Failed to get job: {e!s}") from e
 
 
 @router.delete("/{job_id}", response_model=MessageResponse)
@@ -188,10 +188,10 @@ async def cancel_job(
     except HTTPException:
         raise
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to cancel job {job_id}: {e!s}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to cancel job: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Failed to cancel job: {e!s}") from e
 
 
 @router.get("/{job_id}/steps", response_model=list[JobStepResponse])
@@ -230,10 +230,10 @@ async def get_job_steps(
         ]
 
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to get job steps for {job_id}: {e!s}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get job steps: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Failed to get job steps: {e!s}") from e
 
 
 @router.get("/{job_id}/audio", response_model=JobAudioResponse)
@@ -273,10 +273,10 @@ async def get_job_audio(
     except HTTPException:
         raise
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to get audio for job {job_id}: {e!s}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get job audio: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Failed to get job audio: {e!s}") from e
 
 
 @router.get("/{job_id}/chapters", response_model=BookChaptersResponse)
@@ -310,10 +310,10 @@ async def get_book_chapters(
     except HTTPException:
         raise
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to get chapters for job {job_id}: {e!s}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get book chapters: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Failed to get book chapters: {e!s}") from e
 
 
 # Helper functions
@@ -367,11 +367,11 @@ async def _get_job_response(job_id: str, db: AsyncSession) -> JobResponse:
     config = None
     if job.config:
         config = JobConfig(**job.config)
-    
+
     result_data = None
     if job.result_data:
         result_data = JobResultData(**job.result_data)
-    
+
     return JobResponse(
         id=job.id,
         user_id=job.user_id,
