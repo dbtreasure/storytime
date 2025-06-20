@@ -256,10 +256,10 @@ const Jobs: React.FC = () => {
                         <span>ID: {job.id.slice(0, 8)}</span>
                         <span>•</span>
                         <span>Created: {formatDate(job.created_at)}</span>
-                        {(job.config as any)?.voice_config?.provider && (
+                        {job.config?.voice_config?.provider && (
                           <>
                             <span>•</span>
-                            <span>Provider: {(job.config as any).voice_config.provider}</span>
+                            <span>Provider: {job.config.voice_config.provider}</span>
                           </>
                         )}
                       </div>

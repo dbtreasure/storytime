@@ -208,7 +208,7 @@ class ApiClient {
   }
 
   // File upload helper
-  async uploadFile(file: File, endpoint: string): Promise<any> {
+  async uploadFile(file: File, endpoint: string): Promise<unknown> {
     const formData = new FormData();
     formData.append('file', file);
 

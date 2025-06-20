@@ -1205,5 +1205,5 @@ export type UpUpGetResponses = {
 export type UpUpGetResponse = UpUpGetResponses[keyof UpUpGetResponses];
 
 export type ClientOptions = {
-    baseURL: `${string}://${string}` | (string & {});
+    baseUrl: `${string}://${string}` | (string & {});
 };

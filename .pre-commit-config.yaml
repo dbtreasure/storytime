@@ -26,6 +26,7 @@ repos:
         entry: bash -c 'cd client && npm run typecheck'
         language: system
         files: ^client/.*\.(ts|tsx)$
+        exclude: ^client/src/generated/.*
         pass_filenames: false
 
       - id: client-lint
@@ -33,4 +34,5 @@ repos:
         entry: bash -c 'cd client && npm run lint'
         language: system
         files: ^client/.*\.(ts|tsx|js|jsx)$
+        exclude: ^client/src/generated/.*
         pass_filenames: false

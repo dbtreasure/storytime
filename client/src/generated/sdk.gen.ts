@@ -24,7 +24,6 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
  */
 export const registerApiV1AuthRegisterPost = <ThrowOnError extends boolean = false>(options: Options<RegisterApiV1AuthRegisterPostData, ThrowOnError>) => {
     return (options.client ?? _heyApiClient).post<RegisterApiV1AuthRegisterPostResponses, RegisterApiV1AuthRegisterPostErrors, ThrowOnError>({
-        responseType: 'json',
         url: '/api/v1/auth/register',
         ...options,
         headers: {
@@ -40,7 +39,6 @@ export const registerApiV1AuthRegisterPost = <ThrowOnError extends boolean = fal
  */
 export const loginApiV1AuthLoginPost = <ThrowOnError extends boolean = false>(options: Options<LoginApiV1AuthLoginPostData, ThrowOnError>) => {
     return (options.client ?? _heyApiClient).post<LoginApiV1AuthLoginPostResponses, LoginApiV1AuthLoginPostErrors, ThrowOnError>({
-        responseType: 'json',
         url: '/api/v1/auth/login',
         ...options,
         headers: {
@@ -56,7 +54,6 @@ export const loginApiV1AuthLoginPost = <ThrowOnError extends boolean = false>(op
  */
 export const getMeApiV1AuthMeGet = <ThrowOnError extends boolean = false>(options?: Options<GetMeApiV1AuthMeGetData, ThrowOnError>) => {
     return (options?.client ?? _heyApiClient).get<GetMeApiV1AuthMeGetResponses, unknown, ThrowOnError>({
-        responseType: 'json',
         security: [
             {
                 scheme: 'bearer',
@@ -74,7 +71,6 @@ export const getMeApiV1AuthMeGet = <ThrowOnError extends boolean = false>(option
  */
 export const listJobsApiV1JobsGet = <ThrowOnError extends boolean = false>(options?: Options<ListJobsApiV1JobsGetData, ThrowOnError>) => {
     return (options?.client ?? _heyApiClient).get<ListJobsApiV1JobsGetResponses, ListJobsApiV1JobsGetErrors, ThrowOnError>({
-        responseType: 'json',
         security: [
             {
                 scheme: 'bearer',
@@ -92,7 +88,6 @@ export const listJobsApiV1JobsGet = <ThrowOnError extends boolean = false>(optio
  */
 export const createJobApiV1JobsPost = <ThrowOnError extends boolean = false>(options: Options<CreateJobApiV1JobsPostData, ThrowOnError>) => {
     return (options.client ?? _heyApiClient).post<CreateJobApiV1JobsPostResponses, CreateJobApiV1JobsPostErrors, ThrowOnError>({
-        responseType: 'json',
         security: [
             {
                 scheme: 'bearer',
@@ -114,7 +109,6 @@ export const createJobApiV1JobsPost = <ThrowOnError extends boolean = false>(opt
  */
 export const cancelJobApiV1JobsJobIdDelete = <ThrowOnError extends boolean = false>(options: Options<CancelJobApiV1JobsJobIdDeleteData, ThrowOnError>) => {
     return (options.client ?? _heyApiClient).delete<CancelJobApiV1JobsJobIdDeleteResponses, CancelJobApiV1JobsJobIdDeleteErrors, ThrowOnError>({
-        responseType: 'json',
         security: [
             {
                 scheme: 'bearer',
@@ -132,7 +126,6 @@ export const cancelJobApiV1JobsJobIdDelete = <ThrowOnError extends boolean = fal
  */
 export const getJobApiV1JobsJobIdGet = <ThrowOnError extends boolean = false>(options: Options<GetJobApiV1JobsJobIdGetData, ThrowOnError>) => {
     return (options.client ?? _heyApiClient).get<GetJobApiV1JobsJobIdGetResponses, GetJobApiV1JobsJobIdGetErrors, ThrowOnError>({
-        responseType: 'json',
         security: [
             {
                 scheme: 'bearer',
@@ -150,7 +143,6 @@ export const getJobApiV1JobsJobIdGet = <ThrowOnError extends boolean = false>(op
  */
 export const getJobStepsApiV1JobsJobIdStepsGet = <ThrowOnError extends boolean = false>(options: Options<GetJobStepsApiV1JobsJobIdStepsGetData, ThrowOnError>) => {
     return (options.client ?? _heyApiClient).get<GetJobStepsApiV1JobsJobIdStepsGetResponses, GetJobStepsApiV1JobsJobIdStepsGetErrors, ThrowOnError>({
-        responseType: 'json',
         security: [
             {
                 scheme: 'bearer',
@@ -168,7 +160,6 @@ export const getJobStepsApiV1JobsJobIdStepsGet = <ThrowOnError extends boolean =
  */
 export const getJobAudioApiV1JobsJobIdAudioGet = <ThrowOnError extends boolean = false>(options: Options<GetJobAudioApiV1JobsJobIdAudioGetData, ThrowOnError>) => {
     return (options.client ?? _heyApiClient).get<GetJobAudioApiV1JobsJobIdAudioGetResponses, GetJobAudioApiV1JobsJobIdAudioGetErrors, ThrowOnError>({
-        responseType: 'json',
         security: [
             {
                 scheme: 'bearer',
@@ -186,7 +177,6 @@ export const getJobAudioApiV1JobsJobIdAudioGet = <ThrowOnError extends boolean =
  */
 export const getBookChaptersApiV1JobsJobIdChaptersGet = <ThrowOnError extends boolean = false>(options: Options<GetBookChaptersApiV1JobsJobIdChaptersGetData, ThrowOnError>) => {
     return (options.client ?? _heyApiClient).get<GetBookChaptersApiV1JobsJobIdChaptersGetResponses, GetBookChaptersApiV1JobsJobIdChaptersGetErrors, ThrowOnError>({
-        responseType: 'json',
         security: [
             {
                 scheme: 'bearer',
@@ -204,7 +194,6 @@ export const getBookChaptersApiV1JobsJobIdChaptersGet = <ThrowOnError extends bo
  */
 export const getStreamingUrlApiV1AudioJobIdStreamGet = <ThrowOnError extends boolean = false>(options: Options<GetStreamingUrlApiV1AudioJobIdStreamGetData, ThrowOnError>) => {
     return (options.client ?? _heyApiClient).get<GetStreamingUrlApiV1AudioJobIdStreamGetResponses, GetStreamingUrlApiV1AudioJobIdStreamGetErrors, ThrowOnError>({
-        responseType: 'json',
         security: [
             {
                 scheme: 'bearer',
@@ -222,7 +211,6 @@ export const getStreamingUrlApiV1AudioJobIdStreamGet = <ThrowOnError extends boo
  */
 export const getAudioMetadataApiV1AudioJobIdMetadataGet = <ThrowOnError extends boolean = false>(options: Options<GetAudioMetadataApiV1AudioJobIdMetadataGetData, ThrowOnError>) => {
     return (options.client ?? _heyApiClient).get<GetAudioMetadataApiV1AudioJobIdMetadataGetResponses, GetAudioMetadataApiV1AudioJobIdMetadataGetErrors, ThrowOnError>({
-        responseType: 'json',
         security: [
             {
                 scheme: 'bearer',
@@ -257,7 +245,6 @@ export const getPlaylistApiV1AudioJobIdPlaylistGet = <ThrowOnError extends boole
  */
 export const resetProgressApiV1ProgressJobIdDelete = <ThrowOnError extends boolean = false>(options: Options<ResetProgressApiV1ProgressJobIdDeleteData, ThrowOnError>) => {
     return (options.client ?? _heyApiClient).delete<ResetProgressApiV1ProgressJobIdDeleteResponses, ResetProgressApiV1ProgressJobIdDeleteErrors, ThrowOnError>({
-        responseType: 'json',
         security: [
             {
                 scheme: 'bearer',
@@ -275,7 +262,6 @@ export const resetProgressApiV1ProgressJobIdDelete = <ThrowOnError extends boole
  */
 export const getProgressApiV1ProgressJobIdGet = <ThrowOnError extends boolean = false>(options: Options<GetProgressApiV1ProgressJobIdGetData, ThrowOnError>) => {
     return (options.client ?? _heyApiClient).get<GetProgressApiV1ProgressJobIdGetResponses, GetProgressApiV1ProgressJobIdGetErrors, ThrowOnError>({
-        responseType: 'json',
         security: [
             {
                 scheme: 'bearer',
@@ -293,7 +279,6 @@ export const getProgressApiV1ProgressJobIdGet = <ThrowOnError extends boolean = 
  */
 export const updateProgressApiV1ProgressJobIdPut = <ThrowOnError extends boolean = false>(options: Options<UpdateProgressApiV1ProgressJobIdPutData, ThrowOnError>) => {
     return (options.client ?? _heyApiClient).put<UpdateProgressApiV1ProgressJobIdPutResponses, UpdateProgressApiV1ProgressJobIdPutErrors, ThrowOnError>({
-        responseType: 'json',
         security: [
             {
                 scheme: 'bearer',
@@ -315,7 +300,6 @@ export const updateProgressApiV1ProgressJobIdPut = <ThrowOnError extends boolean
  */
 export const getResumeInfoApiV1ProgressJobIdResumeGet = <ThrowOnError extends boolean = false>(options: Options<GetResumeInfoApiV1ProgressJobIdResumeGetData, ThrowOnError>) => {
     return (options.client ?? _heyApiClient).get<GetResumeInfoApiV1ProgressJobIdResumeGetResponses, GetResumeInfoApiV1ProgressJobIdResumeGetErrors, ThrowOnError>({
-        responseType: 'json',
         security: [
             {
                 scheme: 'bearer',
@@ -333,7 +317,6 @@ export const getResumeInfoApiV1ProgressJobIdResumeGet = <ThrowOnError extends bo
  */
 export const getRecentProgressApiV1ProgressUserRecentGet = <ThrowOnError extends boolean = false>(options?: Options<GetRecentProgressApiV1ProgressUserRecentGetData, ThrowOnError>) => {
     return (options?.client ?? _heyApiClient).get<GetRecentProgressApiV1ProgressUserRecentGetResponses, GetRecentProgressApiV1ProgressUserRecentGetErrors, ThrowOnError>({
-        responseType: 'json',
         security: [
             {
                 scheme: 'bearer',
@@ -350,7 +333,6 @@ export const getRecentProgressApiV1ProgressUserRecentGet = <ThrowOnError extends
  */
 export const viteSvgViteSvgGet = <ThrowOnError extends boolean = false>(options?: Options<ViteSvgViteSvgGetData, ThrowOnError>) => {
     return (options?.client ?? _heyApiClient).get<ViteSvgViteSvgGetResponses, unknown, ThrowOnError>({
-        responseType: 'json',
         url: '/vite.svg',
         ...options
     });
@@ -361,7 +343,6 @@ export const viteSvgViteSvgGet = <ThrowOnError extends boolean = false>(options?
  */
 export const serveSpaFullPathGet = <ThrowOnError extends boolean = false>(options: Options<ServeSpaFullPathGetData, ThrowOnError>) => {
     return (options.client ?? _heyApiClient).get<ServeSpaFullPathGetResponses, ServeSpaFullPathGetErrors, ThrowOnError>({
-        responseType: 'json',
         url: '/{full_path}',
         ...options
     });
@@ -373,7 +354,6 @@ export const serveSpaFullPathGet = <ThrowOnError extends boolean = false>(option
  */
 export const healthApiHealthGet = <ThrowOnError extends boolean = false>(options?: Options<HealthApiHealthGetData, ThrowOnError>) => {
     return (options?.client ?? _heyApiClient).get<HealthApiHealthGetResponses, unknown, ThrowOnError>({
-        responseType: 'json',
         url: '/api/health',
         ...options
     });
@@ -385,7 +365,6 @@ export const healthApiHealthGet = <ThrowOnError extends boolean = false>(options
  */
 export const upUpGet = <ThrowOnError extends boolean = false>(options?: Options<UpUpGetData, ThrowOnError>) => {
     return (options?.client ?? _heyApiClient).get<UpUpGetResponses, unknown, ThrowOnError>({
-        responseType: 'json',
         url: '/up',
         ...options
     });

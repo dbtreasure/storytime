@@ -45,8 +45,8 @@ const Register: React.FC = () => {
         password: data.password,
       })).unwrap();
       navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.message || 'Failed to create account. Please try again.');
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Failed to create account. Please try again.');
     } finally {
       setIsLoading(false);
     }

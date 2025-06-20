@@ -342,7 +342,7 @@ const JobDetails: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Provider</p>
               <p className="text-lg font-semibold text-gray-900 mt-1">
-                {(selectedJob.config as any)?.provider || 'OpenAI'}
+                {selectedJob.config?.provider || 'OpenAI'}
               </p>
             </div>
           </div>

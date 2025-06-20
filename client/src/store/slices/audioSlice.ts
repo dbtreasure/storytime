@@ -91,7 +91,7 @@ export const updateProgress = createAsyncThunk(
       return progress;
     } catch (error: unknown) {
       return rejectWithValue(
-        (error as any).response?.data?.message || 'Failed to update progress'
+        (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to update progress'
       );
     }
   }
@@ -105,7 +105,7 @@ export const fetchRecentProgress = createAsyncThunk(
       return progress;
     } catch (error: unknown) {
       return rejectWithValue(
-        (error as any).response?.data?.message || 'Failed to fetch recent progress'
+        (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to fetch recent progress'
       );
     }
   }
@@ -119,7 +119,7 @@ export const resetProgress = createAsyncThunk(
       return jobId;
     } catch (error: unknown) {
       return rejectWithValue(
-        (error as any).response?.data?.message || 'Failed to reset progress'
+        (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to reset progress'
       );
     }
   }

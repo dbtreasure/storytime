@@ -31,14 +31,14 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     if (jobId && audioPlayer.currentJobId !== jobId) {
       audioPlayer.loadJob(jobId);
     }
-  }, [jobId, audioPlayer.currentJobId, audioPlayer.loadJob]);
+  }, [jobId, audioPlayer]);
 
   // Auto-play if requested and audio is loaded
   useEffect(() => {
     if (autoPlay && audioPlayer.canPlay && audioPlayer.currentJobId === jobId && !audioPlayer.isPlaying) {
       audioPlayer.play();
     }
-  }, [autoPlay, audioPlayer.canPlay, audioPlayer.currentJobId, jobId, audioPlayer.isPlaying, audioPlayer.play]);
+  }, [autoPlay, jobId, audioPlayer]);
 
   // Update local position when not dragging
   useEffect(() => {
