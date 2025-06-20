@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { PaginatedResponse } from '../../types/api';
+import { PaginatedResponse } from '../../services/api';
 import { JobResponse, CreateJobRequest } from '../../generated';
 import apiClient from '../../services/api';
 

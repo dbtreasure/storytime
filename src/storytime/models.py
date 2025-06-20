@@ -235,3 +235,28 @@ class AudioMetadataResponse(BaseModel):
     last_played_at: datetime | None = None
     current_chapter_id: str | None = None
     current_chapter_position: float = 0.0
+
+
+class MessageResponse(BaseModel):
+    """Generic message response."""
+
+    message: str
+
+
+class JobAudioResponse(BaseModel):
+    """Response model for job audio download and streaming URLs."""
+
+    download_url: str
+    streaming_url: str
+    file_key: str
+    content_type: str
+
+
+class BookChaptersResponse(BaseModel):
+    """Aggregated chapter results for a book job."""
+
+    total_chapters: int
+    completed_chapters: int
+    failed_chapters: int
+    total_duration_seconds: float
+    chapters: list[dict]

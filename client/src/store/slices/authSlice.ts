@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { AuthResponse } from '../../types/api';
+import { AuthResponse } from '../../services/api';
 import { UserResponse, UserLogin, UserCreate } from '../../generated';
 import apiClient from '../../services/api';
 

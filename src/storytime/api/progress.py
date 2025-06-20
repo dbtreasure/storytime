@@ -13,6 +13,7 @@ from storytime.models import (
     PlaybackProgressResponse,
     ResumeInfoResponse,
     UpdateProgressRequest,
+    MessageResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -159,12 +160,12 @@ async def get_resume_info(
     )
 
 
-@router.delete("/{job_id}")
+@router.delete("/{job_id}", response_model=MessageResponse)
 async def reset_progress(
     job_id: str,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, str]:
+) -> MessageResponse:
     """Reset playback progress for a specific job."""
     logger.info(f"Resetting progress for job {job_id} for user {current_user.id}")
 
@@ -182,9 +183,9 @@ async def reset_progress(
     if progress:
         await db.delete(progress)
         await db.commit()
-        return {"message": "Progress reset successfully"}
+        return MessageResponse(message="Progress reset successfully")
     else:
-        return {"message": "No progress found to reset"}
+        return MessageResponse(message="No progress found to reset")
 
 
 @router.get("/user/recent", response_model=list[PlaybackProgressResponse])
@@ -236,4 +237,3 @@ async def _verify_user_job(job_id: str, user_id: str, db: AsyncSession) -> Job:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found or access denied")
 
     return job
-

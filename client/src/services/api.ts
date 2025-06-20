@@ -1,8 +1,17 @@
 import axios, { AxiosInstance } from 'axios';
-import {
-  PaginatedResponse,
-  AuthResponse,
-} from '../types/api';
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+}
+
+export interface AuthResponse {
+  user: UserResponse;
+  access_token: string;
+  token_type: string;
+}
 import { StreamingUrlResponse, AudioMetadataResponse } from '../generated';
 import {
   JobResponse,
