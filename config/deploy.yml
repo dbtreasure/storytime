@@ -20,6 +20,10 @@ servers:
     hosts:
       - 129.212.136.218
     cmd: uvicorn storytime.api.main:app --host 0.0.0.0 --port 8000
+  worker:
+    hosts:
+      - 129.212.136.218
+    cmd: celery -A storytime.worker.celery_app:celery_app worker --loglevel=info
 
 # Environment variables
 env:
