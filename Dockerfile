@@ -39,7 +39,7 @@ WORKDIR /app
 COPY src /app/src
 COPY alembic /app/alembic
 COPY alembic.ini /app/alembic.ini
-COPY start.sh /app/scripts/start.sh
+COPY sstart.sh /app/scripts/start.sh
 RUN chmod +x /app/scripts/start.sh && \
     mkdir -p /app/static && cp -r /app/client/dist/* /app/static/
 
@@ -50,4 +50,4 @@ EXPOSE 8000
 ENV PYTHONPATH=/app/src
 
 # Run the application
-CMD ["./start.sh"]
+CMD ["./scripts/start.sh"]

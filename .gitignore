@@ -72,9 +72,6 @@ venv.bak/
 .kamal/
 .kamal/*
 
-# Scripts with hardcoded secrets
-scripts/
-
 # IDE
 .vscode/
 .idea/

@@ -1,0 +1,105 @@
+#!/bin/bash
+
+# Docker development script - runs full stack with Docker Compose
+
+set -e
+
+echo "🐳 Starting StorytimeTTS Docker Development..."
+echo "=============================================="
+
+# Check if we're in the right directory
+if [[ ! -f "docker-compose.yml" ]]; then
+    echo "❌ Error: Please run this script from the project root directory"
+    exit 1
+fi
+
+# Check if Docker is running
+if ! docker info &> /dev/null; then
+    echo "❌ Error: Docker is not running. Please start Docker Desktop."
+    exit 1
+fi
+
+# Check for .env.docker file
+if [[ ! -f ".env.docker" ]]; then
+    echo "❌ Error: .env.docker file not found"
+    echo "📝 Please create .env.docker with your configuration"
+    exit 1
+fi
+
+# Parse command line arguments
+CLEAN=false
+LOGS=false
+DOWN=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --clean)
+            CLEAN=true
+            shift
+            ;;
+        --logs)
+            LOGS=true
+            shift
+            ;;
+        --down)
+            DOWN=true
+            shift
+            ;;
+        --help|-h)
+            echo "Usage: $0 [options]"
+            echo ""
+            echo "Options:"
+            echo "  --clean    Remove volumes and rebuild containers"
+            echo "  --logs     Show logs after starting"
+            echo "  --down     Stop and remove containers"
+            echo "  --help     Show this help message"
+            exit 0
+            ;;
+        *)
+            echo "❌ Error: Unknown option $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
+# Handle --down flag
+if [[ "$DOWN" == "true" ]]; then
+    echo "🛑 Stopping Docker Compose services..."
+    docker-compose down -v
+    echo "✅ Services stopped and volumes removed"
+    exit 0
+fi
+
+# Clean up if requested
+if [[ "$CLEAN" == "true" ]]; then
+    echo "🧹 Cleaning up containers and volumes..."
+    docker-compose down -v
+    docker system prune -f
+fi
+
+echo "🔧 Building and starting services..."
+echo ""
+echo "🌐 Services will be available at:"
+echo "  Client (Dev): http://localhost:3000"
+echo "  API: http://localhost:8000"
+echo "  API Docs: http://localhost:8000/docs"
+echo "  PostgreSQL: localhost:5432"
+echo "  Redis: localhost:6379"
+echo ""
+
+# Start services
+if [[ "$LOGS" == "true" ]]; then
+    docker-compose up --build
+else
+    docker-compose up --build -d
+    echo "✅ Services started in background"
+    echo ""
+    echo "📊 Container status:"
+    docker-compose ps
+    echo ""
+    echo "💡 Tips:"
+    echo "  View logs: docker-compose logs -f"
+    echo "  Stop services: ./scripts/docker --down"
+    echo "  Restart with clean state: ./scripts/docker --clean"
+fi
