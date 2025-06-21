@@ -28,7 +28,13 @@ services:
     depends_on:
       - db
       - redis
-    command: ["./scripts/start.sh", "--reload"]
+    command: [
+      "uvicorn",
+      "storytime.api.main:app",
+      "--reload",
+      "--host=0.0.0.0",
+      "--port=8000"
+    ]
   worker:
     build: .
     command:
