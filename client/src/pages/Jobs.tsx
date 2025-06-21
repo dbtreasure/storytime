@@ -272,7 +272,11 @@ const Jobs: React.FC = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => navigate(`/library/${job.id}`)}
+                        onClick={() =>
+                          navigate(`/library/${job.id}`, {
+                            state: { autoPlay: true },
+                          })
+                        }
                       >
                         <PlayIcon className="h-4 w-4 mr-1" />
                         Play
