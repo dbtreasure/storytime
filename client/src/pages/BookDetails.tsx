@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
 import { fetchJob } from '../store/slices/jobsSlice';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
@@ -20,9 +20,11 @@ import {
 const BookDetails: React.FC = () => {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useAppDispatch();
   const { currentJob: book, isLoading: loading, error } = useAppSelector((state) => state.jobs);
   const audioPlayer = useAudioPlayer();
+  const autoPlay = location.state?.autoPlay ?? false;
 
   useEffect(() => {
     if (jobId) {
@@ -30,9 +32,9 @@ const BookDetails: React.FC = () => {
     }
   }, [dispatch, jobId]);
 
-  // Auto-start audio when page loads
+  // Load audio for this job if not already loaded
   useEffect(() => {
-    if (jobId && book?.status === 'COMPLETED' && !audioPlayer.currentJobId) {
+    if (jobId && book?.status === 'COMPLETED' && audioPlayer.currentJobId !== jobId) {
       audioPlayer.loadJob(jobId);
     }
   }, [jobId, book?.status, audioPlayer]);
@@ -162,6 +164,7 @@ const BookDetails: React.FC = () => {
           <AudioPlayer
             jobId={jobId}
             title={title}
+            autoPlay={autoPlay}
             className="shadow-lg"
           />
         </div>
