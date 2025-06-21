@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,6 +35,7 @@ router = APIRouter(prefix="/api/v1/jobs", tags=["Jobs"])
 @router.post("", response_model=JobResponse)
 async def create_job(
     request: CreateJobRequest,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> JobResponse:
@@ -70,12 +71,14 @@ async def create_job(
         await db.refresh(job)
 
         # Schedule job processing in Celery (if available)
-        try:
-            process_job.delay(job.id)  # type: ignore[attr-defined]
-            logger.info(f"Job {job.id} scheduled for processing")
-        except Exception as e:
-            logger.warning(f"Could not schedule job processing: {e}")
-            # Job is created but not scheduled - can be processed later
+        def _enqueue_job(job_id: str) -> None:
+            try:
+                process_job.delay(job_id)  # type: ignore[attr-defined]
+                logger.info(f"Job {job_id} scheduled for processing")
+            except Exception as e:
+                logger.warning(f"Could not schedule job processing: {e}")
+
+        background_tasks.add_task(_enqueue_job, job.id)
 
         # Return job response
         return await _get_job_response(job.id, db)

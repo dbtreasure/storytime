@@ -77,7 +77,6 @@ export CELERY_BROKER_URL="redis://localhost:6379/0"
 
 # Optional Configuration
 export TTS_PROVIDER="openai"  # or "eleven"
-export TTS_MAX_CONCURRENCY="8"
 ```
 
 When using `docker-compose`, the tool will automatically load variables from a
@@ -150,7 +149,7 @@ ruff format .
 ### **2. Book Processing**
 ```python
 {
-    "job_type": "BOOK_PROCESSING", 
+    "job_type": "BOOK_PROCESSING",
     "text": "Full book content...",
     "processing_config": {
         "max_concurrency": 4
@@ -282,7 +281,7 @@ mypy src/
    ```bash
    # Check database connection
    psql $DATABASE_URL
-   
+
    # Run migrations
    alembic upgrade head
    ```
@@ -291,7 +290,7 @@ mypy src/
    ```bash
    # Check Redis connection
    redis-cli ping
-   
+
    # Restart worker
    celery -A storytime.worker.celery_app worker --loglevel=debug
    ```

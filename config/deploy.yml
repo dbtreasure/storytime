@@ -31,8 +31,9 @@ env:
     ENV: production
     TTS_PROVIDER: openai
     TTS_MAX_CONCURRENCY: 8
-    DATABASE_URL: postgresql+asyncpg://postgres:postgres@storytime-db:5432/storytime
   secret:
+    - DATABASE_URL
+    - REDIS_URL
     - OPENAI_API_KEY
     - ELEVENLABS_API_KEY
     - DO_SPACES_KEY
@@ -40,7 +41,6 @@ env:
     - DO_SPACES_ENDPOINT
     - DO_SPACES_BUCKET
     - JWT_SECRET_KEY
-    - CELERY_BROKER_URL
     - KAMAL_REGISTRY_PASSWORD
     - KAMAL_REGISTRY_USERNAME
 

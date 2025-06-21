@@ -18,6 +18,7 @@ import {
   ClockIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
+  ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 
 const Jobs: React.FC = () => {
@@ -138,6 +139,15 @@ const Jobs: React.FC = () => {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-8">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate('/dashboard')}
+          className="mb-4"
+        >
+          <ArrowLeftIcon className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Button>
         <h1 className="text-3xl font-bold text-gray-900">Jobs</h1>
         <p className="text-gray-600 mt-2">
           Monitor and manage your audiobook generation jobs.
