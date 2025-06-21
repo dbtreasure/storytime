@@ -8,6 +8,15 @@ StorytimeTTS is an AI-powered audiobook generation platform that transforms text
 
 ## Development Commands
 
+### Quick Start
+```bash
+# Docker development
+./scripts/docker
+
+# Production deployment
+./scripts/production
+```
+
 ### Environment Setup
 ```bash
 # Install dependencies using uv (preferred)
@@ -83,13 +92,25 @@ cp -r client/dist/* static/
 
 ### Docker
 ```bash
-# Build and run with docker-compose
+# Build and run with docker-compose (uses .env.docker automatically)
 docker-compose up --build
 
 # Run individual container
 docker build -t storytime .
 docker run -p 8000:8000 storytime
 ```
+
+### Environment Management Scripts
+Simple scripts handle all environment complexity:
+
+- **`./scripts/docker`**: Docker Compose development
+- **`./scripts/production`**: Production deployment with Kamal
+
+Environment files:
+- `.env.docker`: Docker Compose
+- `.kamal/secrets`: Production secrets
+
+See `scripts/README.md` for detailed usage guide.
 
 ## Architecture
 
@@ -151,19 +172,22 @@ digitalocean_spaces/
 
 ## Required Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `DATABASE_URL` | PostgreSQL database connection | Yes |
-| `OPENAI_API_KEY` | OpenAI API key for TTS | Yes |
-| `ELEVENLABS_API_KEY` | ElevenLabs API key | No |
-| `DO_SPACES_KEY` | DigitalOcean Spaces access key | Yes |
-| `DO_SPACES_SECRET` | DigitalOcean Spaces secret | Yes |
-| `DO_SPACES_ENDPOINT` | DigitalOcean Spaces endpoint | Yes |
-| `DO_SPACES_BUCKET` | DigitalOcean Spaces bucket name | Yes |
-| `JWT_SECRET_KEY` | JWT token signing key | Yes |
-| `CELERY_BROKER_URL` | Redis URL for Celery | Yes |
-| `TTS_PROVIDER` | Provider choice (`openai`/`eleven`) | No (default: `openai`) |
-| `TTS_MAX_CONCURRENCY` | Parallel audio jobs | No (default: `8`) |
+| Variable | Description | Required | Default (dev/docker) |
+|----------|-------------|----------|---------------------|
+| `ENV` | Environment (`dev`/`docker`/`production`) | Yes | `dev` |
+| `DATABASE_URL` | PostgreSQL database connection | Yes* | Auto-set for dev/docker |
+| `REDIS_URL` | Redis connection URL | Yes* | Auto-set for dev/docker |
+| `OPENAI_API_KEY` | OpenAI API key for TTS | Yes | - |
+| `ELEVENLABS_API_KEY` | ElevenLabs API key | No | - |
+| `DO_SPACES_KEY` | DigitalOcean Spaces access key | Yes | - |
+| `DO_SPACES_SECRET` | DigitalOcean Spaces secret | Yes | - |
+| `DO_SPACES_ENDPOINT` | DigitalOcean Spaces endpoint | Yes | - |
+| `DO_SPACES_BUCKET` | DigitalOcean Spaces bucket name | Yes | - |
+| `JWT_SECRET_KEY` | JWT token signing key | Yes | - |
+| `CELERY_BROKER_URL` | Redis URL for Celery | Yes* | Same as REDIS_URL |
+| `TTS_PROVIDER` | Provider choice (`openai`/`eleven`) | No | `openai` |
+
+*Required for production, auto-configured for dev/docker environments
 
 ## Dependencies
 

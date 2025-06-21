@@ -46,3 +46,7 @@ development = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[dependency-groups]
+dev = [
+    "pre-commit>=4.2.0",
+]

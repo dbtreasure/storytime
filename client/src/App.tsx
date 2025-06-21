@@ -4,6 +4,7 @@ import { Provider } from 'react-redux';
 import { store } from './store';
 import { useAppDispatch, useAppSelector } from './hooks/redux';
 import { initializeAuth } from './store/slices/authSlice';
+import AppLayout from './components/layout/AppLayout';
 
 // Import pages
 import Login from './pages/Login';
@@ -28,7 +29,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
   
-  return <>{children}</>;
+  return <AppLayout>{children}</AppLayout>;
 }
 
 // Public Route component (redirect to dashboard if authenticated)

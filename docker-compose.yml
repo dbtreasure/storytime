@@ -19,11 +19,12 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - .env
+      - .env.docker
     environment:
       - ENV=docker
     volumes:
       - .:/app
+      - /app/static  # Preserve the built static files from the image
     depends_on:
       - db
       - redis
@@ -39,7 +40,7 @@ services:
         "--loglevel=info",
       ]
     env_file:
-      - .env
+      - .env.docker
     environment:
       - ENV=docker
     volumes:
