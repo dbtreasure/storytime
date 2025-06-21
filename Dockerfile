@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 FROM python:3.11-slim
-
+RUN ls -l /scripts
 # Install OS dependencies including Node.js
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -39,7 +39,7 @@ WORKDIR /app
 COPY src /app/src
 COPY alembic /app/alembic
 COPY alembic.ini /app/alembic.ini
-COPY scripts/start.sh /app/scripts/start.sh
+COPY start.sh /app/scripts/start.sh
 RUN chmod +x /app/scripts/start.sh && \
     mkdir -p /app/static && cp -r /app/client/dist/* /app/static/
 
@@ -50,4 +50,4 @@ EXPOSE 8000
 ENV PYTHONPATH=/app/src
 
 # Run the application
-CMD ["./scripts/start.sh"]
+CMD ["./start.sh"]
