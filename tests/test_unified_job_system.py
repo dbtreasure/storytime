@@ -78,7 +78,7 @@ class TestJobProcessor:
         mock_db_session.commit = AsyncMock()
         mock_db_session.refresh = AsyncMock()
 
-        result = await job_processor._create_job_step(
+        _ = await job_processor._create_job_step(
             job_id, "text_to_audio", 0, "Convert text to audio"
         )
 
@@ -190,6 +190,7 @@ class TestJobAPI:
         job = JobResponse(
             id=str(uuid4()),
             user_id=str(uuid4()),
+            parent_job_id=None,
             title="Test Job",
             status=JobStatus.COMPLETED,
             progress=1.0,
@@ -202,6 +203,24 @@ class TestJobAPI:
         assert job.progress == 1.0
         assert len(job.steps) == 1
         assert job.steps[0].step_name == "test_step"
+
+
+def test_job_response_parent_id():
+    """Ensure JobResponse stores parent relationship."""
+    from storytime.models import JobResponse
+
+    job = JobResponse(
+        id=str(uuid4()),
+        user_id=str(uuid4()),
+        parent_job_id="parent123",
+        title="Child Job",
+        status=JobStatus.PENDING,
+        progress=0.0,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
+
+    assert job.parent_job_id == "parent123"
 
 
 @pytest.mark.asyncio

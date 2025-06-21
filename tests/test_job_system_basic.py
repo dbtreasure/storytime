@@ -91,6 +91,7 @@ def test_job_models():
         response = JobResponse(
             id=str(uuid4()),
             user_id=str(uuid4()),
+            parent_job_id=None,
             title="Test Job",
             status=JobStatus.PENDING,
             progress=0.0,

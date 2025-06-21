@@ -135,6 +135,7 @@ class JobResponse(BaseModel):
 
     id: str
     user_id: str
+    parent_job_id: str | None = Field(None, description="Parent job ID")
     title: str
     description: str | None = None
 
