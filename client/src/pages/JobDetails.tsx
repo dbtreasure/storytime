@@ -72,6 +72,12 @@ const JobDetails: React.FC = () => {
     }
   }, [selectedJob]);
 
+  useEffect(() => {
+    if (selectedJob?.steps) {
+      setExpandedTasks(new Set(selectedJob.steps.map(step => step.id)));
+    }
+  }, [selectedJob]);
+
   const handleCancelJob = async () => {
     if (!jobId) return;
 
@@ -165,18 +171,16 @@ const JobDetails: React.FC = () => {
           style={{ marginLeft: `${level * 20}px` }}
         >
           <div className="flex items-center flex-1">
-            {task.children && task.children.length > 0 && (
-              <button
-                onClick={() => toggleTaskExpansion(task.id)}
-                className="mr-2 p-1 hover:bg-gray-100 rounded"
-              >
-                {expandedTasks.has(task.id) ? (
-                  <ChevronDownIcon className="h-4 w-4" />
-                ) : (
-                  <ChevronRightIcon className="h-4 w-4" />
-                )}
-              </button>
-            )}
+            <button
+              onClick={() => toggleTaskExpansion(task.id)}
+              className="mr-2 p-1 hover:bg-gray-100 rounded"
+            >
+              {expandedTasks.has(task.id) ? (
+                <ChevronDownIcon className="h-4 w-4" />
+              ) : (
+                <ChevronRightIcon className="h-4 w-4" />
+              )}
+            </button>
 
             <div className="mr-3 flex-shrink-0">
               {getStatusIcon(task.status)}
@@ -192,34 +196,38 @@ const JobDetails: React.FC = () => {
                 </Badge>
               </div>
 
-              <div className="mt-1 flex items-center space-x-4 text-xs text-gray-500">
-                {task.startTime && (
-                  <span>
-                    Started: {formatDate(task.startTime)}
-                  </span>
-                )}
-                {task.startTime && (
-                  <span>
-                    Duration: {formatDuration(task.startTime, task.endTime)}
-                  </span>
-                )}
-              </div>
-
-              {task.progress !== undefined && task.status === 'running' && (
-                <div className="mt-2">
-                  <div className="w-full bg-gray-200 rounded-full h-1.5">
-                    <div
-                      className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
-                      style={{ width: `${task.progress}%` }}
-                    />
+              {expandedTasks.has(task.id) && (
+                <>
+                  <div className="mt-1 flex items-center space-x-4 text-xs text-gray-500">
+                    {task.startTime && (
+                      <span>
+                        Started: {formatDate(task.startTime)}
+                      </span>
+                    )}
+                    {task.startTime && (
+                      <span>
+                        Duration: {formatDuration(task.startTime, task.endTime)}
+                      </span>
+                    )}
                   </div>
-                </div>
-              )}
 
-              {task.error && (
-                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-                  <strong>Error:</strong> {task.error}
-                </div>
+                  {task.progress !== undefined && task.status === 'running' && (
+                    <div className="mt-2">
+                      <div className="w-full bg-gray-200 rounded-full h-1.5">
+                        <div
+                          className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                          style={{ width: `${task.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {task.error && (
+                    <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+                      <strong>Error:</strong> {task.error}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -398,7 +406,7 @@ const JobDetails: React.FC = () => {
               }
             }}
           >
-            {selectedJob.steps?.every(t => expandedTasks.has(t.id)) ? 'Collapse All' : 'Expand All'}
+            {selectedJob.steps?.every(t => expandedTasks.has(t.id)) ? 'Collapse All' : 'View All'}
           </Button>
         </div>
 
