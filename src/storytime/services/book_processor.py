@@ -240,6 +240,7 @@ class BookProcessor:
             child_job = Job(
                 id=str(uuid4()),
                 user_id=parent_job.user_id,
+                parent_id=parent_job.id,
                 title=f"{parent_job.title} - {chapter_file['title']}",
                 description=f"Chapter {chapter_file['chapter_number']} of {parent_job.title}",
                 status=JobStatus.PENDING,

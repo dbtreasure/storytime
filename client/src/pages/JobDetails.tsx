@@ -17,8 +17,12 @@ import {
   InformationCircleIcon,
   ChevronRightIcon,
   ChevronDownIcon,
+  BookOpenIcon,
+  DocumentTextIcon,
+  ArrowUpIcon,
 } from '@heroicons/react/24/outline';
 import { JobStepResponse } from '../schemas';
+import { EyeIcon } from '@heroicons/react/24/outline';
 
 interface TaskTreeNode {
   id: string;
@@ -266,27 +270,83 @@ const JobDetails: React.FC = () => {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center space-x-4">
-          <Button
-            variant="outline"
-            size="sm"
+      {/* Header with Breadcrumbs */}
+      <div className="mb-8">
+        {/* Breadcrumbs */}
+        <div className="flex items-center space-x-2 text-sm text-gray-600 mb-4">
+          <button
             onClick={() => navigate('/jobs')}
+            className="hover:text-blue-600 transition-colors"
           >
-            <ArrowLeftIcon className="h-4 w-4 mr-2" />
-            Back to Jobs
-          </Button>
-
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              {selectedJob.title || `Job ${selectedJob.id.slice(0, 8)}`}
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Job ID: {selectedJob.id}
-            </p>
-          </div>
+            Jobs
+          </button>
+          {selectedJob.parent && (
+            <>
+              <ChevronRightIcon className="h-4 w-4" />
+              <button
+                onClick={() => navigate(`/jobs/${selectedJob.parent!.id}`)}
+                className="hover:text-blue-600 transition-colors flex items-center space-x-1"
+              >
+                <BookOpenIcon className="h-4 w-4" />
+                <span>{selectedJob.parent.title || `Job ${selectedJob.parent.id.slice(0, 8)}`}</span>
+              </button>
+            </>
+          )}
+          <ChevronRightIcon className="h-4 w-4" />
+          <span className="flex items-center space-x-1">
+            {selectedJob.parent_job_id ? (
+              <DocumentTextIcon className="h-4 w-4" />
+            ) : selectedJob.children && selectedJob.children.length > 0 ? (
+              <BookOpenIcon className="h-4 w-4" />
+            ) : null}
+            <span>{selectedJob.title || `Job ${selectedJob.id.slice(0, 8)}`}</span>
+          </span>
         </div>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/jobs')}
+            >
+              <ArrowLeftIcon className="h-4 w-4 mr-2" />
+              Back to Jobs
+            </Button>
+
+            {selectedJob.parent_job_id && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/jobs/${selectedJob.parent_job_id}`)}
+                className="text-blue-600 hover:text-blue-700 border-blue-300 hover:border-blue-400"
+              >
+                <ArrowUpIcon className="h-4 w-4 mr-2" />
+                Go to Parent Book
+              </Button>
+            )}
+
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                {selectedJob.title || `Job ${selectedJob.id.slice(0, 8)}`}
+              </h1>
+              <p className="text-gray-600 mt-1">
+                Job ID: {selectedJob.id}
+                {selectedJob.parent_job_id && (
+                  <span className="ml-2 inline-flex items-center text-blue-600">
+                    <DocumentTextIcon className="h-4 w-4 mr-1" />
+                    Chapter Job
+                  </span>
+                )}
+                {selectedJob.children && selectedJob.children.length > 0 && (
+                  <span className="ml-2 inline-flex items-center text-blue-600">
+                    <BookOpenIcon className="h-4 w-4 mr-1" />
+                    Book Job ({selectedJob.children.length} chapters)
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
 
         <div className="flex items-center space-x-2">
           {selectedJob.status === 'COMPLETED' && (
@@ -313,6 +373,7 @@ const JobDetails: React.FC = () => {
               Cancel Job
             </Button>
           )}
+        </div>
         </div>
       </div>
 
@@ -377,6 +438,44 @@ const JobDetails: React.FC = () => {
               className="bg-blue-600 h-3 rounded-full transition-all duration-300"
               style={{ width: `${selectedJob.status === 'COMPLETED' ? 100 : selectedJob.progress}%` }}
             />
+          </div>
+        </Card>
+      )}
+
+      {/* Related Jobs (Children) */}
+      {selectedJob.children && selectedJob.children.length > 0 && (
+        <Card className="p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <BookOpenIcon className="h-5 w-5 mr-2" />
+            Chapter Jobs ({selectedJob.children.length})
+          </h2>
+          <div className="space-y-3">
+            {selectedJob.children.map((child) => (
+              <div key={child.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
+                <div className="flex items-center space-x-3">
+                  <DocumentTextIcon className="h-5 w-5 text-green-600" />
+                  <div>
+                    <h4 className="font-medium">{child.title || `Chapter ${child.id.slice(0, 8)}`}</h4>
+                    <p className="text-sm text-gray-500">Created: {formatDate(child.created_at)}</p>
+                  </div>
+                  <Badge className={getStatusColor(child.status)}>
+                    {child.status.toLowerCase()}
+                  </Badge>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {child.status === 'COMPLETED' && (
+                    <Button variant="outline" size="sm" onClick={() => navigate(`/library/${child.id}`)}>
+                      <PlayIcon className="h-4 w-4 mr-1" />
+                      Play
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => navigate(`/jobs/${child.id}`)}>
+                    <EyeIcon className="h-4 w-4 mr-1" />
+                    View
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
         </Card>
       )}

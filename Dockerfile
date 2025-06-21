@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     gcc \
     curl \
+    postgresql-client \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
@@ -36,7 +37,11 @@ RUN npm cache clean --force && \
 # Copy application code and built client
 WORKDIR /app
 COPY src /app/src
-RUN mkdir -p /app/static && cp -r /app/client/dist/* /app/static/
+COPY alembic /app/alembic
+COPY alembic.ini /app/alembic.ini
+COPY scripts/start.sh /app/scripts/start.sh
+RUN chmod +x /app/scripts/start.sh && \
+    mkdir -p /app/static && cp -r /app/client/dist/* /app/static/
 
 # Expose API port
 EXPOSE 8000
@@ -45,4 +50,4 @@ EXPOSE 8000
 ENV PYTHONPATH=/app/src
 
 # Run the application
-CMD ["uvicorn", "src.storytime.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["./scripts/start.sh"]

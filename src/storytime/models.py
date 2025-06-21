@@ -135,6 +135,7 @@ class JobResponse(BaseModel):
 
     id: str
     user_id: str
+    parent_job_id: str | None = Field(None, description="Parent job ID")
     title: str
     description: str | None = None
 
@@ -160,6 +161,8 @@ class JobResponse(BaseModel):
 
     # Related data
     steps: list[JobStepResponse] = Field(default_factory=list)
+    children: list[JobResponse] = Field(default_factory=list, description="Child jobs")
+    parent: JobResponse | None = Field(None, description="Parent job (if this is a child)")
 
 
 class JobListResponse(BaseModel):

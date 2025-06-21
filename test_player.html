@@ -85,7 +85,7 @@
 <body>
     <div class="container">
         <h1>🎵 Storytime Audio Streaming Test</h1>
-        
+
         <div class="info">
             <strong>Instructions:</strong>
             <ol>
@@ -177,20 +177,20 @@
                 if (response.ok) {
                     const data = await response.json();
                     setStatus('✅ Audio URLs loaded successfully!', 'success');
-                    
+
                     // Show audio player
                     const audioPlayer = document.getElementById('audioPlayer');
                     const audioElement = document.getElementById('audioElement');
-                    
+
                     audioPlayer.style.display = 'block';
                     audioElement.src = data.streaming_url;
-                    
+
                     // Setup audio event listeners
                     setupAudioEvents(audioElement);
-                    
+
                     // Show URL info
                     showUrlInfo(data);
-                    
+
                 } else if (response.status === 400) {
                     setStatus('⏳ Job not completed yet. Please wait for processing to finish.', 'info');
                 } else {
@@ -211,7 +211,7 @@
                 const current = audio.currentTime;
                 const duration = audio.duration;
                 const progress = duration > 0 ? (current / duration * 100).toFixed(1) : 0;
-                
+
                 document.getElementById('currentTime').textContent = formatTime(current);
                 document.getElementById('progress').textContent = `${progress}%`;
             });
@@ -248,18 +248,18 @@
         function showUrlInfo(data) {
             const urlInfo = document.getElementById('urlInfo');
             const urlList = document.getElementById('urlList');
-            
+
             urlList.innerHTML = `
                 <p><strong>Download URL:</strong><br>
                 <input type="text" value="${data.download_url}" readonly style="width: 100%; font-size: 12px;"></p>
-                
+
                 <p><strong>Streaming URL:</strong><br>
                 <input type="text" value="${data.streaming_url}" readonly style="width: 100%; font-size: 12px;"></p>
-                
+
                 <p><strong>File Key:</strong> ${data.file_key}</p>
                 <p><strong>Content Type:</strong> ${data.content_type}</p>
             `;
-            
+
             urlInfo.style.display = 'block';
         }
 
@@ -289,7 +289,7 @@
                     const response = await fetch(`${baseUrl}${endpoint.url}`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
-                    
+
                     const status = response.ok ? '✅' : '❌';
                     results += `<li>${status} ${endpoint.name}: ${response.status}</li>`;
                 } catch (error) {

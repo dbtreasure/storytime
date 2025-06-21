@@ -63,6 +63,9 @@ class Job(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False, index=True)
+    parent_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("jobs.id"), nullable=True, index=True
+    )
 
     # Job configuration
     title: Mapped[str] = mapped_column(String, nullable=False)
@@ -99,6 +102,13 @@ class Job(Base):
 
     # Relationships
     user = relationship("User", back_populates="jobs")
+    parent = relationship("Job", remote_side="Job.id", back_populates="children")
+    children = relationship(
+        "Job",
+        back_populates="parent",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
     steps = relationship("JobStep", back_populates="job", cascade="all, delete-orphan")
     progress_records = relationship("PlaybackProgress", back_populates="job")
 

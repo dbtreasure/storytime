@@ -279,6 +279,7 @@ class JobProcessor:
         return JobResponse(
             id=job.id,
             user_id=job.user_id,
+            parent_job_id=job.parent_id,
             title=job.title,
             description=job.description,
             status=job.status,

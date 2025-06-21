@@ -60,10 +60,11 @@ export const JobStepResponseSchema = z.object({
   duration: z.number().nullable().optional(),
 });
 
-// Job response (the main one!)
-export const JobResponseSchema = z.object({
+// Job response (the main one!) - with recursive relationships
+export const JobResponseSchema: z.ZodType<JobResponse> = z.lazy(() => z.object({
   id: z.string(),
   user_id: z.string(),
+  parent_job_id: z.string().nullable().optional(),
   title: z.string(),
   description: z.string().nullable().optional(),
   status: JobStatusSchema,
@@ -79,7 +80,9 @@ export const JobResponseSchema = z.object({
   completed_at: z.string().nullable().optional(),
   duration: z.number().nullable().optional(),
   steps: z.array(JobStepResponseSchema).optional(),
-});
+  children: z.array(JobResponseSchema).optional(),
+  parent: JobResponseSchema.nullable().optional(),
+}));
 
 // Audio streaming types
 export const ResumeInfoResponseSchema = z.object({
@@ -170,7 +173,6 @@ export type Chapter = z.infer<typeof ChapterSchema>;
 export type JobConfig = z.infer<typeof JobConfigSchema>;
 export type JobResultData = z.infer<typeof JobResultDataSchema>;
 export type JobStepResponse = z.infer<typeof JobStepResponseSchema>;
-export type JobResponse = z.infer<typeof JobResponseSchema>;
 export type ResumeInfoResponse = z.infer<typeof ResumeInfoResponseSchema>;
 export type StreamingUrlResponse = z.infer<typeof StreamingUrlResponseSchema>;
 export type AudioMetadataResponse = z.infer<typeof AudioMetadataResponseSchema>;
@@ -178,3 +180,27 @@ export type PlaybackProgressResponse = z.infer<typeof PlaybackProgressResponseSc
 export type UpdateProgressRequest = z.infer<typeof UpdateProgressRequestSchema>;
 export type CreateJobRequest = z.infer<typeof CreateJobRequestSchema>;
 export type JobListResponse = z.infer<typeof JobListResponseSchema>;
+
+// Recursive JobResponse type (defined explicitly for TypeScript)
+export interface JobResponse {
+  id: string;
+  user_id: string;
+  parent_job_id?: string | null;
+  title: string;
+  description?: string | null;
+  status: JobStatus;
+  progress: number;
+  error_message?: string | null;
+  config?: JobConfig | null;
+  result_data?: JobResultData | null;
+  input_file_key?: string | null;
+  output_file_key?: string | null;
+  created_at: string;
+  updated_at: string;
+  started_at?: string | null;
+  completed_at?: string | null;
+  duration?: number | null;
+  steps?: JobStepResponse[];
+  children?: JobResponse[];
+  parent?: JobResponse | null;
+}

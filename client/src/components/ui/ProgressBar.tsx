@@ -20,7 +20,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
 }) => {
   // Clamp progress between 0 and 100
   const clampedProgress = Math.max(0, Math.min(100, progress));
-  
+
   const sizeClasses = {
     sm: 'h-1',
     md: 'h-2',
