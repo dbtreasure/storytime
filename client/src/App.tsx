@@ -19,27 +19,27 @@ import BookDetails from './pages/BookDetails';
 // Protected Route component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAppSelector((state) => state.auth);
-  
+
   // Wait for auth initialization to complete
   if (isLoading) {
     return <div>Loading...</div>;
   }
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
+
   return <AppLayout>{children}</AppLayout>;
 }
 
 // Public Route component (redirect to dashboard if authenticated)
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAppSelector((state) => state.auth);
-  
+
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
-  
+
   return <>{children}</>;
 }
 
@@ -64,7 +64,7 @@ function AppContent() {
             <Register />
           </PublicRoute>
         } />
-        
+
         {/* Protected routes */}
         <Route path="/dashboard" element={
           <ProtectedRoute>
@@ -96,7 +96,7 @@ function AppContent() {
             <BookDetails />
           </ProtectedRoute>
         } />
-        
+
         {/* Default redirects */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

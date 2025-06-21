@@ -119,10 +119,10 @@ async def list_jobs(
         result = await db.execute(query)
         jobs = result.scalars().all()
 
-        # Convert to response models
+        # Convert to response models (without full relationships for performance)
         job_responses = []
         for job in jobs:
-            job_response = await _get_job_response(job.id, db)
+            job_response = await _get_job_response(job.id, db, include_relationships=False)
             job_responses.append(job_response)
 
         total_pages = (total + page_size - 1) // page_size
@@ -333,8 +333,10 @@ async def _get_user_job(job_id: str, user_id: str, db: AsyncSession) -> Job:
     return job
 
 
-async def _get_job_response(job_id: str, db: AsyncSession) -> JobResponse:
-    """Get job with steps as response model."""
+async def _get_job_response(
+    job_id: str, db: AsyncSession, include_relationships: bool = True
+) -> JobResponse:
+    """Get job with steps and relationships as response model."""
     # Get job
     result = await db.execute(select(Job).where(Job.id == job_id))
     job = result.scalar_one_or_none()
@@ -347,6 +349,25 @@ async def _get_job_response(job_id: str, db: AsyncSession) -> JobResponse:
         select(JobStep).where(JobStep.job_id == job_id).order_by(JobStep.step_order)
     )
     steps = steps_result.scalars().all()
+
+    # Get parent job if exists
+    parent_job = None
+    if include_relationships and job.parent_id:
+        parent_result = await db.execute(select(Job).where(Job.id == job.parent_id))
+        parent_db = parent_result.scalar_one_or_none()
+        if parent_db:
+            parent_job = await _get_job_response(parent_db.id, db, include_relationships=False)
+
+    # Get child jobs
+    children_jobs = []
+    if include_relationships:
+        children_result = await db.execute(
+            select(Job).where(Job.parent_id == job_id).order_by(Job.created_at)
+        )
+        children_db = children_result.scalars().all()
+        for child_db in children_db:
+            child_job = await _get_job_response(child_db.id, db, include_relationships=False)
+            children_jobs.append(child_job)
 
     step_responses = [
         JobStepResponse(
@@ -398,4 +419,6 @@ async def _get_job_response(job_id: str, db: AsyncSession) -> JobResponse:
         completed_at=job.completed_at,
         duration=job.duration,
         steps=step_responses,
+        children=children_jobs,
+        parent=parent_job,
     )

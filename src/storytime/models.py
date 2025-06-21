@@ -161,6 +161,8 @@ class JobResponse(BaseModel):
 
     # Related data
     steps: list[JobStepResponse] = Field(default_factory=list)
+    children: list[JobResponse] = Field(default_factory=list, description="Child jobs")
+    parent: JobResponse | None = Field(None, description="Parent job (if this is a child)")
 
 
 class JobListResponse(BaseModel):

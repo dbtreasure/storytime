@@ -9,6 +9,7 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Spinner } from '../components/ui/Spinner';
 import { Alert } from '../components/ui/Alert';
+import type { JobResponse } from '../schemas';
 import {
   MagnifyingGlassIcon,
   FunnelIcon,
@@ -19,6 +20,9 @@ import {
   ExclamationTriangleIcon,
   CheckCircleIcon,
   ArrowLeftIcon,
+  BookOpenIcon,
+  DocumentTextIcon,
+  ArrowUpIcon,
 } from '@heroicons/react/24/outline';
 
 const Jobs: React.FC = () => {
@@ -126,6 +130,23 @@ const Jobs: React.FC = () => {
 
   const canCancelJob = (status: string) => {
     return status === 'PENDING' || status === 'PROCESSING';
+  };
+
+  const isChildJob = (job: JobResponse) => {
+    return job.parent_job_id != null;
+  };
+
+  const isParentJob = (job: JobResponse) => {
+    return job.children && job.children.length > 0;
+  };
+
+  const getJobIcon = (job: JobResponse) => {
+    if (isParentJob(job)) {
+      return <BookOpenIcon className="h-5 w-5 text-blue-600" />;
+    } else if (isChildJob(job)) {
+      return <DocumentTextIcon className="h-5 w-5 text-green-600" />;
+    }
+    return null;
   };
 
   if (isLoading && jobs.length === 0) {
@@ -254,13 +275,26 @@ const Jobs: React.FC = () => {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-3">
+                        {getJobIcon(job)}
                         <h3 className="text-lg font-medium text-gray-900 truncate">
                           {job.title || `Job ${job.id.slice(0, 8)}`}
                         </h3>
                         <Badge className={getStatusColor(job.status)}>
                           {job.status.toLowerCase()}
                         </Badge>
+                        {isParentJob(job) && (
+                          <Badge className="bg-blue-100 text-blue-800">
+                            {job.children.length} chapters
+                          </Badge>
+                        )}
                       </div>
+
+                      {isChildJob(job) && (
+                        <div className="mt-1 flex items-center space-x-2 text-sm text-blue-600">
+                          <BookOpenIcon className="h-4 w-4" />
+                          <span>Part of parent book job</span>
+                        </div>
+                      )}
 
                       <div className="mt-1 flex items-center space-x-4 text-sm text-gray-500">
                         <span>ID: {job.id.slice(0, 8)}</span>
@@ -278,6 +312,18 @@ const Jobs: React.FC = () => {
                   </div>
 
                   <div className="flex items-center space-x-2 ml-4">
+                    {isChildJob(job) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/jobs/${job.parent_job_id}`)}
+                        className="text-blue-600 hover:text-blue-700 border-blue-300 hover:border-blue-400"
+                      >
+                        <ArrowUpIcon className="h-4 w-4 mr-1" />
+                        Go to Parent
+                      </Button>
+                    )}
+
                     {job.status === 'COMPLETED' && (
                       <Button
                         variant="outline"
