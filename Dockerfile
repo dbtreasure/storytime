@@ -39,9 +39,7 @@ WORKDIR /app
 COPY src /app/src
 COPY alembic /app/alembic
 COPY alembic.ini /app/alembic.ini
-COPY scripts/start.sh /app/scripts/start.sh
-RUN chmod +x /app/scripts/start.sh && \
-    mkdir -p /app/static && cp -r /app/client/dist/* /app/static/
+RUN mkdir -p /app/static && cp -r /app/client/dist/* /app/static/
 
 # Expose API port
 EXPOSE 8000
@@ -50,4 +48,4 @@ EXPOSE 8000
 ENV PYTHONPATH=/app/src
 
 # Run the application
-CMD ["./scripts/start.sh"]
+CMD ["uvicorn", "storytime.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
