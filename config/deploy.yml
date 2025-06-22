@@ -19,7 +19,7 @@ servers:
   web:
     hosts:
       - 129.212.136.218
-    cmd: uvicorn storytime.api.main:app --host 0.0.0.0 --port 8000
+    cmd: ./scripts/start.sh
   worker:
     hosts:
       - 129.212.136.218
