@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './store';
 import { useAppDispatch, useAppSelector } from './hooks/redux';
 import { initializeAuth } from './store/slices/authSlice';
 import AppLayout from './components/layout/AppLayout';
+import { getEnvironment, EnvironmentInfo } from './utils/environment';
 
 // Import pages
 import Login from './pages/Login';
@@ -45,9 +46,12 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 function AppContent() {
   const dispatch = useAppDispatch();
+  const [environment, setEnvironment] = useState<EnvironmentInfo | null>(null);
 
   useEffect(() => {
     dispatch(initializeAuth());
+    // Load environment info
+    getEnvironment().then(setEnvironment);
   }, [dispatch]);
 
   return (
@@ -59,13 +63,13 @@ function AppContent() {
             <Login />
           </PublicRoute>
         } />
-        {/* Temporarily disabled signups
-        <Route path="/register" element={
-          <PublicRoute>
-            <Register />
-          </PublicRoute>
-        } />
-        */}
+        {environment?.features.signup_enabled && (
+          <Route path="/register" element={
+            <PublicRoute>
+              <Register />
+            </PublicRoute>
+          } />
+        )}
 
         {/* Protected routes */}
         <Route path="/dashboard" element={

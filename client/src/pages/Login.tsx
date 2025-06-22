@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { Alert } from '../components/ui/Alert';
+import { getEnvironment, EnvironmentInfo } from '../utils/environment';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -22,6 +23,11 @@ const Login: React.FC = () => {
   const dispatch = useAppDispatch();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [environment, setEnvironment] = useState<EnvironmentInfo | null>(null);
+
+  useEffect(() => {
+    getEnvironment().then(setEnvironment);
+  }, []);
 
   const {
     register,
@@ -55,17 +61,17 @@ const Login: React.FC = () => {
           <h2 className="mt-6 text-center text-2xl font-bold text-gray-900">
             Sign in to your account
           </h2>
-          {/* Temporarily disabled signups
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link
-              to="/register"
-              className="font-medium text-blue-600 hover:text-blue-500"
-            >
-              create a new account
-            </Link>
-          </p>
-          */}
+          {environment?.features.signup_enabled && (
+            <p className="mt-2 text-center text-sm text-gray-600">
+              Or{' '}
+              <Link
+                to="/register"
+                className="font-medium text-blue-600 hover:text-blue-500"
+              >
+                create a new account
+              </Link>
+            </p>
+          )}
         </div>
 
         <Card className="mt-8 p-8">
