@@ -39,6 +39,15 @@ class StepStatus(str, Enum):
     FAILED = "FAILED"
 
 
+class PreprocessingConfig(BaseModel):
+    """Configuration for text preprocessing before TTS."""
+    
+    enabled: bool = Field(True, description="Whether to enable text preprocessing")
+    model: str = Field("gemini-1.5-flash-latest", description="Gemini model to use for preprocessing")
+    preserve_structure: bool = Field(True, description="Maintain original chapter structure")
+    aggressive_cleanup: bool = Field(False, description="More aggressive metadata removal")
+
+
 class VoiceConfig(BaseModel):
     """Voice configuration for TTS generation."""
 
@@ -62,6 +71,7 @@ class JobConfig(BaseModel):
     """Job configuration data."""
 
     voice_config: VoiceConfig | None = Field(None, description="Voice configuration")
+    preprocessing: PreprocessingConfig | None = Field(None, description="Text preprocessing configuration")
     provider: str | None = Field(None, description="TTS provider (for backwards compatibility)")
 
 
@@ -97,6 +107,9 @@ class CreateJobRequest(BaseModel):
 
     # Voice configuration
     voice_config: VoiceConfig | None = Field(None, description="Voice configuration")
+    
+    # Preprocessing configuration
+    preprocessing: PreprocessingConfig | None = Field(None, description="Text preprocessing configuration")
 
     # Book processing specific
     processing_mode: str = Field("single_voice", description="Processing mode for book chapters")
