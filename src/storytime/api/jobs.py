@@ -5,7 +5,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
-from sqlalchemy import and_, func, select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from storytime.api.auth import get_current_user
@@ -24,6 +24,8 @@ from storytime.models import (
     MessageResponse,
 )
 from storytime.worker.tasks import process_job
+
+from .utils import get_user_job
 
 # JobProcessor is now simplified and always available
 
@@ -145,7 +147,7 @@ async def get_job(
 
     try:
         # Verify job exists and belongs to user
-        await _get_user_job(job_id, current_user.id, db)
+        await get_user_job(job_id, current_user.id, db)
         return await _get_job_response(job_id, db)
 
     except ValueError as e:
@@ -166,7 +168,7 @@ async def cancel_job(
 
     try:
         # Verify job exists and belongs to user
-        job = await _get_user_job(job_id, current_user.id, db)
+        job = await get_user_job(job_id, current_user.id, db)
 
         # Only allow cancellation of pending or processing jobs
         if job.status not in [JobStatus.PENDING, JobStatus.PROCESSING]:
@@ -206,7 +208,7 @@ async def get_job_steps(
 
     try:
         # Verify job exists and belongs to user
-        await _get_user_job(job_id, current_user.id, db)
+        await get_user_job(job_id, current_user.id, db)
 
         # Get job steps
         result = await db.execute(
@@ -250,7 +252,7 @@ async def get_job_audio(
 
     try:
         # Verify job exists and belongs to user
-        job = await _get_user_job(job_id, current_user.id, db)
+        job = await get_user_job(job_id, current_user.id, db)
 
         # Check if job is completed and has audio output
         if job.status != JobStatus.COMPLETED:
@@ -293,7 +295,7 @@ async def get_book_chapters(
 
     try:
         # Verify job exists and belongs to user
-        job = await _get_user_job(job_id, current_user.id, db)
+        job = await get_user_job(job_id, current_user.id, db)
 
         # Check if this is a book processing job
         job_type = job.config.get("job_type") if job.config else None
@@ -320,17 +322,6 @@ async def get_book_chapters(
 
 
 # Helper functions
-
-
-async def _get_user_job(job_id: str, user_id: str, db: AsyncSession) -> Job:
-    """Get job and verify it belongs to the user."""
-    result = await db.execute(select(Job).where(and_(Job.id == job_id, Job.user_id == user_id)))
-    job = result.scalar_one_or_none()
-
-    if not job:
-        raise ValueError(f"Job {job_id} not found or access denied")
-
-    return job
 
 
 async def _get_job_response(
