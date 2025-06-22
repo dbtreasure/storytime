@@ -19,7 +19,6 @@ servers:
   web:
     hosts:
       - 129.212.136.218
-    cmd: ./scripts/start.sh
   worker:
     hosts:
       - 129.212.136.218
@@ -86,3 +85,8 @@ proxy:
 # Builder configuration
 builder:
   arch: amd64
+
+# Hooks for migrations
+boot:
+  limit: 10% # Deploy to 10% of hosts at a time
+  wait: 30 # Wait 30 seconds between deployments

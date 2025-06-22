@@ -31,9 +31,12 @@ target_metadata = Base.metadata
 # ... etc.
 
 # Use a sync DB URL for Alembic migrations
-SYNC_DB_URL = (
-    os.getenv("ALEMBIC_DATABASE_URL") or "postgresql+psycopg2://postgres:postgres@db:5432/storytime"
-)
+# Convert asyncpg URL to psycopg2 URL for Alembic
+DATABASE_URL = os.getenv("DATABASE_URL", "")
+if DATABASE_URL:
+    SYNC_DB_URL = DATABASE_URL.replace("postgresql+asyncpg", "postgresql+psycopg2")
+else:
+    SYNC_DB_URL = "postgresql+psycopg2://postgres:postgres@localhost:5432/storytime"
 
 
 def run_migrations_offline() -> None:
