@@ -28,7 +28,6 @@ Simple Text → Job Creation → TTS Processing → Audio Output → Secure Stor
 
 Book Processing → Chapter Detection → Parallel Processing → Audio Generation → Result Aggregation
 
-Multi-Chapter → Chapter Analysis → Child Jobs → Parallel Execution → Progress Tracking → Assembly
 ```
 
 ## 🚀 Quick Start
@@ -94,6 +93,9 @@ uvicorn storytime.api.main:app --reload --host 0.0.0.0 --port 8000
 
 # Start Celery worker (separate terminal)
 celery -A storytime.worker.celery_app worker --loglevel=info
+
+# Build and start React client (separate terminal)
+cd client && npm install && npm run dev
 ```
 
 ### 5. Run Tests
@@ -113,7 +115,7 @@ ruff format .
 ## 📋 Core Components
 
 ### **🎯 Unified Job System**
-- **Job Types**: TEXT_TO_AUDIO, BOOK_PROCESSING, CHAPTER_MULTI_VOICE
+- **Job Types**: TEXT_TO_AUDIO, BOOK_PROCESSING
 - **Step Tracking**: Granular progress monitoring with detailed error handling
 - **Resume Support**: Chapter-level progress for long-form content
 
@@ -157,17 +159,6 @@ ruff format .
 }
 ```
 
-### **3. Multi-Chapter Processing**
-```python
-{
-    "job_type": "CHAPTER_MULTI_VOICE",
-    "text": "Chapter content...",
-    "voice_config": {
-        "provider": "elevenlabs",
-        "character_voices": {...}
-    }
-}
-```
 
 ## 📊 API Usage Examples
 
@@ -370,5 +361,37 @@ MIT License - See LICENSE file for details
 - ✅ **Unified Job System**: Streamlined all processing through single job management API
 - ✅ **Book Intelligence**: Added automatic chapter detection and parallel processing
 - ✅ **Background Processing**: Implemented scalable Celery-based job execution
+- ✅ **Environment-Based Features**: Added feature flags system with conditional user registration
 
 For detailed development guidance, see [CLAUDE.md](CLAUDE.md)
+
+## 🔐 Environment-Based Features
+
+StorytimeTTS now includes environment-aware feature flags:
+
+### **Feature Flag System**
+- **Endpoint**: `/api/v1/environment` returns current environment and feature flags
+- **User Registration**: Automatically enabled in `dev` and `docker` environments, disabled in `production`
+- **Extensible**: Easy to add new feature flags for A/B testing or gradual rollouts
+
+### **Environment Detection**
+```javascript
+// Client-side usage
+import { getEnvironment } from './utils/environment';
+
+const env = await getEnvironment();
+if (env.features.signup_enabled) {
+  // Show registration UI
+}
+```
+
+### **Current Feature Flags**
+- `signup_enabled`: Controls new user registration (true for dev/docker, false for production)
+- `debug_mode`: Enables debug features (true for dev only)
+- `demo_mode`: Reserved for future demo functionality
+
+### **Configuration**
+Set the environment via the `ENV` variable:
+- `ENV=dev` - Local development (signup enabled)
+- `ENV=docker` - Docker Compose (signup enabled)
+- `ENV=production` - Production deployment (signup disabled)

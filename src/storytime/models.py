@@ -62,7 +62,6 @@ class JobConfig(BaseModel):
     """Job configuration data."""
 
     voice_config: VoiceConfig | None = Field(None, description="Voice configuration")
-    processing_config: ProcessingConfig | None = Field(None, description="Processing configuration")
     provider: str | None = Field(None, description="TTS provider (for backwards compatibility)")
 
 
@@ -78,21 +77,11 @@ class JobResultData(BaseModel):
     child_job_ids: list[str] | None = Field(None, description="Child job IDs for book processing")
 
 
-class ProcessingConfig(BaseModel):
-    """Processing configuration for jobs."""
-
-    max_concurrency: int = Field(8, description="Maximum parallel operations")
-    chunk_size: int = Field(1000, description="Text chunk size for processing")
-    retry_attempts: int = Field(3, description="Number of retry attempts")
-    enable_observability: bool = Field(True, description="Enable tracing and metrics")
-
-
 class JobType(str, Enum):
     """Types of jobs that can be processed."""
 
     TEXT_TO_AUDIO = "text_to_audio"
     BOOK_PROCESSING = "book_processing"
-    CHAPTER_MULTI_VOICE = "chapter_multi_voice"
 
 
 class CreateJobRequest(BaseModel):
