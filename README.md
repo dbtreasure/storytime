@@ -28,7 +28,6 @@ Simple Text → Job Creation → TTS Processing → Audio Output → Secure Stor
 
 Book Processing → Chapter Detection → Parallel Processing → Audio Generation → Result Aggregation
 
-Multi-Chapter → Chapter Analysis → Child Jobs → Parallel Execution → Progress Tracking → Assembly
 ```
 
 ## 🚀 Quick Start
@@ -113,7 +112,7 @@ ruff format .
 ## 📋 Core Components
 
 ### **🎯 Unified Job System**
-- **Job Types**: TEXT_TO_AUDIO, BOOK_PROCESSING, CHAPTER_MULTI_VOICE
+- **Job Types**: TEXT_TO_AUDIO, BOOK_PROCESSING
 - **Step Tracking**: Granular progress monitoring with detailed error handling
 - **Resume Support**: Chapter-level progress for long-form content
 
@@ -157,17 +156,6 @@ ruff format .
 }
 ```
 
-### **3. Multi-Chapter Processing**
-```python
-{
-    "job_type": "CHAPTER_MULTI_VOICE",
-    "text": "Chapter content...",
-    "voice_config": {
-        "provider": "elevenlabs",
-        "character_voices": {...}
-    }
-}
-```
 
 ## 📊 API Usage Examples
 
