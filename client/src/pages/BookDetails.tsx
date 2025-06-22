@@ -26,7 +26,7 @@ const BookDetails: React.FC = () => {
 
   useEffect(() => {
     if (jobId) {
-      dispatch(fetchJob(jobId));
+      dispatch(fetchJob({ jobId, isPolling: false }));
     }
   }, [dispatch, jobId]);
 

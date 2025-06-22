@@ -7,7 +7,7 @@ for use by the frontend client code generation tools.
 
 Usage:
     python generate_openapi.py
-    
+
 The generated openapi.json file can then be used by the frontend:
     cd client && npm run generate-api
 """
@@ -34,20 +34,20 @@ def generate_openapi_schema():
     try:
         # Get the OpenAPI schema from the FastAPI app
         openapi_schema = app.openapi()
-        
+
         # Write to openapi.json in the root directory
         output_path = Path(__file__).parent / "openapi.json"
-        
-        with open(output_path, 'w') as f:
+
+        with open(output_path, "w") as f:
             json.dump(openapi_schema, f, indent=2)
-        
+
         print(f"✅ OpenAPI schema exported to {output_path}")
         print(f"   Total endpoints: {len(openapi_schema.get('paths', {}))}")
         print(f"   API version: {openapi_schema.get('info', {}).get('version', 'unknown')}")
         print()
         print("To update frontend types, run:")
         print("  cd client && npm run generate-api")
-        
+
     except Exception as e:
         print(f"❌ Error generating OpenAPI schema: {e}")
         sys.exit(1)

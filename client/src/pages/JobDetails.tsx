@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
+import { useJobPolling } from '../hooks/useJobPolling';
 import { fetchJob, cancelJob } from '../store/slices/jobsSlice';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -60,9 +61,12 @@ const JobDetails: React.FC = () => {
 
   useEffect(() => {
     if (jobId) {
-      dispatch(fetchJob(jobId));
+      dispatch(fetchJob({ jobId, isPolling: false }));
     }
   }, [dispatch, jobId]);
+
+  // Enable live job status updates for this specific job
+  const { isPolling, hasActiveJobs } = useJobPolling({ interval: 3000, enabled: true, jobId });
 
   // Debug job progress
   useEffect(() => {
