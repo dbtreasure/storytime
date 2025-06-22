@@ -3,7 +3,7 @@ import { z } from 'zod';
 // Basic enums and constants
 export const JobStatusSchema = z.enum(['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED']);
 export const StepStatusSchema = z.enum(['PENDING', 'RUNNING', 'COMPLETED', 'FAILED']);
-export const JobTypeSchema = z.enum(['text_to_audio', 'book_processing', 'chapter_multi_voice']);
+export const JobTypeSchema = z.enum(['text_to_audio', 'book_processing']);
 
 // Voice configuration
 export const VoiceConfigSchema = z.object({
@@ -12,13 +12,6 @@ export const VoiceConfigSchema = z.object({
   voice_settings: z.record(z.string()).optional(),
 });
 
-// Processing configuration
-export const ProcessingConfigSchema = z.object({
-  max_concurrency: z.number().int().default(8),
-  chunk_size: z.number().int().default(1000),
-  retry_attempts: z.number().int().default(3),
-  enable_observability: z.boolean().default(true),
-});
 
 // Chapter information
 export const ChapterSchema = z.object({
@@ -31,7 +24,6 @@ export const ChapterSchema = z.object({
 // Job configuration
 export const JobConfigSchema = z.object({
   voice_config: VoiceConfigSchema.nullable().optional(),
-  processing_config: ProcessingConfigSchema.nullable().optional(),
   provider: z.string().nullable().optional(), // backwards compatibility
 });
 
@@ -168,7 +160,6 @@ export type JobStatus = z.infer<typeof JobStatusSchema>;
 export type StepStatus = z.infer<typeof StepStatusSchema>;
 export type JobType = z.infer<typeof JobTypeSchema>;
 export type VoiceConfig = z.infer<typeof VoiceConfigSchema>;
-export type ProcessingConfig = z.infer<typeof ProcessingConfigSchema>;
 export type Chapter = z.infer<typeof ChapterSchema>;
 export type JobConfig = z.infer<typeof JobConfigSchema>;
 export type JobResultData = z.infer<typeof JobResultDataSchema>;
