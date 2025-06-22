@@ -66,7 +66,7 @@ const JobDetails: React.FC = () => {
   }, [dispatch, jobId]);
 
   // Enable live job status updates for this specific job
-  const { isPolling, hasActiveJobs } = useJobPolling({ interval: 3000, enabled: true, jobId });
+  useJobPolling({ interval: 3000, enabled: true, jobId });
 
   // Debug job progress
   useEffect(() => {

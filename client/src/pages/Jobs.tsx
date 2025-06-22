@@ -44,7 +44,7 @@ const Jobs: React.FC = () => {
   }, [dispatch]);
 
   // Enable live job status updates
-  const { isPolling, hasActiveJobs } = useJobPolling({ interval: 5000, enabled: true });
+  useJobPolling({ interval: 5000, enabled: true });
 
   const handleCancelJob = async (jobId: string) => {
     setCancellingJobs(prev => new Set(prev).add(jobId));
