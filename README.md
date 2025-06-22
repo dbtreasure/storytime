@@ -289,7 +289,17 @@ mypy src/
 3. **File Storage Issues**
    ```bash
    # Test DigitalOcean Spaces connection
-   python -c "from storytime.infrastructure.spaces import SpacesClient; print('Connected')"
+   python - <<'PY'
+   import asyncio
+   from storytime.infrastructure.spaces import SpacesClient
+
+   async def main():
+       client = SpacesClient()
+       url = await client.get_presigned_download_url('test-key')
+       print('Connected')
+
+   asyncio.run(main())
+   PY
    ```
 
 4. **TTS Provider Errors**

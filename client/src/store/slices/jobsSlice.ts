@@ -7,6 +7,7 @@ interface JobsState {
   jobs: JobResponse[];
   currentJob: JobResponse | null;
   isLoading: boolean;
+  isPolling: boolean;
   isCreating: boolean;
   error: string | null;
   pagination: {
@@ -25,6 +26,7 @@ const initialState: JobsState = {
   jobs: [],
   currentJob: null,
   isLoading: false,
+  isPolling: false,
   isCreating: false,
   error: null,
   pagination: {
@@ -44,10 +46,11 @@ export const fetchJobs = createAsyncThunk(
     limit?: number;
     status?: string;
     job_type?: string;
+    isPolling?: boolean;
   } = {}, { rejectWithValue }) => {
     try {
       const response = await apiClient.getJobs(params);
-      return response;
+      return { ...response, isPolling: params.isPolling || false };
     } catch (error: unknown) {
       return rejectWithValue(
         (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to fetch jobs'
@@ -58,10 +61,10 @@ export const fetchJobs = createAsyncThunk(
 
 export const fetchJob = createAsyncThunk(
   'jobs/fetchJob',
-  async (jobId: string, { rejectWithValue }) => {
+  async (params: { jobId: string; isPolling?: boolean }, { rejectWithValue }) => {
     try {
-      const job = await apiClient.getJob(jobId);
-      return job;
+      const job = await apiClient.getJob(params.jobId);
+      return { job, isPolling: params.isPolling || false };
     } catch (error: unknown) {
       return rejectWithValue(
         (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to fetch job'
@@ -159,43 +162,87 @@ const jobsSlice = createSlice({
   extraReducers: (builder) => {
     // Fetch jobs
     builder
-      .addCase(fetchJobs.pending, (state) => {
-        state.isLoading = true;
+      .addCase(fetchJobs.pending, (state, action) => {
+        const isPolling = action.meta.arg.isPolling;
+        if (isPolling) {
+          state.isPolling = true;
+        } else {
+          state.isLoading = true;
+        }
         state.error = null;
       })
-      .addCase(fetchJobs.fulfilled, (state, action: PayloadAction<PaginatedResponse<JobResponse>>) => {
+      .addCase(fetchJobs.fulfilled, (state, action) => {
+        const isPolling = action.payload.isPolling;
         state.isLoading = false;
-        state.jobs = action.payload.items;
-        state.pagination = {
+        state.isPolling = false;
+        
+        const newJobs = action.payload.items;
+        
+        // Only update jobs if they actually changed
+        if (JSON.stringify(state.jobs) !== JSON.stringify(newJobs)) {
+          state.jobs = newJobs;
+        }
+        
+        // Only update pagination if it changed
+        const newPagination = {
           page: action.payload.page,
           limit: action.payload.limit,
           total: action.payload.total,
           pages: action.payload.pages,
         };
+        
+        if (JSON.stringify(state.pagination) !== JSON.stringify(newPagination)) {
+          state.pagination = newPagination;
+        }
       })
       .addCase(fetchJobs.rejected, (state, action) => {
         state.isLoading = false;
+        state.isPolling = false;
         state.error = action.payload as string;
       });
 
     // Fetch single job
     builder
-      .addCase(fetchJob.pending, (state) => {
-        state.isLoading = true;
+      .addCase(fetchJob.pending, (state, action) => {
+        const isPolling = action.meta.arg.isPolling;
+        if (isPolling) {
+          state.isPolling = true;
+        } else {
+          state.isLoading = true;
+        }
         state.error = null;
       })
-      .addCase(fetchJob.fulfilled, (state, action: PayloadAction<JobResponse>) => {
+      .addCase(fetchJob.fulfilled, (state, action) => {
+        const isPolling = action.payload.isPolling;
         state.isLoading = false;
-        state.currentJob = action.payload;
+        state.isPolling = false;
+        
+        const newJob = action.payload.job;
+        
+        // Only update currentJob if it actually changed
+        if (!state.currentJob || 
+            state.currentJob.status !== newJob.status ||
+            state.currentJob.progress !== newJob.progress ||
+            JSON.stringify(state.currentJob.steps) !== JSON.stringify(newJob.steps) ||
+            state.currentJob.updated_at !== newJob.updated_at) {
+          state.currentJob = newJob;
+        }
 
-        // Also update in jobs list if it exists
-        const index = state.jobs.findIndex(job => job.id === action.payload.id);
+        // Also update in jobs list if it exists and has changes
+        const index = state.jobs.findIndex(job => job.id === newJob.id);
         if (index !== -1) {
-          state.jobs[index] = action.payload;
+          const existingJob = state.jobs[index];
+          if (existingJob.status !== newJob.status ||
+              existingJob.progress !== newJob.progress ||
+              JSON.stringify(existingJob.steps) !== JSON.stringify(newJob.steps) ||
+              existingJob.updated_at !== newJob.updated_at) {
+            state.jobs[index] = newJob;
+          }
         }
       })
       .addCase(fetchJob.rejected, (state, action) => {
         state.isLoading = false;
+        state.isPolling = false;
         state.error = action.payload as string;
       });
 

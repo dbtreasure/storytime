@@ -48,7 +48,7 @@ const Library: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   useEffect(() => {
-    dispatch(fetchJobs({ status: 'COMPLETED' }));
+    dispatch(fetchJobs({ status: 'COMPLETED', isPolling: false }));
   }, [dispatch]);
 
 
