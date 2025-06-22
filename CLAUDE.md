@@ -6,6 +6,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 StorytimeTTS is an AI-powered audiobook generation platform that transforms text content into high-quality audiobooks. The system has evolved from complex multi-voice character processing to a streamlined, unified job management platform supporting both simple text-to-audio conversion and intelligent book processing with automatic chapter detection and parallel processing.
 
+## Recent Updates
+
+### **Environment-Based Feature Flags**
+We've implemented a flexible feature flag system that adapts based on the environment:
+
+- **API Endpoint**: `/api/v1/environment` returns current environment and feature flags
+- **Client Utility**: `client/src/utils/environment.ts` provides environment detection
+- **Registration Control**: User signup is automatically enabled in dev/docker, disabled in production
+- **Extensible System**: Easy to add new feature flags for A/B testing or gradual rollouts
+
+The environment is controlled by the `ENV` variable:
+- `ENV=dev` - Local development (signup enabled)
+- `ENV=docker` - Docker Compose (signup enabled)  
+- `ENV=production` - Production/Kamal deployment (signup disabled)
+
+### **Simplified React Client Deployment**
+The React client is now served as static assets directly from the FastAPI application:
+- No separate client worker needed in Kamal
+- Builds during Docker image creation
+- Serves from `/app/static/` via FastAPI
+- Removed unnecessary `client` accessory from `config/deploy.yml`
+
 ## Development Commands
 
 ### Quick Start
@@ -233,6 +255,8 @@ digitalocean_spaces/
 - **CORE-50**: Audio streaming API with resume support
 - **CORE-54**: Legacy dependency cleanup and modernization
 - **CORE-22-26**: Junjo workflow integration (completed but evolved to current unified system)
+- **Environment Features**: Implemented environment-based feature flags with conditional signup
+- **Client Deployment**: Simplified React app serving as static assets (removed separate worker)
 
 ### Current Capabilities
 - **Unified Job Management**: Single API for all processing types
@@ -240,6 +264,8 @@ digitalocean_spaces/
 - **Resume Functionality**: Chapter-level progress tracking
 - **Secure File Storage**: Private ACL with pre-signed URLs
 - **Background Processing**: Scalable Celery-based job execution
+- **Feature Flags**: Environment-aware feature toggles (signup, debug mode, etc.)
+- **Simplified Deployment**: React client served as static assets from FastAPI
 
 ## Important Notes
 
