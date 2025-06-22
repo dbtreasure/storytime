@@ -101,7 +101,12 @@ router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
 @router.post("/register", response_model=UserResponse)
 async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     """Register a new user."""
-
+    # Temporarily disabled signups
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE, 
+        detail="Signups are temporarily disabled"
+    )
+    
     # Check if user already exists
     result = await db.execute(select(User).where(User.email == user_data.email))
     existing_user = result.scalar_one_or_none()

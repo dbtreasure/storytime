@@ -55,6 +55,7 @@ const Login: React.FC = () => {
           <h2 className="mt-6 text-center text-2xl font-bold text-gray-900">
             Sign in to your account
           </h2>
+          {/* Temporarily disabled signups
           <p className="mt-2 text-center text-sm text-gray-600">
             Or{' '}
             <Link
@@ -64,6 +65,7 @@ const Login: React.FC = () => {
               create a new account
             </Link>
           </p>
+          */}
         </div>
 
         <Card className="mt-8 p-8">

@@ -59,11 +59,13 @@ function AppContent() {
             <Login />
           </PublicRoute>
         } />
+        {/* Temporarily disabled signups
         <Route path="/register" element={
           <PublicRoute>
             <Register />
           </PublicRoute>
         } />
+        */}
 
         {/* Protected routes */}
         <Route path="/dashboard" element={
