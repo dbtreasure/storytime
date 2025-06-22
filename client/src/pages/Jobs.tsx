@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
+import { useJobPolling } from '../hooks/useJobPolling';
 import { fetchJobs, cancelJob } from '../store/slices/jobsSlice';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -39,8 +40,11 @@ const Jobs: React.FC = () => {
   const jobsPerPage = 10;
 
   useEffect(() => {
-    dispatch(fetchJobs({}));
+    dispatch(fetchJobs({ isPolling: false }));
   }, [dispatch]);
+
+  // Enable live job status updates
+  useJobPolling({ interval: 5000, enabled: true });
 
   const handleCancelJob = async (jobId: string) => {
     setCancellingJobs(prev => new Set(prev).add(jobId));

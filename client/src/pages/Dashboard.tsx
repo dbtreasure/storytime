@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
+import { useJobPolling } from '../hooks/useJobPolling';
 import { fetchJobs } from '../store/slices/jobsSlice';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -19,8 +20,11 @@ const Dashboard: React.FC = () => {
   const { jobs, isLoading: jobsLoading } = useAppSelector((state) => state.jobs);
 
   useEffect(() => {
-    dispatch(fetchJobs({}));
+    dispatch(fetchJobs({ isPolling: false }));
   }, [dispatch]);
+
+  // Enable live job status updates for dashboard stats
+  useJobPolling({ interval: 10000, enabled: true });
 
   const recentJobs = jobs.slice(0, 5);
   const completedJobs = jobs.filter(job => job.status === 'COMPLETED');

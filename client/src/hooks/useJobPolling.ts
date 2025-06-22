@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from './redux';
 import { fetchJobs, fetchJob } from '../store/slices/jobsSlice';
 
@@ -18,6 +18,7 @@ export const useJobPolling = (options: UseJobPollingOptions = {}) => {
   const dispatch = useAppDispatch();
   const { jobs, currentJob } = useAppSelector((state) => state.jobs);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [hasPolledOnce, setHasPolledOnce] = useState(false);
 
   // Check if there are any active jobs that need polling
   const hasActiveJobs = jobs.some(job =>
@@ -27,18 +28,19 @@ export const useJobPolling = (options: UseJobPollingOptions = {}) => {
   useEffect(() => {
     if (!enabled) return;
 
-    const shouldPoll = jobId ?
-      (currentJob?.status === 'PENDING' || currentJob?.status === 'PROCESSING') :
-      hasActiveJobs;
+    // Always poll at least once, then continue if there are active jobs or we haven't polled yet
+    const shouldPoll = !hasPolledOnce || hasActiveJobs || (jobId && currentJob?.status === 'PENDING' || currentJob?.status === 'PROCESSING');
 
     if (shouldPoll) {
       intervalRef.current = setInterval(() => {
+        setHasPolledOnce(true);
+        
         if (jobId) {
           // Poll specific job
-          dispatch(fetchJob(jobId));
+          dispatch(fetchJob({ jobId, isPolling: true }));
         } else {
           // Poll job list
-          dispatch(fetchJobs({}));
+          dispatch(fetchJobs({ isPolling: true }));
         }
       }, interval);
 
@@ -49,7 +51,7 @@ export const useJobPolling = (options: UseJobPollingOptions = {}) => {
         }
       };
     }
-  }, [dispatch, enabled, interval, jobId, hasActiveJobs, currentJob?.status]);
+  }, [dispatch, enabled, interval, jobId, hasActiveJobs, currentJob?.status, hasPolledOnce]);
 
   // Cleanup on unmount
   useEffect(() => {
