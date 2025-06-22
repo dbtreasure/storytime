@@ -1,5 +1,6 @@
 import logging
 import uuid
+from collections.abc import AsyncGenerator
 from datetime import datetime
 from typing import Any
 
@@ -16,7 +17,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 
 from storytime.api.settings import get_settings
@@ -239,7 +240,7 @@ engine = create_async_engine(settings.database_url, echo=True, future=True)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
 
-async def get_db():
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Dependency to get database session."""
     async with AsyncSessionLocal() as session:
         try:

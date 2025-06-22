@@ -33,15 +33,20 @@ env:
   secret:
     - DATABASE_URL
     - REDIS_URL
+    - CELERY_BROKER_URL
     - OPENAI_API_KEY
     - ELEVENLABS_API_KEY
+    - ELEVEN_LABS_API_KEY
+    - GOOGLE_API_KEY
+    - JWT_SECRET_KEY
     - DO_SPACES_KEY
     - DO_SPACES_SECRET
-    - DO_SPACES_ENDPOINT
+    - DO_SPACES_REGION
     - DO_SPACES_BUCKET
-    - JWT_SECRET_KEY
-    - KAMAL_REGISTRY_PASSWORD
+    - DO_SPACES_ENDPOINT
+    - POSTGRES_PASSWORD
     - KAMAL_REGISTRY_USERNAME
+    - KAMAL_REGISTRY_PASSWORD
 
 # Accessories (external services like databases)
 accessories:
@@ -64,14 +69,6 @@ accessories:
     volumes:
       - /var/lib/redis/data:/data
 
-  client:
-    image: storytime/client
-    host: 129.212.136.218
-    port: 3000
-    env:
-      clear:
-        NODE_ENV: production
-        VITE_API_BASE_URL: https://plinytheai.com
 
 # Kamal proxy configuration
 proxy:

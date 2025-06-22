@@ -9,11 +9,11 @@ from fastapi import HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from storytime.api.streaming import (
-    _get_user_job,
     get_audio_metadata,
     get_playlist,
     get_streaming_url,
 )
+from storytime.api.utils import get_user_job
 from storytime.database import Job, JobStatus, User
 
 
@@ -220,7 +220,7 @@ async def test_get_playlist_multi_chapter(mock_user, mock_completed_job, mock_db
 
 @pytest.mark.asyncio
 async def test_get_user_job_not_found(mock_user, mock_db_session):
-    """Test _get_user_job when job doesn't exist."""
+    """Test get_user_job when job doesn't exist."""
     job_id = str(uuid4())
     user_id = mock_user.id
 
@@ -231,7 +231,7 @@ async def test_get_user_job_not_found(mock_user, mock_db_session):
 
     # Call should raise HTTPException
     with pytest.raises(HTTPException) as exc_info:
-        await _get_user_job(job_id, user_id, mock_db_session)
+        await get_user_job(job_id, user_id, mock_db_session)
 
     assert exc_info.value.status_code == 404
     assert "not found" in str(exc_info.value.detail)
