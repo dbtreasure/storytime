@@ -4,18 +4,20 @@ import logging
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from storytime.api.auth import get_current_user
-from storytime.database import Job, PlaybackProgress, User, get_db
+from storytime.database import PlaybackProgress, User, get_db
 from storytime.models import (
     MessageResponse,
     PlaybackProgressResponse,
     ResumeInfoResponse,
     UpdateProgressRequest,
 )
+
+from .utils import get_user_job
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +34,7 @@ async def get_progress(
     logger.info(f"Getting progress for job {job_id} for user {current_user.id}")
 
     # Verify job exists and belongs to user
-    await _verify_user_job(job_id, current_user.id, db)
+    await get_user_job(job_id, current_user.id, db)
 
     # Get progress record
     result = await db.execute(
@@ -72,7 +74,7 @@ async def update_progress(
     logger.info(f"Updating progress for job {job_id} for user {current_user.id}")
 
     # Verify job exists and belongs to user
-    await _verify_user_job(job_id, current_user.id, db)
+    await get_user_job(job_id, current_user.id, db)
 
     # Use UPSERT to handle concurrent requests atomically
     from sqlalchemy.dialects.postgresql import insert
@@ -143,7 +145,7 @@ async def get_resume_info(
     logger.info(f"Getting resume info for job {job_id} for user {current_user.id}")
 
     # Verify job exists and belongs to user
-    await _verify_user_job(job_id, current_user.id, db)
+    await get_user_job(job_id, current_user.id, db)
 
     # Get progress record
     result = await db.execute(
@@ -176,7 +178,7 @@ async def reset_progress(
     logger.info(f"Resetting progress for job {job_id} for user {current_user.id}")
 
     # Verify job exists and belongs to user
-    await _verify_user_job(job_id, current_user.id, db)
+    await get_user_job(job_id, current_user.id, db)
 
     # Delete progress record if it exists
     result = await db.execute(
@@ -232,14 +234,3 @@ async def get_recent_progress(
 
 
 # Helper functions
-
-
-async def _verify_user_job(job_id: str, user_id: str, db: AsyncSession) -> Job:
-    """Verify job exists and belongs to the user."""
-    result = await db.execute(select(Job).where(and_(Job.id == job_id, Job.user_id == user_id)))
-    job = result.scalar_one_or_none()
-
-    if not job:
-        raise HTTPException(status_code=404, detail=f"Job {job_id} not found or access denied")
-
-    return job

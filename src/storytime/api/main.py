@@ -64,6 +64,20 @@ async def up() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/api/v1/environment", tags=["Utility"])
+async def get_environment() -> dict[str, str | dict[str, bool]]:
+    """Get environment information and feature flags."""
+    return {
+        "environment": settings.env,
+        "features": {
+            "signup_enabled": settings.env
+            in ["dev", "docker"],  # Enable for dev and docker, disable for production
+            "debug_mode": settings.env == "dev",
+            "demo_mode": False,  # Could be enabled for specific environments later
+        },
+    }
+
+
 # Serve React client static files - MUST BE AFTER ALL API ROUTES
 static_dir = "/app/static"
 if os.path.exists(static_dir):
