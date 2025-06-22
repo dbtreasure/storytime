@@ -8,9 +8,11 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from storytime.api.auth import get_current_user
-from storytime.database import Job, JobStatus, PlaybackProgress, User, get_db
+from storytime.database import JobStatus, PlaybackProgress, User, get_db
 from storytime.infrastructure.spaces import SpacesClient
 from storytime.models import AudioMetadataResponse, ResumeInfoResponse, StreamingUrlResponse
+
+from .utils import get_user_job
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +27,7 @@ async def get_streaming_url(
     logger.info(f"Getting streaming URL for job {job_id} for user {current_user.id}")
 
     # Get job and verify ownership
-    job = await _get_user_job(job_id, current_user.id, db)
+    job = await get_user_job(job_id, current_user.id, db)
 
     # Check if job is completed and has audio output
     if job.status != JobStatus.COMPLETED:
@@ -40,7 +42,7 @@ async def get_streaming_url(
                 # For now, redirect to the first child job that has audio
                 # In the future, we could aggregate multiple child jobs into a playlist
                 for child_job_id in child_job_ids:
-                    child_job = await _get_user_job(child_job_id, current_user.id, db)
+                    child_job = await get_user_job(child_job_id, current_user.id, db)
                     if child_job.output_file_key and child_job.status == JobStatus.COMPLETED:
                         # Generate streaming URL for the child job's audio
                         spaces_client = SpacesClient()
@@ -89,7 +91,7 @@ async def get_audio_metadata(
     logger.info(f"Getting audio metadata for job {job_id} for user {current_user.id}")
 
     # Get job and verify ownership
-    job = await _get_user_job(job_id, current_user.id, db)
+    job = await get_user_job(job_id, current_user.id, db)
 
     # Check if job is completed
     if job.status != JobStatus.COMPLETED:
@@ -124,7 +126,7 @@ async def get_playlist(
     logger.info(f"Getting playlist for job {job_id} for user {current_user.id}")
 
     # Get job and verify ownership
-    job = await _get_user_job(job_id, current_user.id, db)
+    job = await get_user_job(job_id, current_user.id, db)
 
     # Check if job is completed
     if job.status != JobStatus.COMPLETED:
@@ -170,17 +172,6 @@ async def get_playlist(
 
 
 # Helper functions
-
-
-async def _get_user_job(job_id: str, user_id: str, db: AsyncSession) -> Job:
-    """Get job and verify it belongs to the user."""
-    result = await db.execute(select(Job).where(and_(Job.id == job_id, Job.user_id == user_id)))
-    job = result.scalar_one_or_none()
-
-    if not job:
-        raise HTTPException(status_code=404, detail=f"Job {job_id} not found or access denied")
-
-    return job
 
 
 async def _get_resume_info(job_id: str, user_id: str, db: AsyncSession) -> dict:
