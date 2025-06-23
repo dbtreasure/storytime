@@ -25,8 +25,8 @@ class PreprocessingService:
         # Configure Google Gemini API
         genai.configure(api_key=settings.google_api_key)
         
-        # Initialize the model (using Gemini Flash for cost-effectiveness)
-        self.model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        # Initialize the model (using Gemini 2.5 Pro for best performance)
+        self.model = genai.GenerativeModel('gemini-2.5-pro')
         self.client = True
         logger.info("Gemini preprocessing service initialized")
 
@@ -62,10 +62,13 @@ class PreprocessingService:
             return text_content
             
         logger.info(f"Starting text preprocessing, input length: {len(text_content)} characters")
+        logger.info(f"First 200 chars of input: {text_content[:200]}...")
         
         try:
             # Build the preprocessing prompt
             prompt = self._build_preprocessing_prompt(text_content, preprocessing_config)
+            
+            logger.info("Calling Gemini API for text preprocessing...")
             
             # Generate response from Gemini
             response = self.model.generate_content(prompt)
@@ -76,18 +79,12 @@ class PreprocessingService:
                 
             cleaned_text = response.text.strip()
             
-            # Basic validation - ensure we haven't lost too much content
-            if len(cleaned_text) < len(text_content) * 0.5:
-                logger.warning(
-                    f"Preprocessing removed too much content "
-                    f"({len(text_content)} -> {len(cleaned_text)} chars), using original text"
-                )
-                return text_content
-                
             logger.info(
                 f"Text preprocessing completed successfully: "
-                f"{len(text_content)} -> {len(cleaned_text)} characters"
+                f"{len(text_content)} -> {len(cleaned_text)} characters "
+                f"(removed {len(text_content) - len(cleaned_text)} chars, {((len(text_content) - len(cleaned_text)) / len(text_content) * 100):.1f}%)"
             )
+            logger.info(f"First 200 chars of output: {cleaned_text[:200]}...")
             
             return cleaned_text
             
@@ -125,7 +122,7 @@ You are a professional text editor specializing in preparing literary content fo
         if aggressive_cleanup:
             prompt += "\n- BE MORE AGGRESSIVE in removing potentially irrelevant metadata and formatting"
 
-        prompt += """
+        prompt += f"""
 
 ### CONTEXT
 This text will be converted to audio for audiobook production. Listeners should hear only the literary content, not publishing metadata or formatting artifacts.
@@ -155,6 +152,6 @@ Return only the cleaned text content. Do not add explanations, summaries, or met
         """Get the current status of the preprocessing service."""
         return {
             "available": self.is_available(),
-            "model": "gemini-1.5-flash-latest" if self.is_available() else None,
+            "model": "gemini-2.5-pro" if self.is_available() else None,
             "google_api_configured": get_settings().google_api_key is not None,
         }

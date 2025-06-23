@@ -43,7 +43,7 @@ class PreprocessingConfig(BaseModel):
     """Configuration for text preprocessing before TTS."""
     
     enabled: bool = Field(True, description="Whether to enable text preprocessing")
-    model: str = Field("gemini-1.5-flash-latest", description="Gemini model to use for preprocessing")
+    model: str = Field("gemini-2.5-pro", description="Gemini model to use for preprocessing")
     preserve_structure: bool = Field(True, description="Maintain original chapter structure")
     aggressive_cleanup: bool = Field(False, description="More aggressive metadata removal")
 

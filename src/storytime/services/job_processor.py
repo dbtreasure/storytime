@@ -103,9 +103,11 @@ class JobProcessor:
                 raise ValueError("No text content or file provided")
 
             # Preprocess text content
+            logger.info(f"Calling preprocessing service for job {job.id}")
             processed_text = await self.preprocessing_service.preprocess_text(
                 text_content, job.config
             )
+            logger.info(f"Preprocessing complete for job {job.id}")
 
             # Complete preprocessing step
             await self._update_job_step(
