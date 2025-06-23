@@ -141,10 +141,18 @@ export const CreateJobRequestSchema = z.object({
   description: z.string().nullable().optional(),
   content: z.string().nullable().optional(),
   file_key: z.string().nullable().optional(),
-  job_type: JobTypeSchema.default('text_to_audio'),
+  url: z.string().url().nullable().optional(),
   voice_config: VoiceConfigSchema.nullable().optional(),
-  processing_mode: z.string().default('single_voice'),
-});
+}).refine(
+  (data) => {
+    const sources = [data.content, data.file_key, data.url].filter(Boolean);
+    return sources.length === 1;
+  },
+  {
+    message: "Exactly one of content, file_key, or url must be provided",
+    path: ["content"], // This will show the error on the content field
+  }
+);
 
 // List responses
 export const JobListResponseSchema = z.object({

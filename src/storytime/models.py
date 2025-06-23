@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import AnyHttpUrl, BaseModel, Field, model_validator
 
 # Simplified: Single-voice text processing only
 
@@ -41,7 +41,7 @@ class StepStatus(str, Enum):
 
 class PreprocessingConfig(BaseModel):
     """Configuration for text preprocessing before TTS."""
-    
+
     enabled: bool = Field(True, description="Whether to enable text preprocessing")
     model: str = Field("gemini-2.5-pro", description="Gemini model to use for preprocessing")
     preserve_structure: bool = Field(True, description="Maintain original chapter structure")
@@ -101,18 +101,24 @@ class CreateJobRequest(BaseModel):
     description: str | None = Field(None, description="Job description")
     content: str | None = Field(None, description="Text content")
     file_key: str | None = Field(None, description="File key for uploaded text file")
-
-    # Job type configuration
-    job_type: JobType = Field(JobType.TEXT_TO_AUDIO, description="Type of job to create")
+    url: AnyHttpUrl | None = Field(None, description="Web URL to scrape for content")
 
     # Voice configuration
     voice_config: VoiceConfig | None = Field(None, description="Voice configuration")
-    
+
     # Preprocessing configuration
     preprocessing: PreprocessingConfig | None = Field(None, description="Text preprocessing configuration")
 
-    # Book processing specific
-    processing_mode: str = Field("single_voice", description="Processing mode for book chapters")
+    @model_validator(mode='after')
+    def validate_input_source(self):
+        """Ensure exactly one input source is provided."""
+        sources = [self.content, self.file_key, self.url]
+        provided_sources = [x for x in sources if x is not None]
+
+        if len(provided_sources) != 1:
+            raise ValueError("Exactly one of content, file_key, or url must be provided")
+
+        return self
 
 
 class JobStepResponse(BaseModel):

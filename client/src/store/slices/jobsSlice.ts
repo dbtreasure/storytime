@@ -1,5 +1,4 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { PaginatedResponse } from '../../services/api';
 import { JobResponse, CreateJobRequest } from '../../schemas';
 import apiClient from '../../services/api';
 
@@ -172,7 +171,7 @@ const jobsSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchJobs.fulfilled, (state, action) => {
-        const isPolling = action.payload.isPolling;
+        // const isPolling = action.payload.isPolling;
         state.isLoading = false;
         state.isPolling = false;
         
@@ -213,7 +212,7 @@ const jobsSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchJob.fulfilled, (state, action) => {
-        const isPolling = action.payload.isPolling;
+        // const isPolling = action.payload.isPolling;
         state.isLoading = false;
         state.isPolling = false;
         

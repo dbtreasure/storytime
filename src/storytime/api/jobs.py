@@ -45,10 +45,11 @@ async def create_job(
     logger.info(f"Creating job for user {current_user.id}: {request.title}")
 
     try:
-        # Validate input
-        if not request.content and not request.file_key:
+        # Validate input (already handled by Pydantic model validator)
+        # The CreateJobRequest model ensures exactly one input source is provided
+        if not request.content and not request.file_key and not request.url:
             raise HTTPException(
-                status_code=400, detail="Either content or file_key must be provided"
+                status_code=400, detail="Either content, file_key, or url must be provided"
             )
 
         # Create job record
@@ -60,10 +61,9 @@ async def create_job(
             status=JobStatus.PENDING,
             progress=0.0,
             config={
-                "job_type": request.job_type.value,
                 "content": request.content,
+                "url": str(request.url) if request.url else None,
                 "voice_config": request.voice_config.model_dump() if request.voice_config else None,
-                "processing_mode": request.processing_mode,
             },
             input_file_key=request.file_key,
         )

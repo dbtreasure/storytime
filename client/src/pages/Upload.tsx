@@ -14,6 +14,7 @@ import {
   CloudArrowUpIcon,
   DocumentTextIcon,
   XMarkIcon,
+  LinkIcon,
 } from '@heroicons/react/24/outline';
 
 const uploadSchema = z.object({
@@ -21,11 +22,19 @@ const uploadSchema = z.object({
   ttsProvider: z.enum(['openai', 'elevenlabs'], {
     required_error: 'Please select a TTS provider',
   }),
-  jobType: z.enum(['full_audiobook', 'sample_chapter'], {
-    required_error: 'Please select a job type',
-  }),
-  textContent: z.string().min(100, 'Text content must be at least 100 characters'),
-});
+  textContent: z.string().optional(),
+  url: z.string().url().optional(),
+}).refine(
+  (data) => {
+    const hasText = data.textContent && data.textContent.length >= 100;
+    const hasUrl = data.url && data.url.length > 0;
+    return hasText || hasUrl;
+  },
+  {
+    message: "Either provide text content (min 100 characters) or a valid URL",
+    path: ["textContent"],
+  }
+);
 
 type UploadFormData = z.infer<typeof uploadSchema>;
 
@@ -36,6 +45,7 @@ const Upload: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [inputMethod, setInputMethod] = useState<'text' | 'file' | 'url'>('text');
 
   const {
     register,
@@ -48,11 +58,11 @@ const Upload: React.FC = () => {
     resolver: zodResolver(uploadSchema),
     defaultValues: {
       ttsProvider: 'openai',
-      jobType: 'full_audiobook',
     },
   });
 
   const textContent = watch('textContent');
+  const url = watch('url');
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -115,18 +125,28 @@ const Upload: React.FC = () => {
     setError(null);
 
     try {
-      // Transform form data to match API interface
-      const jobType = data.jobType === 'full_audiobook' ? 'book_processing' : 'text_to_audio';
-
-      const result = await dispatch(createJob({
-        job_type: jobType,
-        content: data.textContent, // Backend expects 'content' not 'text'
-        title: data.title, // Include the title field
+      // Prepare job payload based on input method
+      const jobPayload: {
+        title: string;
+        voice_config: { provider: string; voice_id: string };
+        content?: string;
+        url?: string;
+      } = {
+        title: data.title,
         voice_config: {
           provider: data.ttsProvider,
           voice_id: data.ttsProvider === 'openai' ? 'alloy' : 'adam', // Default voices
         }
-      })).unwrap();
+      };
+
+      // Add content based on input method
+      if (inputMethod === 'url' && data.url) {
+        jobPayload.url = data.url;
+      } else if (data.textContent) {
+        jobPayload.content = data.textContent;
+      }
+
+      const result = await dispatch(createJob(jobPayload)).unwrap();
 
       navigate(`/jobs/${result.id}`);
     } catch (err: unknown) {
@@ -173,27 +193,6 @@ const Upload: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="jobType" className="block text-sm font-medium text-gray-700 mb-2">
-                Job Type
-              </label>
-              <Controller
-                name="jobType"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    {...field}
-                    error={errors.jobType?.message}
-                    disabled={isLoading}
-                    options={[
-                      { value: 'full_audiobook', label: 'Full Audiobook' },
-                      { value: 'sample_chapter', label: 'Sample Chapter' }
-                    ]}
-                  />
-                )}
-              />
-            </div>
-
-            <div>
               <label htmlFor="ttsProvider" className="block text-sm font-medium text-gray-700 mb-2">
                 Voice Provider
               </label>
@@ -216,100 +215,188 @@ const Upload: React.FC = () => {
           </div>
         </Card>
 
-        {/* File Upload */}
+        {/* Content Input */}
         <Card className="p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Text Content
+            Content Source
           </h2>
 
-          {!uploadedFile ? (
-            <div
-              className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                dragActive
-                  ? 'border-blue-400 bg-blue-50'
-                  : 'border-gray-300 hover:border-gray-400'
+          {/* Input Method Tabs */}
+          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg mb-6">
+            <button
+              type="button"
+              onClick={() => {
+                setInputMethod('text');
+                setValue('url', '');
+              }}
+              className={`flex-1 flex items-center justify-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                inputMethod === 'text'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
               }`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
+              disabled={isLoading}
             >
-              <CloudArrowUpIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <div className="mt-4">
-                <label htmlFor="file-upload" className="cursor-pointer">
-                  <span className="mt-2 block text-sm font-medium text-gray-900">
-                    Drop your .txt file here, or{' '}
-                    <span className="text-blue-600 hover:text-blue-500">
-                      browse
-                    </span>
-                  </span>
-                  <input
-                    id="file-upload"
-                    name="file-upload"
-                    type="file"
-                    accept=".txt,text/plain"
-                    className="sr-only"
-                    onChange={handleFileInput}
+              <DocumentTextIcon className="h-4 w-4 mr-2" />
+              Text Input
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setInputMethod('file');
+                setValue('url', '');
+              }}
+              className={`flex-1 flex items-center justify-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                inputMethod === 'file'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              disabled={isLoading}
+            >
+              <CloudArrowUpIcon className="h-4 w-4 mr-2" />
+              File Upload
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setInputMethod('url');
+                setValue('textContent', '');
+                removeFile();
+              }}
+              className={`flex-1 flex items-center justify-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                inputMethod === 'url'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              disabled={isLoading}
+            >
+              <LinkIcon className="h-4 w-4 mr-2" />
+              URL
+            </button>
+          </div>
+
+          {/* URL Input */}
+          {inputMethod === 'url' && (
+            <div>
+              <label htmlFor="url" className="block text-sm font-medium text-gray-700 mb-2">
+                Website URL
+              </label>
+              <Controller
+                name="url"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    id="url"
+                    type="url"
+                    placeholder="https://example.com/article"
+                    error={errors.url?.message}
                     disabled={isLoading}
                   />
-                </label>
-                <p className="mt-1 text-xs text-gray-500">
-                  TXT files up to 10MB
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
-              <div className="flex items-center space-x-3">
-                <DocumentTextIcon className="h-8 w-8 text-blue-600" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {uploadedFile.name}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {(uploadedFile.size / 1024).toFixed(1)} KB
-                  </p>
-                </div>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={removeFile}
-                disabled={isLoading}
-              >
-                <XMarkIcon className="h-4 w-4" />
-              </Button>
+                )}
+              />
+              <p className="mt-2 text-sm text-gray-500">
+                Enter a URL to automatically extract and convert web content to audio.
+                Works with articles, blog posts, and other text-based web pages.
+              </p>
             </div>
           )}
 
-          <div className="mt-6">
-            <label htmlFor="textContent" className="block text-sm font-medium text-gray-700 mb-2">
-              Or paste your text here
-            </label>
-            <Controller
-              name="textContent"
-              control={control}
-              render={({ field }) => (
-                <textarea
-                  {...field}
-                  id="textContent"
-                  rows={12}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Paste your story text here..."
-                  disabled={isLoading}
-                />
+          {/* File Upload */}
+          {inputMethod === 'file' && (
+            <div>
+              {!uploadedFile ? (
+                <div
+                  className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                    dragActive
+                      ? 'border-blue-400 bg-blue-50'
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                >
+                  <CloudArrowUpIcon className="mx-auto h-12 w-12 text-gray-400" />
+                  <div className="mt-4">
+                    <label htmlFor="file-upload" className="cursor-pointer">
+                      <span className="mt-2 block text-sm font-medium text-gray-900">
+                        Drop your .txt file here, or{' '}
+                        <span className="text-blue-600 hover:text-blue-500">
+                          browse
+                        </span>
+                      </span>
+                      <input
+                        id="file-upload"
+                        name="file-upload"
+                        type="file"
+                        accept=".txt,text/plain"
+                        className="sr-only"
+                        onChange={handleFileInput}
+                        disabled={isLoading}
+                      />
+                    </label>
+                    <p className="mt-1 text-xs text-gray-500">
+                      TXT files up to 10MB
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <DocumentTextIcon className="h-8 w-8 text-blue-600" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {uploadedFile.name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {(uploadedFile.size / 1024).toFixed(1)} KB
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={removeFile}
+                    disabled={isLoading}
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                  </Button>
+                </div>
               )}
-            />
-            {errors.textContent && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.textContent.message}
+            </div>
+          )}
+
+          {/* Text Input */}
+          {inputMethod === 'text' && (
+            <div>
+              <label htmlFor="textContent" className="block text-sm font-medium text-gray-700 mb-2">
+                Text Content
+              </label>
+              <Controller
+                name="textContent"
+                control={control}
+                render={({ field }) => (
+                  <textarea
+                    {...field}
+                    id="textContent"
+                    rows={12}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Paste your story text here..."
+                    disabled={isLoading}
+                  />
+                )}
+              />
+              {errors.textContent && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.textContent.message}
+                </p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                {textContent?.length || 0} characters (minimum 100)
               </p>
-            )}
-            <p className="mt-1 text-xs text-gray-500">
-              {textContent?.length || 0} characters
-            </p>
-          </div>
+            </div>
+          )}
         </Card>
 
         {/* Submit */}
@@ -324,7 +411,7 @@ const Upload: React.FC = () => {
           </Button>
           <Button
             type="submit"
-            disabled={isLoading || !textContent}
+            disabled={isLoading || (!textContent && !url)}
             loading={isLoading}
           >
             Create Audiobook

@@ -22,6 +22,9 @@ COPY pyproject.toml /app/
 # Install uv and use it to install all dependencies from pyproject.toml
 RUN pip install uv && uv pip install --system --requirements pyproject.toml
 
+# Install playwright browsers for web scraping
+RUN playwright install --with-deps chromium
+
 # Build React client
 COPY client /app/client
 WORKDIR /app/client
