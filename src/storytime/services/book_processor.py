@@ -13,6 +13,7 @@ from storytime.infrastructure.spaces import SpacesClient
 from storytime.models import JobResponse
 from storytime.services.book_analyzer import BookAnalyzer, ChapterInfo
 from storytime.services.job_processor import JobProcessor
+from storytime.services.preprocessing_service import PreprocessingService
 
 logger = logging.getLogger(__name__)
 
@@ -25,11 +26,13 @@ class BookProcessor:
         db_session: AsyncSession,
         spaces_client: SpacesClient,
         job_processor: JobProcessor | None = None,
+        preprocessing_service: PreprocessingService | None = None,
     ):
         self.db_session = db_session
         self.spaces_client = spaces_client
         self.job_processor = job_processor or JobProcessor(db_session, spaces_client)
         self.book_analyzer = BookAnalyzer()
+        self.preprocessing_service = preprocessing_service or PreprocessingService()
 
     async def process_book_job(self, job_id: str) -> JobResponse:
         """Process a book splitting job."""
@@ -179,13 +182,22 @@ class BookProcessor:
         }
 
     async def _load_book_text(self, job: Job) -> str:
-        """Load book text from storage or job config."""
+        """Load book text from storage or job config and preprocess it."""
+        # Load raw book text
         if job.config and job.config.get("content"):
-            return job.config["content"]
+            raw_text = job.config["content"]
         elif job.input_file_key:
-            return await self.spaces_client.download_text_file(job.input_file_key)
+            raw_text = await self.spaces_client.download_text_file(job.input_file_key)
         else:
             raise ValueError("No book content or file provided")
+        
+        # Preprocess the book text before chapter analysis
+        logger.info(f"Preprocessing book text for job {job.id}")
+        processed_text = await self.preprocessing_service.preprocess_text(
+            raw_text, job.config
+        )
+        
+        return processed_text
 
     async def _split_and_save_chapters(
         self, job_id: str, book_text: str, chapters: list[ChapterInfo]

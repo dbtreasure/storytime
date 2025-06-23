@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from storytime.database import Job, JobStatus, JobStep, StepStatus
 from storytime.infrastructure.spaces import SpacesClient
 from storytime.models import JobResponse, JobStepResponse
+from storytime.services.preprocessing_service import PreprocessingService
 from storytime.services.tts_generator import TTSGenerator
 
 logger = logging.getLogger(__name__)
@@ -23,10 +24,12 @@ class JobProcessor:
         db_session: AsyncSession,
         spaces_client: SpacesClient,
         tts_generator: TTSGenerator | None = None,
+        preprocessing_service: PreprocessingService | None = None,
     ):
         self.db_session = db_session
         self.spaces_client = spaces_client
         self.tts_generator = tts_generator or TTSGenerator()
+        self.preprocessing_service = preprocessing_service or PreprocessingService()
 
     async def process_job(self, job_id: str) -> JobResponse:
         """Process a job based on its type."""
@@ -79,14 +82,16 @@ class JobProcessor:
         """Process a simple text-to-audio conversion job."""
         logger.info(f"Processing text-to-audio job {job.id}")
 
-        # Create processing step
-        step = await self._create_job_step(
-            job.id, "text_to_audio", 0, "Convert text to audio using TTS"
+        # Step 1: Text Preprocessing
+        preprocessing_step = await self._create_job_step(
+            job.id, "preprocess_text", 0, "Preprocess text content for TTS"
         )
 
         try:
-            # Update step to running
-            await self._update_job_step(step.id, StepStatus.RUNNING, started_at=datetime.utcnow())
+            # Update preprocessing step to running
+            await self._update_job_step(
+                preprocessing_step.id, StepStatus.RUNNING, started_at=datetime.utcnow()
+            )
 
             # Get text content
             if job.config and job.config.get("content"):
@@ -97,12 +102,38 @@ class JobProcessor:
             else:
                 raise ValueError("No text content or file provided")
 
+            # Preprocess text content
+            logger.info(f"Calling preprocessing service for job {job.id}")
+            processed_text = await self.preprocessing_service.preprocess_text(
+                text_content, job.config
+            )
+            logger.info(f"Preprocessing complete for job {job.id}")
+
+            # Complete preprocessing step
+            await self._update_job_step(
+                preprocessing_step.id, 
+                StepStatus.COMPLETED, 
+                progress=1.0, 
+                completed_at=datetime.utcnow()
+            )
+
+            # Update overall job progress (preprocessing complete)
+            await self._update_job_status(job.id, JobStatus.PROCESSING, progress=0.5)
+
+            # Step 2: TTS Generation
+            tts_step = await self._create_job_step(
+                job.id, "text_to_audio", 1, "Convert processed text to audio using TTS"
+            )
+
+            # Update TTS step to running
+            await self._update_job_step(tts_step.id, StepStatus.RUNNING, started_at=datetime.utcnow())
+
             # Get voice configuration
             voice_config = job.config.get("voice_config", {}) if job.config else {}
 
-            # Generate audio using simple TTS
+            # Generate audio using simple TTS with processed text
             audio_data = await self.tts_generator.generate_simple_audio(
-                text=text_content, voice_config=voice_config
+                text=processed_text, voice_config=voice_config
             )
 
             # Upload audio to storage
@@ -121,12 +152,12 @@ class JobProcessor:
             # Update job with output file reference and metadata
             await self._update_job_output(job.id, audio_key, audio_metadata)
 
-            # Complete step
+            # Complete TTS step
             await self._update_job_step(
-                step.id, StepStatus.COMPLETED, progress=1.0, completed_at=datetime.utcnow()
+                tts_step.id, StepStatus.COMPLETED, progress=1.0, completed_at=datetime.utcnow()
             )
 
-            # Update overall job progress
+            # Update overall job progress (complete)
             await self._update_job_status(job.id, JobStatus.PROCESSING, progress=1.0)
 
             return {
@@ -137,10 +168,33 @@ class JobProcessor:
             }
 
         except Exception as e:
-            # Mark step as failed
-            await self._update_job_step(
-                step.id, StepStatus.FAILED, error_message=str(e), completed_at=datetime.utcnow()
-            )
+            logger.error(f"Text-to-audio job processing failed: {e}", exc_info=True)
+            
+            # Mark the current step as failed (either preprocessing or TTS step)
+            # We need to determine which step was running when the error occurred
+            try:
+                # Check if we have a TTS step (meaning preprocessing completed)
+                tts_step_result = await self.db_session.execute(
+                    select(JobStep).where(
+                        JobStep.job_id == job.id,
+                        JobStep.step_name == "text_to_audio"
+                    )
+                )
+                tts_step = tts_step_result.scalar_one_or_none()
+                
+                if tts_step:
+                    # TTS step exists, so error occurred during TTS
+                    await self._update_job_step(
+                        tts_step.id, StepStatus.FAILED, error_message=str(e), completed_at=datetime.utcnow()
+                    )
+                else:
+                    # Error occurred during preprocessing
+                    await self._update_job_step(
+                        preprocessing_step.id, StepStatus.FAILED, error_message=str(e), completed_at=datetime.utcnow()
+                    )
+            except Exception as db_error:
+                logger.error(f"Failed to update step status: {db_error}")
+            
             raise
 
     # Database helper methods
