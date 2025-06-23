@@ -23,6 +23,7 @@ from storytime.models import (
     JobType,
     MessageResponse,
 )
+from storytime.services.content_analyzer import ContentAnalyzer
 from storytime.worker.tasks import process_job
 
 from .utils import get_user_job
@@ -52,6 +53,46 @@ async def create_job(
                 status_code=400, detail="Either content, file_key, or url must be provided"
             )
 
+        # Auto-detect job type if not provided
+        job_type = request.job_type
+        if not job_type:
+            logger.info("Job type not specified, analyzing content for auto-detection")
+            content_analyzer = ContentAnalyzer()
+
+            if content_analyzer.is_available():
+                try:
+                    # Get content for analysis
+                    analysis_content = None
+                    if request.content:
+                        analysis_content = request.content
+                    elif request.file_key:
+                        # Load content from file storage for analysis
+                        spaces_client = SpacesClient()
+                        analysis_content = await spaces_client.download_text_file(request.file_key)
+                    elif request.url:
+                        # For URLs, we'll analyze after scraping during job processing
+                        # For now, default to TEXT_TO_AUDIO and let the processor handle it
+                        job_type = JobType.TEXT_TO_AUDIO
+                        logger.info("URL provided - defaulting to TEXT_TO_AUDIO, will analyze during processing")
+
+                    if analysis_content and not job_type:
+                        detected_type = await content_analyzer.analyze_content(
+                            analysis_content,
+                            request.title
+                        )
+                        job_type = detected_type
+                        logger.info(f"Auto-detected job type: {job_type.value}")
+
+                except Exception as e:
+                    logger.warning(f"Content analysis failed, defaulting to TEXT_TO_AUDIO: {e}")
+                    job_type = JobType.TEXT_TO_AUDIO
+            else:
+                logger.info("Content analyzer not available, defaulting to TEXT_TO_AUDIO")
+                job_type = JobType.TEXT_TO_AUDIO
+
+        if not job_type:
+            job_type = JobType.TEXT_TO_AUDIO
+
         # Create job record
         job = Job(
             id=str(uuid4()),
@@ -64,6 +105,7 @@ async def create_job(
                 "content": request.content,
                 "url": str(request.url) if request.url else None,
                 "voice_config": request.voice_config.model_dump() if request.voice_config else None,
+                "job_type": job_type.value,
             },
             input_file_key=request.file_key,
         )

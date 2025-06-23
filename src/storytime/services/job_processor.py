@@ -12,6 +12,7 @@ from storytime.database import Job, JobStatus, JobStep, StepStatus
 from storytime.infrastructure.spaces import SpacesClient
 from storytime.models import JobResponse, JobStepResponse
 from storytime.services.book_analyzer import BookAnalyzer, ChapterInfo
+from storytime.services.content_analyzer import ContentAnalyzer
 from storytime.services.preprocessing_service import PreprocessingService
 from storytime.services.tts_generator import TTSGenerator
 from storytime.services.web_scraping import WebScrapingService
@@ -29,22 +30,69 @@ class JobProcessor:
         tts_generator: TTSGenerator | None = None,
         preprocessing_service: PreprocessingService | None = None,
         web_scraping_service: WebScrapingService | None = None,
+        content_analyzer: ContentAnalyzer | None = None,
     ):
         self.db_session = db_session
         self.spaces_client = spaces_client
         self.tts_generator = tts_generator or TTSGenerator()
         self.preprocessing_service = preprocessing_service or PreprocessingService()
         self.web_scraping_service = web_scraping_service or WebScrapingService()
+        self.content_analyzer = content_analyzer or ContentAnalyzer()
         self.book_analyzer = BookAnalyzer()
 
     def _is_book_job(self, job: Job) -> bool:
         """Determine if a job should be processed as a book."""
         if job.config:
-            if job.config.get("processing_mode") == "book_splitting":
-                return True
-            if job.config.get("job_type") == "book_processing":
-                return True
+            return job.config.get("job_type") == "book_processing"
         return False
+
+    def _was_job_type_explicitly_set(self, job: Job) -> bool:
+        """Check if job type was explicitly set by user (vs auto-detected)."""
+        if job.config:
+            # If job_type is set to something other than the default, it was likely explicit
+            # We could also store a flag for this, but for now assume TEXT_TO_AUDIO means auto-detected
+            job_type = job.config.get("job_type")
+            return job_type == "book_processing"  # Book processing is always explicit
+        return False
+
+    async def _reanalyze_url_content(self, job: Job) -> Job:
+        """Re-analyze URL content after scraping to determine optimal job type."""
+        if not self.content_analyzer.is_available():
+            logger.info("Content analyzer not available, keeping original job type")
+            return job
+
+        try:
+            logger.info(f"Re-analyzing URL content for job {job.id}")
+
+            # Scrape the URL content
+            url = job.config["url"]
+            scraping_result = await self.web_scraping_service.extract_content(url)
+            scraped_content = scraping_result["content"]
+
+            # Analyze the scraped content
+            detected_type = await self.content_analyzer.analyze_content(
+                scraped_content,
+                job.title
+            )
+
+            # Update job config if type changed
+            current_type = job.config.get("job_type", "text_to_audio")
+            if detected_type.value != current_type:
+                logger.info(f"URL content analysis changed job type: {current_type} -> {detected_type.value}")
+
+                # Update job config in database
+                job.config["job_type"] = detected_type.value
+                await self._update_job_config(job.id, job.config)
+
+                # Refresh job object
+                job = await self._get_job(job.id)
+            else:
+                logger.info(f"URL content analysis confirmed job type: {detected_type.value}")
+
+        except Exception as e:
+            logger.warning(f"URL content re-analysis failed, keeping original job type: {e}")
+
+        return job
 
     async def process_job(self, job_id: str) -> JobResponse:
         """Process a job based on its type."""
@@ -59,6 +107,10 @@ class JobProcessor:
         await self._update_job_status(job_id, JobStatus.PROCESSING, started_at=datetime.utcnow())
 
         try:
+            # For URL jobs, re-analyze content after scraping if job type wasn't explicitly set
+            if job.config and job.config.get("url") and not self._was_job_type_explicitly_set(job):
+                job = await self._reanalyze_url_content(job)
+
             # Route based on job type
             if self._is_book_job(job):
                 result = await self._process_book_job(job)
@@ -411,6 +463,15 @@ class JobProcessor:
         await self.db_session.execute(update(Job).where(Job.id == job_id).values(**update_values))
         await self.db_session.commit()
 
+    async def _update_job_config(self, job_id: str, config: dict[str, Any]) -> None:
+        """Update job configuration."""
+        await self.db_session.execute(
+            update(Job)
+            .where(Job.id == job_id)
+            .values(config=config, updated_at=datetime.utcnow())
+        )
+        await self.db_session.commit()
+
     async def _create_job_step(
         self, job_id: str, step_name: str, step_order: int, description: str = ""
     ) -> JobStep:
@@ -555,11 +616,6 @@ class JobProcessor:
     ) -> list[str]:
         child_job_ids = []
         voice_config = parent_job.config.get("voice_config", {}) if parent_job.config else {}
-        processing_mode = (
-            parent_job.config.get("processing_mode", "single_voice")
-            if parent_job.config
-            else "single_voice"
-        )
 
         for chapter_file in chapter_files:
             child_job = Job(
@@ -573,7 +629,7 @@ class JobProcessor:
                     "parent_job_id": parent_job.id,
                     "chapter_number": chapter_file["chapter_number"],
                     "voice_config": voice_config,
-                    "processing_mode": processing_mode,
+                    "job_type": "text_to_audio",  # Child jobs are always simple text-to-audio
                 },
                 input_file_key=chapter_file["file_key"],
             )

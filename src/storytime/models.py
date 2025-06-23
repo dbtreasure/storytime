@@ -103,6 +103,9 @@ class CreateJobRequest(BaseModel):
     file_key: str | None = Field(None, description="File key for uploaded text file")
     url: AnyHttpUrl | None = Field(None, description="Web URL to scrape for content")
 
+    # Job type - determines processing approach
+    job_type: JobType | None = Field(None, description="Job type (auto-detected if not provided)")
+
     # Voice configuration
     voice_config: VoiceConfig | None = Field(None, description="Voice configuration")
 
