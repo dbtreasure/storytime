@@ -304,11 +304,11 @@ async def get_book_chapters(
                 status_code=400, detail="This endpoint is only for book processing jobs"
             )
 
-        # Get aggregated chapter results
-        from storytime.services.book_processor import BookProcessor
+        # Get aggregated chapter results using unified processor
+        from storytime.services.job_processor import JobProcessor
 
-        book_processor = BookProcessor(db, SpacesClient())
-        results = await book_processor.aggregate_chapter_results(job_id)
+        job_processor = JobProcessor(db, SpacesClient())
+        results = await job_processor.aggregate_chapter_results(job_id)
 
         return BookChaptersResponse(**results)
 
