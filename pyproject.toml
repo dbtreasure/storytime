@@ -33,6 +33,8 @@ dependencies = [
     "passlib[bcrypt]>=1.7.4",
     "alembic>=1.13.0",
     "google-generativeai>=0.8.0,<0.9.0",
+    "scrapegraphai>=1.0.0",
+    "playwright>=1.40.0",
 ]
 
 [project.optional-dependencies]
