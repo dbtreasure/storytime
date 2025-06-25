@@ -19,7 +19,7 @@ from storytime.services.responses_api_service import ResponsesAPIVectorStoreServ
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/knowledge", tags=["knowledge"])
+router = APIRouter(prefix="/api/v1/knowledge", tags=["knowledge"])
 
 
 async def get_responses_api_service(
