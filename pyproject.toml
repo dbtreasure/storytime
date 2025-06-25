@@ -35,6 +35,7 @@ dependencies = [
     "google-generativeai>=0.8.0,<0.9.0",
     "scrapegraphai>=1.0.0",
     "playwright>=1.40.0",
+    "fastmcp>=2.9.0",
 ]
 
 [project.optional-dependencies]
