@@ -6,10 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from storytime.database import create_all
-
 from .auth import router as auth_router
 from .jobs import router as jobs_router
+from .knowledge import router as knowledge_router
 from .middleware import LoggingMiddleware
 from .progress import router as progress_router
 from .settings import get_settings
@@ -36,20 +35,21 @@ app.add_middleware(
 )
 
 
-# Create DB tables on startup (MVP, not for prod)
-@app.on_event("startup")
-async def on_startup():
-    try:
-        await create_all()
-        logging.getLogger(__name__).info("DB bootstrap complete.")
-    except Exception as e:
-        logging.getLogger(__name__).error(f"DB bootstrap failed: {e}")
+# DB migrations should be run via Alembic, not create_all()
+# @app.on_event("startup")
+# async def on_startup():
+#     try:
+#         await create_all()
+#         logging.getLogger(__name__).info("DB bootstrap complete.")
+#     except Exception as e:
+#         logging.getLogger(__name__).error(f"DB bootstrap failed: {e}")
 
 
 app.include_router(auth_router)
 app.include_router(jobs_router)
 app.include_router(streaming_router)
 app.include_router(progress_router)
+app.include_router(knowledge_router)
 
 
 @app.get("/api/health", tags=["Utility"])

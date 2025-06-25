@@ -105,7 +105,9 @@ def get_settings() -> Settings:  # pragma: no cover
         if not s.openai_api_key:
             logger.warning("OPENAI_API_KEY not set in production!")
         if not s.google_api_key:
-            logger.warning("GOOGLE_API_KEY not set in production - text preprocessing will be disabled!")
+            logger.warning(
+                "GOOGLE_API_KEY not set in production - text preprocessing will be disabled!"
+            )
         if not s.do_spaces_key or not s.do_spaces_secret:
             logger.warning("DigitalOcean Spaces credentials not set in production!")
 

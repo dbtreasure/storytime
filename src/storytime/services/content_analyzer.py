@@ -38,7 +38,7 @@ class ContentAnalyzer:
         genai.configure(api_key=settings.google_api_key)
 
         # Initialize the model with structured output capability
-        self.model = genai.GenerativeModel('gemini-2.5-pro')
+        self.model = genai.GenerativeModel("gemini-2.5-pro")
         self.client = True
         logger.info("Gemini content analysis service initialized")
 
@@ -211,7 +211,7 @@ Analyze this content and respond with the JSON structure above."""
             job_type=job_type,
             confidence=confidence,
             reasoning=reasoning,
-            content_characteristics=["fallback_analysis"]
+            content_characteristics=["fallback_analysis"],
         )
 
     def is_available(self) -> bool:

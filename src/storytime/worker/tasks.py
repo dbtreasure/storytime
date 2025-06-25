@@ -1,9 +1,13 @@
 import asyncio
 import logging
 
+from openai import OpenAI
+
+from storytime.api.settings import get_settings
 from storytime.database import AsyncSessionLocal
 from storytime.infrastructure.spaces import SpacesClient
 from storytime.services.job_processor import JobProcessor
+from storytime.services.vector_store_manager import VectorStoreManager
 
 from .celery_app import celery_app
 
@@ -27,9 +31,25 @@ async def _process_job_async(self, job_id):
     """Async implementation of job processing."""
     async with AsyncSessionLocal() as session:
         try:
-            # Create job processor
+            # Create job processor with vector store manager
             spaces_client = SpacesClient()
-            job_processor = JobProcessor(db_session=session, spaces_client=spaces_client)
+
+            # Get settings and create vector store manager if OpenAI key is available
+            settings = get_settings()
+            vector_store_manager = None
+            if settings.openai_api_key:
+                openai_client = OpenAI(api_key=settings.openai_api_key)
+                vector_store_manager = VectorStoreManager(openai_client, session)
+            else:
+                logging.warning(
+                    "OpenAI API key not available, vector store ingestion will be skipped"
+                )
+
+            job_processor = JobProcessor(
+                db_session=session,
+                spaces_client=spaces_client,
+                vector_store_manager=vector_store_manager,
+            )
 
             # Process the job
             result = await job_processor.process_job(job_id)

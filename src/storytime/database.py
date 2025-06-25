@@ -46,6 +46,7 @@ class User(Base):
     # Relationships
     jobs = relationship("Job", back_populates="user")
     progress_records = relationship("PlaybackProgress", back_populates="user")
+    vector_store = relationship("UserVectorStore", back_populates="user", uselist=False)
 
     def verify_password(self, password: str) -> bool:
         """Verify a password against the hash."""
@@ -92,6 +93,9 @@ class Job(Base):
     output_file_key: Mapped[str | None] = mapped_column(
         String, nullable=True
     )  # Generated audio file
+    vector_store_file_id: Mapped[str | None] = mapped_column(
+        String, nullable=True
+    )  # OpenAI vector store file ID
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
@@ -112,6 +116,7 @@ class Job(Base):
     )
     steps = relationship("JobStep", back_populates="job", cascade="all, delete-orphan")
     progress_records = relationship("PlaybackProgress", back_populates="job")
+    vector_store_file = relationship("VectorStoreFile", back_populates="job", uselist=False)
 
     @property
     def duration(self) -> float | None:
@@ -235,6 +240,58 @@ class PlaybackProgress(Base):
             self.percentage_complete = 0.0
 
 
+class UserVectorStore(Base):
+    """User's OpenAI vector store for content search and Q&A."""
+
+    __tablename__ = "user_vector_stores"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False, index=True)
+    openai_vector_store_id: Mapped[str] = mapped_column(String, nullable=False)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    # Relationships
+    user = relationship(
+        "User", back_populates="vector_store"
+    )  # Will need to add this to User model
+    files = relationship(
+        "VectorStoreFile", back_populates="vector_store", cascade="all, delete-orphan"
+    )
+
+    # Constraints
+    __table_args__ = (UniqueConstraint("user_id", name="unique_user_vector_store"),)
+
+
+class VectorStoreFile(Base):
+    """Files stored in user's vector store with job associations."""
+
+    __tablename__ = "vector_store_files"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_vector_store_id: Mapped[str] = mapped_column(
+        String, ForeignKey("user_vector_stores.id"), nullable=False
+    )
+    job_id: Mapped[str] = mapped_column(String, ForeignKey("jobs.id"), nullable=False, index=True)
+    openai_file_id: Mapped[str] = mapped_column(String, nullable=False)
+
+    # Metadata for OpenAI file (title, type, etc.)
+    file_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    vector_store = relationship("UserVectorStore", back_populates="files")
+    job = relationship(
+        "Job", back_populates="vector_store_file"
+    )  # Will need to add this to Job model
+
+
 settings = get_settings()
 engine = create_async_engine(settings.database_url, echo=True, future=True)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
@@ -253,5 +310,5 @@ async def create_all():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logging.getLogger(__name__).info(
-        "Database tables created (User, Job, JobStep, PlaybackProgress)"
+        "Database tables created (User, Job, JobStep, PlaybackProgress, UserVectorStore, VectorStoreFile)"
     )

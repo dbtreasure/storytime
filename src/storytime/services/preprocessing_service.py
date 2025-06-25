@@ -26,14 +26,12 @@ class PreprocessingService:
         genai.configure(api_key=settings.google_api_key)
 
         # Initialize the model (using Gemini 2.5 Pro for best performance)
-        self.model = genai.GenerativeModel('gemini-2.5-pro')
+        self.model = genai.GenerativeModel("gemini-2.5-pro")
         self.client = True
         logger.info("Gemini preprocessing service initialized")
 
     async def preprocess_text(
-        self,
-        text_content: str,
-        job_config: dict[str, Any] | None = None
+        self, text_content: str, job_config: dict[str, Any] | None = None
     ) -> str:
         """
         Preprocess text content to remove metadata and formatting artifacts.
@@ -120,7 +118,9 @@ You are a professional text editor specializing in preparing literary content fo
             prompt += "\n- MAINTAIN the original chapter structure and literary formatting"
 
         if aggressive_cleanup:
-            prompt += "\n- BE MORE AGGRESSIVE in removing potentially irrelevant metadata and formatting"
+            prompt += (
+                "\n- BE MORE AGGRESSIVE in removing potentially irrelevant metadata and formatting"
+            )
 
         prompt += f"""
 

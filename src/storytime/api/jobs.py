@@ -73,12 +73,13 @@ async def create_job(
                         # For URLs, we'll analyze after scraping during job processing
                         # For now, default to TEXT_TO_AUDIO and let the processor handle it
                         job_type = JobType.TEXT_TO_AUDIO
-                        logger.info("URL provided - defaulting to TEXT_TO_AUDIO, will analyze during processing")
+                        logger.info(
+                            "URL provided - defaulting to TEXT_TO_AUDIO, will analyze during processing"
+                        )
 
                     if analysis_content and not job_type:
                         detected_type = await content_analyzer.analyze_content(
-                            analysis_content,
-                            request.title
+                            analysis_content, request.title
                         )
                         job_type = detected_type
                         logger.info(f"Auto-detected job type: {job_type.value}")
