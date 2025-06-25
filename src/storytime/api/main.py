@@ -6,7 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from storytime.mcp import create_mcp_app
+from storytime.mcp.auth.oauth import router as oauth_router
+from storytime.mcp.http_server import router as mcp_router
+
 from .auth import router as auth_router
 from .jobs import router as jobs_router
 from .knowledge import router as knowledge_router
@@ -23,19 +25,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Create FastMCP app and get its ASGI app
-mcp = create_mcp_app()
-mcp_app = mcp.http_app(path='/mcp', transport='sse')
+# Create FastAPI app first
+app = FastAPI(title="Storytime API", version="0.1.0")
 
-# Create FastAPI app with MCP lifespan
-app = FastAPI(
-    title="Storytime API", 
-    version="0.1.0",
-    lifespan=mcp_app.lifespan
-)
-
-# Mount the MCP server at /mcp-server
-app.mount("/mcp-server", mcp_app)
+# Add HTTP-based MCP server
+app.include_router(mcp_router)
+logger.info("HTTP-based MCP server added")
 app.add_middleware(LoggingMiddleware)
 
 # CORS middleware (allow all for now; adjust in prod)
@@ -59,6 +54,7 @@ app.add_middleware(
 
 
 app.include_router(auth_router)
+app.include_router(oauth_router)
 app.include_router(jobs_router)
 app.include_router(streaming_router)
 app.include_router(progress_router)

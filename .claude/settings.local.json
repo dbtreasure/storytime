@@ -52,7 +52,8 @@
       "Bash(ENV=dev DATABASE_URL=\"postgresql+asyncpg://postgres:postgres@localhost:5432/storytime\" REDIS_URL=\"redis://localhost:6379/0\" CELERY_BROKER_URL=\"redis://localhost:6379/0\" JWT_SECRET_KEY=\"DUOTEbgdyLPwcgv7i0BPpVYkuelltnn7g9WiKf5YBDE\" uv run uvicorn storytime.api.main:app --host 0.0.0.0 --port 8000 2 >& 1)",
       "Bash(./scripts/docker:*)",
       "mcp__playwright__browser_close",
-      "Bash(ssh:*)"
+      "Bash(ssh:*)",
+      "mcp__playwright__browser_tab_select"
     ],
     "deny": []
   }

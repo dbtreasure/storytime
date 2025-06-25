@@ -123,9 +123,8 @@ async def handle_mcp_request(authorization: str, request_handler):
 
 def start_mcp_server():
     """Start the MCP server with HTTP/SSE transport."""
-    import sys
     import threading
-    
+
     settings = get_settings()
     logger.info(f"Starting MCP server on {settings.mcp_server_host}:{settings.mcp_server_port}")
 
@@ -135,22 +134,22 @@ def start_mcp_server():
     try:
         # Check if we're already in an async context
         try:
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
             logger.info("Detected running event loop, starting MCP server in thread")
-            
+
             # Run in a separate thread to avoid event loop conflict
             def run_server():
                 mcp.run(transport="sse", host=settings.mcp_server_host, port=settings.mcp_server_port)
-            
+
             server_thread = threading.Thread(target=run_server, daemon=True)
             server_thread.start()
             server_thread.join()
-            
+
         except RuntimeError:
             # No running event loop, safe to run directly
             logger.info("No running event loop detected, starting MCP server directly")
             mcp.run(transport="sse", host=settings.mcp_server_host, port=settings.mcp_server_port)
-            
+
     except Exception as e:
         logger.error(f"Error starting MCP server: {e}")
         raise
