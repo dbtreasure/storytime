@@ -15,6 +15,7 @@ from storytime.services.book_analyzer import BookAnalyzer, ChapterInfo
 from storytime.services.content_analyzer import ContentAnalyzer
 from storytime.services.preprocessing_service import PreprocessingService
 from storytime.services.tts_generator import TTSGenerator
+from storytime.services.vector_store_manager import VectorStoreManager
 from storytime.services.web_scraping import WebScrapingService
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ class JobProcessor:
         preprocessing_service: PreprocessingService | None = None,
         web_scraping_service: WebScrapingService | None = None,
         content_analyzer: ContentAnalyzer | None = None,
+        vector_store_manager: VectorStoreManager | None = None,
     ):
         self.db_session = db_session
         self.spaces_client = spaces_client
@@ -39,6 +41,7 @@ class JobProcessor:
         self.web_scraping_service = web_scraping_service or WebScrapingService()
         self.content_analyzer = content_analyzer or ContentAnalyzer()
         self.book_analyzer = BookAnalyzer()
+        self.vector_store_manager = vector_store_manager
 
     def _is_book_job(self, job: Job) -> bool:
         """Determine if a job should be processed as a book."""
@@ -70,15 +73,14 @@ class JobProcessor:
             scraped_content = scraping_result["content"]
 
             # Analyze the scraped content
-            detected_type = await self.content_analyzer.analyze_content(
-                scraped_content,
-                job.title
-            )
+            detected_type = await self.content_analyzer.analyze_content(scraped_content, job.title)
 
             # Update job config if type changed
             current_type = job.config.get("job_type", "text_to_audio")
             if detected_type.value != current_type:
-                logger.info(f"URL content analysis changed job type: {current_type} -> {detected_type.value}")
+                logger.info(
+                    f"URL content analysis changed job type: {current_type} -> {detected_type.value}"
+                )
 
                 # Update job config in database
                 job.config["job_type"] = detected_type.value
@@ -370,6 +372,40 @@ class JobProcessor:
                 tts_step.id, StepStatus.COMPLETED, progress=1.0, completed_at=datetime.utcnow()
             )
 
+            # Update overall job progress (TTS complete)
+            await self._update_job_status(job.id, JobStatus.PROCESSING, progress=0.85)
+
+            # Step 4: Vector Store Ingestion
+            vector_store_step = await self._create_job_step(
+                job.id, "ingest_to_vector_store", 3, "Upload content to vector store for search"
+            )
+
+            # Update vector store step to running
+            await self._update_job_step(
+                vector_store_step.id, StepStatus.RUNNING, started_at=datetime.utcnow()
+            )
+
+            try:
+                # Ingest content to vector store
+                await self._ingest_job_to_vector_store(job, text_content)
+
+                # Complete vector store step
+                await self._update_job_step(
+                    vector_store_step.id,
+                    StepStatus.COMPLETED,
+                    progress=1.0,
+                    completed_at=datetime.utcnow(),
+                )
+            except Exception as vector_error:
+                # Vector store ingestion is not critical - log error but don't fail the job
+                logger.warning(f"Vector store ingestion failed for job {job.id}: {vector_error}")
+                await self._update_job_step(
+                    vector_store_step.id,
+                    StepStatus.FAILED,
+                    error_message=str(vector_error),
+                    completed_at=datetime.utcnow(),
+                )
+
             # Update overall job progress (complete)
             await self._update_job_status(job.id, JobStatus.PROCESSING, progress=1.0)
 
@@ -388,7 +424,12 @@ class JobProcessor:
             # We need to determine which step was running when the error occurred
             try:
                 # Check steps in reverse order to find the most recent one
-                for step_name in ["text_to_audio", "preprocess_text", "acquire_content"]:
+                for step_name in [
+                    "ingest_to_vector_store",
+                    "text_to_audio",
+                    "preprocess_text",
+                    "acquire_content",
+                ]:
                     step_result = await self.db_session.execute(
                         select(JobStep).where(
                             JobStep.job_id == job.id, JobStep.step_name == step_name
@@ -466,9 +507,7 @@ class JobProcessor:
     async def _update_job_config(self, job_id: str, config: dict[str, Any]) -> None:
         """Update job configuration."""
         await self.db_session.execute(
-            update(Job)
-            .where(Job.id == job_id)
-            .values(config=config, updated_at=datetime.utcnow())
+            update(Job).where(Job.id == job_id).values(config=config, updated_at=datetime.utcnow())
         )
         await self.db_session.commit()
 
@@ -689,3 +728,23 @@ class JobProcessor:
             "total_duration_seconds": total_duration,
             "chapters": completed + failed,
         }
+
+    async def _ingest_job_to_vector_store(self, job: Job, content: str) -> None:
+        """Ingest job content to user's vector store for search and Q&A."""
+        if not self.vector_store_manager:
+            logger.warning("Vector store manager not available, skipping ingestion")
+            return
+
+        try:
+            # Upload content to user's vector store
+            vector_store_file = await self.vector_store_manager.upload_job_content(
+                user_id=job.user_id, job=job, content=content
+            )
+
+            logger.info(
+                f"Successfully ingested job {job.id} to vector store: {vector_store_file.openai_file_id}"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to ingest job {job.id} to vector store: {e}")
+            raise

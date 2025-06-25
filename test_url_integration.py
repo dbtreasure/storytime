@@ -5,7 +5,8 @@ import os
 import sys
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+
 
 def test_model_validation():
     """Test Pydantic model validation for URL input."""
@@ -16,10 +17,7 @@ def test_model_validation():
         request = CreateJobRequest(
             title="Test Article",
             url="https://example.com/article",
-            voice_config={
-                "provider": "openai",
-                "voice_id": "alloy"
-            }
+            voice_config={"provider": "openai", "voice_id": "alloy"},
         )
         print("✅ URL input validation works")
         print(f"   URL: {request.url}")
@@ -33,10 +31,7 @@ def test_model_validation():
         request = CreateJobRequest(
             title="Test Text",
             content="This is a test text content that is long enough to pass validation requirements.",
-            voice_config={
-                "provider": "openai",
-                "voice_id": "alloy"
-            }
+            voice_config={"provider": "openai", "voice_id": "alloy"},
         )
         print("✅ Text content validation works")
     except Exception as e:
@@ -46,11 +41,7 @@ def test_model_validation():
     # Test validation error (no input)
     try:
         request = CreateJobRequest(
-            title="Invalid Request",
-            voice_config={
-                "provider": "openai",
-                "voice_id": "alloy"
-            }
+            title="Invalid Request", voice_config={"provider": "openai", "voice_id": "alloy"}
         )
         print("❌ Should have failed validation")
         return False
@@ -63,10 +54,7 @@ def test_model_validation():
             title="Invalid Request",
             content="Some content",
             url="https://example.com",
-            voice_config={
-                "provider": "openai",
-                "voice_id": "alloy"
-            }
+            voice_config={"provider": "openai", "voice_id": "alloy"},
         )
         print("❌ Should have failed validation")
         return False
@@ -75,13 +63,14 @@ def test_model_validation():
 
     return True
 
+
 def test_web_scraping_service():
     """Test web scraping service initialization."""
     try:
         from storytime.services.web_scraping import WebScrapingService
 
         # Mock the OpenAI API key for testing
-        os.environ['OPENAI_API_KEY'] = 'test-key'
+        os.environ["OPENAI_API_KEY"] = "test-key"
 
         service = WebScrapingService()
         print("✅ WebScrapingService initializes correctly")
@@ -95,6 +84,7 @@ def test_web_scraping_service():
     except Exception as e:
         print(f"❌ WebScrapingService failed: {e}")
         return False
+
 
 def main():
     """Run all tests."""
@@ -116,6 +106,7 @@ def main():
     else:
         print("❌ Some tests failed!")
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

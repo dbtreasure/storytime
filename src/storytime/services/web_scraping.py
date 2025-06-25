@@ -57,7 +57,7 @@ class WebScrapingService:
                 - Include the page title if available
                 - Return clean, readable text optimized for audio conversion""",
                 source=url,
-                config=self.graph_config
+                config=self.graph_config,
             )
 
             # Execute scraping in a thread to avoid asyncio.run() conflicts
@@ -79,7 +79,9 @@ class WebScrapingService:
 
             # Validate content length
             if len(content.strip()) < 100:
-                raise Exception(f"Extracted content is too short ({len(content)} characters). Minimum 100 characters required.")
+                raise Exception(
+                    f"Extracted content is too short ({len(content)} characters). Minimum 100 characters required."
+                )
 
             logger.info(f"Successfully extracted {len(content)} characters from {url}")
 

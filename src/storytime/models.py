@@ -71,7 +71,9 @@ class JobConfig(BaseModel):
     """Job configuration data."""
 
     voice_config: VoiceConfig | None = Field(None, description="Voice configuration")
-    preprocessing: PreprocessingConfig | None = Field(None, description="Text preprocessing configuration")
+    preprocessing: PreprocessingConfig | None = Field(
+        None, description="Text preprocessing configuration"
+    )
     provider: str | None = Field(None, description="TTS provider (for backwards compatibility)")
 
 
@@ -110,9 +112,11 @@ class CreateJobRequest(BaseModel):
     voice_config: VoiceConfig | None = Field(None, description="Voice configuration")
 
     # Preprocessing configuration
-    preprocessing: PreprocessingConfig | None = Field(None, description="Text preprocessing configuration")
+    preprocessing: PreprocessingConfig | None = Field(
+        None, description="Text preprocessing configuration"
+    )
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_input_source(self):
         """Ensure exactly one input source is provided."""
         sources = [self.content, self.file_key, self.url]
@@ -303,3 +307,28 @@ class BookChaptersResponse(BaseModel):
     failed_chapters: int
     total_duration_seconds: float
     chapters: list[dict]
+
+
+# =============================================================================
+# Knowledge API Request Models
+# =============================================================================
+
+
+class SearchJobRequest(BaseModel):
+    """Request model for searching within job content."""
+
+    query: str = Field(..., description="Search query for the audiobook content")
+    max_results: int = Field(5, description="Maximum number of search results to return")
+
+
+class AskJobQuestionRequest(BaseModel):
+    """Request model for asking questions about job content."""
+
+    question: str = Field(..., description="Question to ask about the audiobook content")
+
+
+class SearchLibraryRequest(BaseModel):
+    """Request model for searching across user's library."""
+
+    query: str = Field(..., description="Search query for the user's audiobook library")
+    max_results: int = Field(10, description="Maximum number of search results to return")
