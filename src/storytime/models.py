@@ -4,7 +4,16 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import AnyHttpUrl, BaseModel, Field, model_validator
+from pydantic import AnyHttpUrl, BaseModel, Field
+
+try:  # Pydantic v2
+    from pydantic import model_validator
+except ImportError:  # pragma: no cover - fallback for pydantic v1
+    from pydantic import root_validator
+
+    def model_validator(*args, **kwargs):  # type: ignore[override]
+        kwargs.pop("mode", None)
+        return root_validator(*args, **kwargs)
 
 # Simplified: Single-voice text processing only
 
@@ -116,16 +125,16 @@ class CreateJobRequest(BaseModel):
         None, description="Text preprocessing configuration"
     )
 
-    @model_validator(mode="after")
-    def validate_input_source(self):
+    @model_validator
+    def validate_input_source(cls, values: dict[str, Any]):
         """Ensure exactly one input source is provided."""
-        sources = [self.content, self.file_key, self.url]
+        sources = [values.get("content"), values.get("file_key"), values.get("url")]
         provided_sources = [x for x in sources if x is not None]
 
         if len(provided_sources) != 1:
             raise ValueError("Exactly one of content, file_key, or url must be provided")
 
-        return self
+        return values
 
 
 class JobStepResponse(BaseModel):
