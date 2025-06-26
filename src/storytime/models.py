@@ -125,16 +125,16 @@ class CreateJobRequest(BaseModel):
         None, description="Text preprocessing configuration"
     )
 
-    @model_validator
-    def validate_input_source(cls, values: dict[str, Any]):
+    @model_validator(mode="after")
+    def validate_input_source(self):
         """Ensure exactly one input source is provided."""
-        sources = [values.get("content"), values.get("file_key"), values.get("url")]
+        sources = [self.content, self.file_key, self.url]
         provided_sources = [x for x in sources if x is not None]
 
         if len(provided_sources) != 1:
             raise ValueError("Exactly one of content, file_key, or url must be provided")
 
-        return values
+        return self
 
 
 class JobStepResponse(BaseModel):

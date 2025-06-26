@@ -28,6 +28,14 @@ The React client is now served as static assets directly from the FastAPI applic
 - Serves from `/app/static/` via FastAPI
 - Removed unnecessary `client` accessory from `config/deploy.yml`
 
+### **MCP Server Integration**
+The system includes a complete MCP (Model Context Protocol) server for voice assistant integration:
+- **SSE Endpoint**: `/mcp-server/sse` for real-time communication
+- **HTTP Endpoint**: `/mcp-server/messages` for direct API calls
+- **Authentication**: JWT Bearer token required
+- **Available Tools**: `search_library`, `search_job`, `ask_job_question`
+- **OpenAI Realtime API**: Complete integration in `src/storytime/voice_assistant/`
+
 ## Development Commands
 
 ### Quick Start
