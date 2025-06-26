@@ -395,3 +395,9 @@ Set the environment via the `ENV` variable:
 - `ENV=dev` - Local development (signup enabled)
 - `ENV=docker` - Docker Compose (signup enabled)
 - `ENV=production` - Production deployment (signup disabled)
+
+## 🎙️ Voice Assistant Integration
+
+Storytime exposes a [Model Context Protocol](https://mcp.readme.io/) server at `/mcp-server/` that can be used by voice assistants to search audiobook content in real time. Clients must authenticate using the OAuth 2.1 flow implemented under `/api/v1/mcp-oauth`.
+
+A basic Python helper is provided in `storytime.voice_assistant.mcp_client.MCPClient` for connecting via Server-Sent Events. See [VOICE_ASSISTANT_INTEGRATION.md](VOICE_ASSISTANT_INTEGRATION.md) for full details.
