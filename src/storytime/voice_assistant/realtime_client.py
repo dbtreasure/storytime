@@ -48,14 +48,16 @@ class RealtimeVoiceAssistant:
             logger.info("Connected to MCP server")
 
         # Connect to OpenAI Realtime API
-        headers = {
-            "Authorization": f"Bearer {self.openai_api_key}",
-            "OpenAI-Beta": "realtime=v1"
-        }
-        
         url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01"
         
-        self.ws = await websockets.connect(url, extra_headers=headers)
+        # Add headers using additional_headers parameter instead of extra_headers
+        self.ws = await websockets.connect(
+            url, 
+            additional_headers={
+                "Authorization": f"Bearer {self.openai_api_key}",
+                "OpenAI-Beta": "realtime=v1"
+            }
+        )
         logger.info("Connected to OpenAI Realtime API")
         
         # Start session and configure it
@@ -248,32 +250,64 @@ class RealtimeVoiceAssistant:
             # Execute tool via MCP
             await self.mcp_client.call_tool(name, arguments)
             
-            # Wait for the result from MCP
-            async for mcp_message in self.mcp_client.iter_messages():
-                if mcp_message.get("id") == self.mcp_client._request_id:
-                    result = mcp_message.get("result", {})
+            # Wait for the result from MCP with timeout
+            try:
+                timeout_count = 0
+                async for mcp_message in self.mcp_client.iter_messages():
+                    logger.info(f"Received MCP message: {mcp_message}")
                     
-                    # Send tool result back to Realtime API
-                    tool_result = {
-                        "type": "conversation.item.create",
-                        "item": {
-                            "type": "function_call_output",
-                            "call_id": call_id,
-                            "output": json.dumps(result)
+                    if mcp_message.get("id") == self.mcp_client._request_id:
+                        result = mcp_message.get("result", {})
+                        logger.info(f"Got MCP result: {result}")
+                        
+                        # Extract the actual result content
+                        output_data = result
+                        if "content" in result and len(result["content"]) > 0:
+                            content = result["content"][0]
+                            if content.get("type") == "text":
+                                output_data = content.get("text", "No results found")
+                        
+                        # Send tool result back to Realtime API
+                        tool_result = {
+                            "type": "conversation.item.create",
+                            "item": {
+                                "type": "function_call_output",
+                                "call_id": call_id,
+                                "output": str(output_data)
+                            }
                         }
-                    }
-                    
-                    await self._send_message(tool_result)
-                    
-                    # Trigger response generation
-                    response_create = {
-                        "type": "response.create",
-                        "response": {
-                            "modalities": ["text", "audio"]
+                        
+                        await self._send_message(tool_result)
+                        
+                        # Trigger response generation
+                        response_create = {
+                            "type": "response.create",
+                            "response": {
+                                "modalities": ["text", "audio"]
+                            }
                         }
+                        await self._send_message(response_create)
+                        break
+                    
+                    timeout_count += 1
+                    if timeout_count > 10:  # Prevent infinite wait
+                        logger.error("Timeout waiting for MCP response")
+                        break
+                        
+            except Exception as e:
+                logger.error(f"Error waiting for MCP response: {e}")
+                # Send error result
+                error_result = {
+                    "type": "conversation.item.create", 
+                    "item": {
+                        "type": "function_call_output",
+                        "call_id": call_id,
+                        "output": json.dumps({
+                            "error": f"MCP communication failed: {e}"
+                        })
                     }
-                    await self._send_message(response_create)
-                    break
+                }
+                await self._send_message(error_result)
                     
         except Exception as e:
             logger.error(f"Error executing tool call {name}: {e}")

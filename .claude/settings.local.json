@@ -53,7 +53,9 @@
       "Bash(./scripts/docker:*)",
       "mcp__playwright__browser_close",
       "Bash(ssh:*)",
-      "mcp__playwright__browser_tab_select"
+      "mcp__playwright__browser_tab_select",
+      "WebFetch(domain:docs.pipecat.ai)",
+      "WebFetch(domain:docs.anthropic.com)"
     ],
     "deny": []
   }

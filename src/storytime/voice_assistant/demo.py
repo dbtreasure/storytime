@@ -5,6 +5,8 @@ import asyncio
 import logging
 import os
 import sys
+import threading
+import queue
 from pathlib import Path
 
 # Add src to path for imports
@@ -15,6 +17,75 @@ from storytime.voice_assistant.realtime_client import RealtimeVoiceAssistant
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Audio playback setup
+try:
+    import pyaudio
+    AUDIO_AVAILABLE = True
+except ImportError:
+    AUDIO_AVAILABLE = False
+    logger.warning("pyaudio not available - audio playback disabled")
+
+
+class AudioPlayer:
+    """Simple audio player for PCM16 audio streams."""
+    
+    def __init__(self):
+        self.audio_queue = queue.Queue()
+        self.playing = False
+        self.stream = None
+        self.pa = None
+        
+    def start(self):
+        """Start audio playback thread."""
+        if not AUDIO_AVAILABLE:
+            logger.warning("Audio playback not available")
+            return
+            
+        self.playing = True
+        self.pa = pyaudio.PyAudio()
+        
+        # PCM16 format: 16-bit, mono, 24kHz (OpenAI Realtime API format)
+        self.stream = self.pa.open(
+            format=pyaudio.paInt16,
+            channels=1,
+            rate=24000,
+            output=True,
+            frames_per_buffer=1024
+        )
+        
+        # Start playback thread
+        self.thread = threading.Thread(target=self._playback_loop)
+        self.thread.daemon = True
+        self.thread.start()
+        
+    def stop(self):
+        """Stop audio playback."""
+        self.playing = False
+        if hasattr(self, 'thread'):
+            self.thread.join(timeout=1.0)
+        if self.stream:
+            self.stream.close()
+        if self.pa:
+            self.pa.terminate()
+            
+    def add_audio(self, audio_data: bytes):
+        """Add audio data to playback queue."""
+        if self.playing:
+            self.audio_queue.put(audio_data)
+            
+    def _playback_loop(self):
+        """Audio playback loop running in separate thread."""
+        while self.playing:
+            try:
+                audio_data = self.audio_queue.get(timeout=0.1)
+                if self.stream and audio_data:
+                    self.stream.write(audio_data)
+            except queue.Empty:
+                continue
+            except Exception as e:
+                logger.error(f"Audio playback error: {e}")
+                break
 
 
 async def demo_text_interaction():
@@ -35,6 +106,10 @@ async def demo_text_interaction():
         mcp_access_token=mcp_token
     )
     
+    # Set up audio player
+    audio_player = AudioPlayer()
+    audio_player.start()
+    
     # Set up event handlers
     def on_transcription(transcript: str):
         logger.info(f"User said: {transcript}")
@@ -44,6 +119,8 @@ async def demo_text_interaction():
     
     def on_audio_received(audio: bytes):
         logger.info(f"Received {len(audio)} bytes of audio")
+        # Play the audio
+        audio_player.add_audio(audio)
     
     assistant.on_transcription_received = on_transcription
     assistant.on_response_received = on_response_text
@@ -61,16 +138,16 @@ async def demo_text_interaction():
         # Test library search (if MCP is connected)
         if mcp_token:
             print("\n\n=== Testing library search ===")
-            await assistant.send_text("Search my library for content about luck")
-            await asyncio.sleep(5)  # Wait for tool execution and response
+            await assistant.send_text("What's in my library about luck?")
+            await asyncio.sleep(10)  # Wait longer for tool execution and response
             
-            print("\n\n=== Testing job-specific search ===")
-            await assistant.send_text("Search within my book for information about creating opportunities")
-            await asyncio.sleep(5)
+            print("\n\n=== Testing another search ===")
+            await assistant.send_text("Tell me about any books in my library that mention success or achievement")
+            await asyncio.sleep(8)
             
-            print("\n\n=== Testing question asking ===")
-            await assistant.send_text("What are the main ideas about luck in my audiobook?")
-            await asyncio.sleep(5)
+            print("\n\n=== Testing conversational follow-up ===")
+            await assistant.send_text("That's interesting! Can you give me more details about the most relevant result?")
+            await asyncio.sleep(6)
         else:
             logger.warning("No MCP token provided - skipping library search tests")
             
@@ -79,6 +156,7 @@ async def demo_text_interaction():
     except Exception as e:
         logger.error(f"Demo error: {e}")
     finally:
+        audio_player.stop()
         await assistant.disconnect()
 
 

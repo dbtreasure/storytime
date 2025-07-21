@@ -8,6 +8,7 @@ import {
   HomeIcon,
   BriefcaseIcon,
   BookOpenIcon,
+  MicrophoneIcon,
   ArrowRightOnRectangleIcon,
   Bars3Icon,
   XMarkIcon,
@@ -50,6 +51,11 @@ const Navbar: React.FC<NavbarProps> = ({ className = '' }) => {
       name: 'Library',
       href: '/library',
       icon: BookOpenIcon,
+    },
+    {
+      name: 'Voice Assistant',
+      href: '/voice-assistant',
+      icon: MicrophoneIcon,
     },
   ];
 
