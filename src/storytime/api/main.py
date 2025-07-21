@@ -16,6 +16,7 @@ from .middleware import LoggingMiddleware
 from .progress import router as progress_router
 from .settings import get_settings
 from .streaming import router as streaming_router
+from .voice_assistant import router as voice_assistant_router
 
 settings = get_settings()
 
@@ -59,6 +60,7 @@ app.include_router(jobs_router)
 app.include_router(streaming_router)
 app.include_router(progress_router)
 app.include_router(knowledge_router)
+app.include_router(voice_assistant_router)
 
 
 @app.get("/api/health", tags=["Utility"])

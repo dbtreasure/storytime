@@ -28,6 +28,14 @@ The React client is now served as static assets directly from the FastAPI applic
 - Serves from `/app/static/` via FastAPI
 - Removed unnecessary `client` accessory from `config/deploy.yml`
 
+### **MCP Server Integration**
+The system includes a complete MCP (Model Context Protocol) server for voice assistant integration:
+- **SSE Endpoint**: `/mcp-server/sse` for real-time communication
+- **HTTP Endpoint**: `/mcp-server/messages` for direct API calls
+- **Authentication**: JWT Bearer token required
+- **Available Tools**: `search_library`, `search_job`, `ask_job_question`
+- **OpenAI Realtime API**: Complete integration in `src/storytime/voice_assistant/`
+
 ## Development Commands
 
 ### Quick Start
@@ -77,6 +85,23 @@ When encountering any code-related task—whether large features, minor fixes, t
 
 # Type checking (if mypy is installed)
 mypy src/
+```
+
+### Code Quality Hooks
+The project uses Claude Code hooks (`.claude.json`) to enforce code quality:
+
+```bash
+# Hooks automatically run:
+# - Python: ruff check --fix && ruff format (after Python edits)
+# - Client: npm run lint && npm run typecheck (after TS/React edits)  
+# - Build: npm run build (after client changes complete)
+
+# Manual validation commands:
+uvx ruff check . --fix        # Fix Python linting issues
+uvx ruff format .             # Format Python code
+cd client && npm run lint     # Lint client code
+cd client && npm run typecheck # Check TypeScript types
+cd client && npm run build    # Test client build
 ```
 
 ### Testing
@@ -133,6 +158,36 @@ Environment files:
 - `.kamal/secrets`: Production secrets
 
 See `scripts/README.md` for detailed usage guide.
+
+### MCP Inspector Testing
+Use the MCP Inspector to test the MCP server endpoints:
+
+```bash
+# Start MCP Inspector (generates new session token each time)
+npx @modelcontextprotocol/inspector
+
+# This will output:
+# 🔑 Session token: [NEW_TOKEN_HERE]
+# 🔗 Open inspector with token pre-filled:
+#    http://localhost:6274/?MCP_PROXY_AUTH_TOKEN=[NEW_TOKEN_HERE]
+```
+
+**Important Setup Steps:**
+1. **Use the generated URL** - The session token changes each run
+2. **Transport Type**: Select "SSE" (not Streamable HTTP)  
+3. **URL**: Set to `http://localhost:8000/mcp-server/sse`
+4. **Authentication**: Use Bearer token from user login (JWT format)
+5. **Configuration**: The proxy session token is auto-filled from URL
+
+**Available Tools for Testing:**
+- `search_library` - Search across user's entire audiobook library
+- `search_job` - Search within specific audiobook by job ID  
+- `ask_job_question` - Ask questions about specific audiobook content
+
+**Authentication Requirements:**
+- MCP server uses JWT Bearer tokens for user authentication
+- Inspector proxy uses separate session tokens for inspector access
+- Both are required for successful testing
 
 ## Architecture
 

@@ -1,0 +1,73 @@
+{
+  "hooks": {
+    "post-tool-use": [
+      {
+        "name": "python-lint-and-format",
+        "command": "uvx ruff check . --fix && uvx ruff format .",
+        "description": "Auto-fix Python linting issues and format code",
+        "match": {
+          "tool": ["Edit", "MultiEdit", "Write"],
+          "file_pattern": "**/*.py"
+        },
+        "on_error": "warn"
+      },
+      {
+        "name": "client-lint-fix",
+        "command": "cd client && npm run lint --fix 2>/dev/null || true",
+        "description": "Auto-fix ESLint issues in client code",
+        "match": {
+          "tool": ["Edit", "MultiEdit", "Write"],
+          "file_pattern": "client/**/*.{ts,tsx,js,jsx}"
+        },
+        "on_error": "continue"
+      },
+      {
+        "name": "client-typecheck",
+        "command": "cd client && npm run typecheck",
+        "description": "Validate TypeScript types after client changes",
+        "match": {
+          "tool": ["Edit", "MultiEdit", "Write"],
+          "file_pattern": "client/**/*.{ts,tsx}"
+        },
+        "on_error": "block"
+      }
+    ],
+    "stop": [
+      {
+        "name": "final-python-validation",
+        "command": "uvx ruff check . --quiet",
+        "description": "Final Python lint validation",
+        "match": {
+          "tool": ["Edit", "MultiEdit", "Write"],
+          "file_pattern": "**/*.py"
+        },
+        "on_error": "warn"
+      },
+      {
+        "name": "final-client-validation",
+        "command": "cd client && npm run lint --quiet && npm run typecheck",
+        "description": "Final client code validation",
+        "match": {
+          "tool": ["Edit", "MultiEdit", "Write"],
+          "file_pattern": "client/**/*.{ts,tsx,js,jsx}"
+        },
+        "on_error": "warn"
+      },
+      {
+        "name": "client-build-test",
+        "command": "cd client && npm run build",
+        "description": "Ensure client builds successfully",
+        "match": {
+          "tool": ["Edit", "MultiEdit", "Write"],
+          "file_pattern": "client/**/*"
+        },
+        "on_error": "block"
+      }
+    ]
+  },
+  "settings": {
+    "hook_timeout": 120000,
+    "hook_parallel": false,
+    "verbose": true
+  }
+}
