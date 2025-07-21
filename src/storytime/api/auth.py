@@ -59,8 +59,9 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 async def verify_token(token: str) -> User | None:
     """Verify JWT token and return user if valid."""
     import logging
+
     logger = logging.getLogger(__name__)
-    
+
     try:
         logger.info(f"Decoding token with secret key length: {len(settings.jwt_secret_key)}")
         payload = jwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])

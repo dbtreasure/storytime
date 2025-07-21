@@ -55,7 +55,12 @@
       "Bash(ssh:*)",
       "mcp__playwright__browser_tab_select",
       "WebFetch(domain:docs.pipecat.ai)",
-      "WebFetch(domain:docs.anthropic.com)"
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(uvx ruff format:*)",
+      "Bash(uv add:*)",
+      "Bash(rm:*)",
+      "Bash(mv:*)",
+      "Bash(uvx:*)"
     ],
     "deny": []
   }

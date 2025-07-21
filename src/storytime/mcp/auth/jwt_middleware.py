@@ -75,17 +75,15 @@ async def authenticate_mcp_request(authorization_header: str) -> MCPAuthContext 
         if user_id == "demo_user_123":
             # Create mock user for demo
             from datetime import datetime
+
             mock_user = User(
                 id=user_id,
                 email="demo@storytime.com",
                 hashed_password="mock",
-                created_at=datetime.utcnow()
+                created_at=datetime.utcnow(),
             )
             return MCPAuthContext(
-                user=mock_user,
-                db_session=db_session,
-                client_id=client_id,
-                scope=scope
+                user=mock_user, db_session=db_session, client_id=client_id, scope=scope
             )
 
         # Real user lookup
@@ -97,12 +95,7 @@ async def authenticate_mcp_request(authorization_header: str) -> MCPAuthContext 
             logger.debug(f"User not found: {user_id}")
             return None
 
-        return MCPAuthContext(
-            user=user,
-            db_session=db_session,
-            client_id=client_id,
-            scope=scope
-        )
+        return MCPAuthContext(user=user, db_session=db_session, client_id=client_id, scope=scope)
 
     except Exception as e:
         await db_session.close()

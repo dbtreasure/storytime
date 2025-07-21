@@ -28,7 +28,7 @@ class MCPClient:
         """Connect to the SSE endpoint and start listening."""
 
         headers = {"Authorization": f"Bearer {self.access_token}"}
-        
+
         # Start streaming request
         self._response = self._client.stream("GET", "/mcp-server/sse", headers=headers)
         response = await self._response.__aenter__()
@@ -45,7 +45,7 @@ class MCPClient:
                         data = line[5:].strip()
                         if not data:
                             continue
-                        
+
                         if current_event == "endpoint":
                             # This is the endpoint URL for POST requests
                             self._message_endpoint = data
@@ -66,7 +66,7 @@ class MCPClient:
             if self._message_endpoint:
                 break
             await asyncio.sleep(0.1)
-        
+
         if not self._message_endpoint:
             raise RuntimeError("Timeout waiting for MCP endpoint")
 

@@ -139,7 +139,9 @@ def start_mcp_server():
 
             # Run in a separate thread to avoid event loop conflict
             def run_server():
-                mcp.run(transport="sse", host=settings.mcp_server_host, port=settings.mcp_server_port)
+                mcp.run(
+                    transport="sse", host=settings.mcp_server_host, port=settings.mcp_server_port
+                )
 
             server_thread = threading.Thread(target=run_server, daemon=True)
             server_thread.start()

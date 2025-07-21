@@ -18,6 +18,7 @@ from storytime.database import User
 
 class OAuthClientRegistration(BaseModel):
     """Dynamic client registration request."""
+
     client_name: str
     client_uri: HttpUrl | None = None
     redirect_uris: list[HttpUrl]
@@ -28,6 +29,7 @@ class OAuthClientRegistration(BaseModel):
 
 class OAuthClient(BaseModel):
     """Registered OAuth client."""
+
     client_id: str
     client_secret: str
     client_name: str
@@ -40,6 +42,7 @@ class OAuthClient(BaseModel):
 
 class AuthorizationRequest(BaseModel):
     """OAuth authorization request."""
+
     response_type: str = "code"
     client_id: str
     redirect_uri: HttpUrl
@@ -51,6 +54,7 @@ class AuthorizationRequest(BaseModel):
 
 class TokenRequest(BaseModel):
     """OAuth token exchange request."""
+
     grant_type: str = "authorization_code"
     code: str
     redirect_uri: HttpUrl
@@ -61,6 +65,7 @@ class TokenRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     """OAuth token response."""
+
     access_token: str
     token_type: str = "Bearer"
     expires_in: int = 3600
@@ -69,6 +74,7 @@ class TokenResponse(BaseModel):
 
 class AuthorizationCode(BaseModel):
     """Temporary authorization code storage."""
+
     code: str
     client_id: str
     user_id: str
@@ -95,7 +101,7 @@ def generate_client_id() -> str:
 def generate_client_secret() -> str:
     """Generate a secure client secret."""
     alphabet = string.ascii_letters + string.digits
-    return ''.join(secrets.choice(alphabet) for _ in range(32))
+    return "".join(secrets.choice(alphabet) for _ in range(32))
 
 
 def generate_authorization_code() -> str:
@@ -110,7 +116,7 @@ def verify_pkce_challenge(code_verifier: str, code_challenge: str, method: str =
 
     if method == "S256":
         digest = hashlib.sha256(code_verifier.encode()).digest()
-        expected = base64.urlsafe_b64encode(digest).decode().rstrip('=')
+        expected = base64.urlsafe_b64encode(digest).decode().rstrip("=")
         return expected == code_challenge
     elif method == "plain":
         return code_verifier == code_challenge
@@ -126,7 +132,7 @@ async def register_client(registration: OAuthClientRegistration) -> OAuthClient:
         if not (uri.scheme == "https" or uri.host in ["localhost", "127.0.0.1"]):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Redirect URIs must use HTTPS or localhost"
+                detail="Redirect URIs must use HTTPS or localhost",
             )
 
     # Generate client credentials
@@ -142,7 +148,7 @@ async def register_client(registration: OAuthClientRegistration) -> OAuthClient:
         redirect_uris=registration.redirect_uris,
         grant_types=registration.grant_types,
         response_types=registration.response_types,
-        token_endpoint_auth_method=registration.token_endpoint_auth_method
+        token_endpoint_auth_method=registration.token_endpoint_auth_method,
     )
 
     _registered_clients[client_id] = client
@@ -159,31 +165,24 @@ async def authorize(
     state: str | None = None,
     code_challenge: str | None = None,
     code_challenge_method: str = "S256",
-    request: Request = None
+    request: Request = None,
 ):
     """OAuth authorization endpoint."""
 
     # Validate client
     if client_id not in _registered_clients:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid client_id"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid client_id")
 
     client = _registered_clients[client_id]
 
     # Validate redirect URI
     if redirect_uri not in [str(uri) for uri in client.redirect_uris]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid redirect_uri"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid redirect_uri")
 
     # Validate PKCE (required)
     if not code_challenge:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="code_challenge is required (PKCE)"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="code_challenge is required (PKCE)"
         )
 
     # For demo purposes, we'll auto-approve for registered clients
@@ -205,7 +204,7 @@ async def authorize(
         expires_at=expires_at,
         code_challenge=code_challenge,
         code_challenge_method=code_challenge_method,
-        scope=scope
+        scope=scope,
     )
 
     # Redirect back to client with code
@@ -224,38 +223,37 @@ async def token_exchange(
     client_id: str,
     code_verifier: str,
     client_secret: str | None = None,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
     """OAuth token exchange endpoint."""
 
     # Validate grant type
     if grant_type != "authorization_code":
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported grant_type"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported grant_type"
         )
 
     # Validate client
     if client_id not in _registered_clients:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid client credentials"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid client credentials"
         )
 
     client = _registered_clients[client_id]
 
     # Validate client secret (if required)
-    if client.token_endpoint_auth_method == "client_secret_basic" and client_secret != client.client_secret:
+    if (
+        client.token_endpoint_auth_method == "client_secret_basic"
+        and client_secret != client.client_secret
+    ):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid client credentials"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid client credentials"
         )
 
     # Validate authorization code
     if code not in _authorization_codes:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid authorization code"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid authorization code"
         )
 
     auth_code_data = _authorization_codes[code]
@@ -264,23 +262,20 @@ async def token_exchange(
     if datetime.utcnow() > auth_code_data.expires_at:
         del _authorization_codes[code]
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Authorization code expired"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Authorization code expired"
         )
 
     # Validate client_id and redirect_uri match
     if auth_code_data.client_id != client_id or auth_code_data.redirect_uri != redirect_uri:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid authorization code"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid authorization code"
         )
 
     # Verify PKCE
-    if not verify_pkce_challenge(code_verifier, auth_code_data.code_challenge, auth_code_data.code_challenge_method):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid code_verifier"
-        )
+    if not verify_pkce_challenge(
+        code_verifier, auth_code_data.code_challenge, auth_code_data.code_challenge_method
+    ):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid code_verifier")
 
     # Code is valid, delete it (one-time use)
     del _authorization_codes[code]
@@ -295,16 +290,13 @@ async def token_exchange(
         "client_id": client_id,
         "scope": auth_code_data.scope,
         "iat": datetime.utcnow(),
-        "exp": datetime.utcnow() + timedelta(hours=1)
+        "exp": datetime.utcnow() + timedelta(hours=1),
     }
 
     access_token = jwt.encode(token_data, settings.jwt_secret_key, algorithm="HS256")
 
     return TokenResponse(
-        access_token=access_token,
-        token_type="Bearer",
-        expires_in=3600,
-        scope=auth_code_data.scope
+        access_token=access_token, token_type="Bearer", expires_in=3600, scope=auth_code_data.scope
     )
 
 
@@ -324,7 +316,7 @@ async def oauth_metadata():
         "code_challenge_methods_supported": ["S256", "plain"],
         "scopes_supported": ["read", "write"],
         "response_modes_supported": ["query"],
-        "subject_types_supported": ["public"]
+        "subject_types_supported": ["public"],
     }
 
 
@@ -351,7 +343,7 @@ async def extract_user_from_mcp_token(authorization: str, db: AsyncSession) -> U
                 id=user_id,
                 email="demo@storytime.com",
                 hashed_password="mock",
-                created_at=datetime.utcnow()
+                created_at=datetime.utcnow(),
             )
 
         return None

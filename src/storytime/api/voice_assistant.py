@@ -1,305 +1,154 @@
-"""Voice Assistant WebSocket proxy for OpenAI Realtime API."""
+"""Pipecat Voice Assistant API using official architecture and best practices."""
 
 import asyncio
-import json
 import logging
-from typing import Any
+from typing import Dict
 
-import websockets
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends
-from fastapi.websockets import WebSocketState
+from fastapi import APIRouter, HTTPException
 
-from .auth import get_current_user
-from .settings import get_settings
 from ..database import User
+from ..voice_assistant.pipecat_assistant import (
+    StandardPipecatVoiceAssistant,
+    StandardPipecatManager,
+)
+from ..voice_assistant.pipecat_mcp_integration import create_mcp_integration
+from .auth import verify_token
+from .settings import get_settings
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/voice-assistant", tags=["voice-assistant"])
 
+# Global manager for the standard Pipecat assistant
+_assistant_manager: StandardPipecatManager | None = None
+_mcp_functions: Dict[str, callable] = {}
+_mcp_client = None
 
-@router.websocket("/realtime")
-async def voice_assistant_proxy(websocket: WebSocket):
-    """
-    WebSocket proxy to OpenAI Realtime API.
-    Handles authentication and forwards messages bidirectionally.
-    """
+
+async def _initialize_assistant():
+    """Initialize the Pipecat voice assistant with MCP integration."""
+    global _assistant_manager, _mcp_functions, _mcp_client
+    
+    if _assistant_manager and _assistant_manager.is_running:
+        logger.info("Standard Pipecat assistant already running")
+        return
+    
     settings = get_settings()
     
     if not settings.openai_api_key:
-        await websocket.close(code=1008, reason="OpenAI API key not configured")
-        return
-
-    await websocket.accept()
+        raise HTTPException(status_code=500, detail="OpenAI API key not configured")
     
-    # Authenticate user via token sent in first message
+    # Initialize MCP integration
     try:
-        auth_message = await websocket.receive_text()
-        auth_data = json.loads(auth_message)
-        
-        if auth_data.get("type") != "auth":
-            await websocket.close(code=1008, reason="Authentication required")
-            return
-            
-        token = auth_data.get("token")
-        if not token:
-            await websocket.close(code=1008, reason="Token required")
-            return
-            
-        # Validate token and get user
-        from .auth import verify_token
-        logger.info(f"Attempting to verify token: {token[:20]}...")
-        current_user = await verify_token(token)
-        if not current_user:
-            logger.error(f"Token validation failed for token: {token[:20]}...")
-            await websocket.close(code=1008, reason="Invalid token")
-            return
-            
+        _mcp_client, _mcp_functions = await create_mcp_integration(
+            mcp_base_url="http://localhost:8000",
+            mcp_access_token="system"  # Use system token for MCP access
+        )
+        logger.info("MCP integration initialized successfully")
     except Exception as e:
-        logger.error(f"Authentication error: {e}")
-        await websocket.close(code=1008, reason="Authentication failed")
-        return
-        
-    logger.info(f"Voice assistant connection accepted for user {current_user.email}")
+        logger.warning(f"MCP integration failed: {e}")
+        _mcp_functions = {}
     
-    # Send authentication success message
-    await websocket.send_text(json.dumps({
-        "type": "auth.success",
-        "user_id": current_user.id
-    }))
-
-    openai_ws = None
+    # Create standard Pipecat assistant
     try:
-        # Connect to OpenAI Realtime API
-        openai_url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01"
-        
-        openai_ws = await websockets.connect(
-            openai_url,
-            additional_headers={
-                "Authorization": f"Bearer {settings.openai_api_key}",
-                "OpenAI-Beta": "realtime=v1"
-            }
-        )
-        
-        logger.info("Connected to OpenAI Realtime API")
+        assistant = StandardPipecatVoiceAssistant(
+            openai_api_key=settings.openai_api_key,
+            host="0.0.0.0",
+            port=7860,  # Different port to avoid conflicts
+            system_instructions="""You are a voice assistant for StorytimeTTS, an AI-powered audiobook platform.
 
-        # Create tasks for bidirectional message forwarding
-        client_to_openai_task = asyncio.create_task(
-            forward_client_to_openai(websocket, openai_ws, current_user)
-        )
-        openai_to_client_task = asyncio.create_task(
-            forward_openai_to_client(openai_ws, websocket, current_user)
-        )
+You can help users search their audiobook library, find specific content within books, 
+and answer questions about their audiobooks.
 
-        # Wait for either task to complete (connection closed)
-        done, pending = await asyncio.wait(
-            [client_to_openai_task, openai_to_client_task],
-            return_when=asyncio.FIRST_COMPLETED
+Available tools:
+- search_library: Search across user's entire audiobook library
+- search_job: Search within a specific audiobook by job ID  
+- ask_job_question: Ask questions about specific audiobook content
+
+Your voice should be warm, engaging, and conversational.
+Keep responses concise since this is voice interaction - one or two sentences unless asked to elaborate."""
         )
-
-        # Cancel remaining tasks
-        for task in pending:
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
-
-    except websockets.exceptions.InvalidStatusCode as e:
-        logger.error(f"Failed to connect to OpenAI: {e}")
-        await websocket.send_text(json.dumps({
-            "type": "error",
-            "error": {
-                "message": f"Failed to connect to OpenAI: {e.status_code}",
-                "type": "connection_error"
-            }
-        }))
+        logger.info("StandardPipecatVoiceAssistant created successfully")
     except Exception as e:
-        logger.error(f"Voice assistant error: {e}")
-        await websocket.send_text(json.dumps({
-            "type": "error", 
-            "error": {
-                "message": f"Voice assistant error: {str(e)}",
-                "type": "internal_error"
-            }
-        }))
-    finally:
-        if openai_ws:
-            await openai_ws.close()
-        if websocket.client_state != WebSocketState.DISCONNECTED:
-            await websocket.close()
-
-
-async def forward_client_to_openai(
-    client_ws: WebSocket, 
-    openai_ws: websockets.WebSocketServerProtocol,
-    user: User
-):
-    """Forward messages from client to OpenAI."""
-    try:
-        while True:
-            # Receive message from client
-            try:
-                message = await client_ws.receive_text()
-                logger.debug(f"Client -> OpenAI: {message[:100]}...")
-                
-                # Parse and potentially modify message
-                try:
-                    parsed = json.loads(message)
-                    
-                    # Log audio buffer messages
-                    if parsed.get("type") == "input_audio_buffer.append":
-                        audio_data = parsed.get("audio", "")
-                        logger.info(f"Forwarding audio buffer: {len(audio_data)} base64 chars, message size: {len(message)} bytes")
-                    elif parsed.get("type") == "input_audio_buffer.commit":
-                        logger.info("Forwarding audio buffer commit")
-                    
-                    # Handle tool calls by intercepting and executing them locally
-                    if parsed.get("type") == "conversation.item.create":
-                        item = parsed.get("item", {})
-                        if item.get("type") == "function_call_output":
-                            # This is a tool result, forward as-is
-                            pass
-                    
-                    # Forward message to OpenAI
-                    await openai_ws.send(message)
-                    
-                except json.JSONDecodeError:
-                    # Forward raw message if not JSON
-                    await openai_ws.send(message)
-                    
-            except WebSocketDisconnect:
-                logger.info(f"Client {user.email} disconnected")
-                break
-                
-    except Exception as e:
-        logger.error(f"Error forwarding client to OpenAI: {e}")
-
-
-async def forward_openai_to_client(
-    openai_ws: websockets.WebSocketServerProtocol,
-    client_ws: WebSocket,
-    user: User
-):
-    """Forward messages from OpenAI to client, handling tool calls."""
-    try:
-        async for message in openai_ws:
-            logger.debug(f"OpenAI -> Client: {message[:100]}...")
-            
-            try:
-                parsed = json.loads(message)
-                
-                # Handle tool calls
-                if parsed.get("type") == "response.output_item.done":
-                    item = parsed.get("item", {})
-                    if item.get("type") == "function_call":
-                        # Execute tool and send result back to OpenAI
-                        await handle_tool_call(parsed, openai_ws, user)
-                        continue
-                    
-                # Forward other messages to client
-                await client_ws.send_text(message)
-                
-            except json.JSONDecodeError:
-                # Forward raw message if not JSON
-                await client_ws.send_text(message)
-                
-    except websockets.exceptions.ConnectionClosed:
-        logger.info("OpenAI connection closed")
-    except Exception as e:
-        logger.error(f"Error forwarding OpenAI to client: {e}")
-
-
-async def handle_tool_call(message: dict[str, Any], openai_ws: websockets.WebSocketServerProtocol, user: User):
-    """Handle tool execution and send results back."""
-    item = message.get("item", {})
-    call_id = item.get("call_id")
-    name = item.get("name") 
-    arguments_str = item.get("arguments", "{}")
+        logger.error(f"Failed to create StandardPipecatVoiceAssistant: {e}")
+        raise
     
+    # Create and start manager first
+    _assistant_manager = StandardPipecatManager(assistant)
+    await _assistant_manager.start()
+    
+    # Wait for LLM service to be initialized (assistant.start() runs in background)
+    import asyncio
+    for i in range(10):  # Wait up to 5 seconds
+        if assistant.llm is not None:
+            logger.info("LLM service is ready")
+            break
+        await asyncio.sleep(0.5)
+    else:
+        logger.warning("LLM service initialization timeout")
+    
+    # Register MCP client after assistant is started (when LLM service is initialized)
+    if _mcp_client:
+        await assistant.register_mcp_client(_mcp_client)
+    elif _mcp_functions:
+        # Fallback to legacy method if available
+        await assistant.register_mcp_functions(_mcp_functions)
+    
+    logger.info("Standard Pipecat assistant initialized and started")
+
+
+@router.post("/start")
+async def start_assistant():
+    """Start the standard Pipecat voice assistant."""
     try:
-        arguments = json.loads(arguments_str)
-        logger.info(f"Executing tool call: {name} with args: {arguments}")
-        
-        # Execute tool via our existing API endpoints
-        result = await execute_mcp_tool(name, arguments, user)
-        
-        # Send tool result back to OpenAI
-        tool_result = {
-            "type": "conversation.item.create",
-            "item": {
-                "type": "function_call_output", 
-                "call_id": call_id,
-                "output": json.dumps(result)
-            }
+        await _initialize_assistant()
+        return {
+            "status": "started", 
+            "message": "Standard Pipecat assistant started successfully",
+            "websocket_url": "ws://localhost:8766",  # Use actual Pipecat server port
+            "mcp_integration": "enabled" if _mcp_client else "disabled",
+            "mcp_functions": list(_mcp_functions.keys()) if _mcp_functions else []
         }
-        
-        await openai_ws.send(json.dumps(tool_result))
-        logger.info(f"Sent tool result to OpenAI for call {call_id}")
-        
-        # Trigger response generation with audio
-        response_create = {
-            "type": "response.create",
-            "response": {
-                "modalities": ["text", "audio"]
-            }
-        }
-        await openai_ws.send(json.dumps(response_create))
-        logger.info("Triggered audio response generation")
-        
     except Exception as e:
-        logger.error(f"Error executing tool call {name}: {e}")
-        
-        # Send error result
-        error_result = {
-            "type": "conversation.item.create",
-            "item": {
-                "type": "function_call_output",
-                "call_id": call_id, 
-                "output": json.dumps({
-                    "error": f"Tool execution failed: {str(e)}"
-                })
-            }
-        }
-        await openai_ws.send_text(json.dumps(error_result))
+        logger.error(f"Failed to start assistant: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to start assistant: {str(e)}")
 
 
-async def execute_mcp_tool(name: str, arguments: dict[str, Any], user: User) -> dict[str, Any]:
-    """Execute MCP tool using our existing services."""
-    from ..services.responses_api_service import ResponsesAPIVectorStoreService
-    from ..database import AsyncSessionLocal
-    from openai import OpenAI
+@router.post("/stop")
+async def stop_assistant():
+    """Stop the standard Pipecat voice assistant."""
+    global _assistant_manager
     
-    settings = get_settings()
-    openai_client = OpenAI(api_key=settings.openai_api_key)
-    
-    async with AsyncSessionLocal() as db:
-        service = ResponsesAPIVectorStoreService(openai_client, db)
+    if _assistant_manager:
+        await _assistant_manager.stop()
+        _assistant_manager = None
         
-        if name == "search_library":
-            result = await service.search_library(
-                user_id=user.id,
-                query=arguments["query"],
-                max_results=arguments.get("max_results", 10)
-            )
-            return result
-            
-        elif name == "search_job":
-            result = await service.search_job_content(
-                user_id=user.id,
-                job_id=arguments["job_id"],
-                query=arguments["query"],
-                max_results=arguments.get("max_results", 5)
-            )
-            return result
-            
-        elif name == "ask_job_question":
-            result = await service.ask_question_about_job(
-                user_id=user.id,
-                job_id=arguments["job_id"],
-                question=arguments["question"]
-            )
-            return result
-            
-        else:
-            raise ValueError(f"Unknown tool: {name}")
+    return {
+        "status": "stopped",
+        "message": "Standard Pipecat assistant stopped successfully"
+    }
+
+
+@router.get("/status")
+async def get_status():
+    """Get the status of the standard Pipecat assistant."""
+    global _assistant_manager
+    
+    is_running = _assistant_manager and _assistant_manager.is_running
+    
+    return {
+        "status": "running" if is_running else "stopped",
+        "websocket_url": "ws://localhost:8766" if is_running else None,  # Use actual Pipecat server port
+        "mcp_functions": list(_mcp_functions.keys()) if _mcp_functions else [],
+        "architecture": "Standard Pipecat with official components"
+    }
+
+
+@router.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {
+        "status": "healthy",
+        "service": "Standard Pipecat Voice Assistant API",
+        "version": "1.0.0"
+    }

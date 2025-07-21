@@ -30,10 +30,12 @@ def create_mcp_app() -> FastMCP:
     # Create FastMCP with explicit configuration
     mcp = FastMCP(
         name="StorytimeTTS-Knowledge",
-        instructions="Search and retrieve content from StorytimeTTS audiobook library"
+        instructions="Search and retrieve content from StorytimeTTS audiobook library",
     )
 
-    @mcp.tool(description="Searches for content across user's audiobook library using the provided query string and returns matching results. Use this to find relevant audiobooks, chapters, or content passages based on user queries.")
+    @mcp.tool(
+        description="Searches for content across user's audiobook library using the provided query string and returns matching results. Use this to find relevant audiobooks, chapters, or content passages based on user queries."
+    )
     async def search(params: SearchParams, context: Context) -> dict[str, Any]:
         """Search across user's audiobook library.
 
@@ -43,31 +45,35 @@ def create_mcp_app() -> FastMCP:
         try:
             # Get authorization from MCP context
             auth_header = None
-            if hasattr(context, 'headers') and context.headers:
-                auth_header = context.headers.get('authorization')
-            elif hasattr(context, 'meta') and context.meta:
-                auth_header = context.meta.get('authorization')
+            if hasattr(context, "headers") and context.headers:
+                auth_header = context.headers.get("authorization")
+            elif hasattr(context, "meta") and context.meta:
+                auth_header = context.meta.get("authorization")
 
             if not auth_header:
                 return {
-                    "results": [{
-                        "id": "auth_error",
-                        "title": "Authentication Required",
-                        "text": "This tool requires authentication. Please authenticate via OAuth to access your audiobook library.",
-                        "url": None
-                    }]
+                    "results": [
+                        {
+                            "id": "auth_error",
+                            "title": "Authentication Required",
+                            "text": "This tool requires authentication. Please authenticate via OAuth to access your audiobook library.",
+                            "url": None,
+                        }
+                    ]
                 }
 
             # Authenticate user
             auth_context = await authenticate_mcp_request(auth_header)
             if not auth_context:
                 return {
-                    "results": [{
-                        "id": "auth_failed",
-                        "title": "Authentication Failed",
-                        "text": "Authentication failed. Please check your credentials and try again.",
-                        "url": None
-                    }]
+                    "results": [
+                        {
+                            "id": "auth_failed",
+                            "title": "Authentication Failed",
+                            "text": "Authentication failed. Please check your credentials and try again.",
+                            "url": None,
+                        }
+                    ]
                 }
 
             try:
@@ -75,12 +81,14 @@ def create_mcp_app() -> FastMCP:
                 settings = get_settings()
                 if not settings.openai_api_key:
                     return {
-                        "results": [{
-                            "id": "config_error",
-                            "title": "Service Configuration Error",
-                            "text": "OpenAI API key not configured. Please contact administrator.",
-                            "url": None
-                        }]
+                        "results": [
+                            {
+                                "id": "config_error",
+                                "title": "Service Configuration Error",
+                                "text": "OpenAI API key not configured. Please contact administrator.",
+                                "url": None,
+                            }
+                        ]
                     }
 
                 openai_client = OpenAI(api_key=settings.openai_api_key)
@@ -88,30 +96,32 @@ def create_mcp_app() -> FastMCP:
 
                 # Search user's library
                 result = await service.search_library(
-                    user_id=auth_context.user.id,
-                    query=params.query,
-                    max_results=params.limit
+                    user_id=auth_context.user.id, query=params.query, max_results=params.limit
                 )
 
                 if not result.get("success"):
                     return {
-                        "results": [{
-                            "id": "search_error",
-                            "title": "Search Error",
-                            "text": f"Search failed: {result.get('error', 'Unknown error')}",
-                            "url": None
-                        }]
+                        "results": [
+                            {
+                                "id": "search_error",
+                                "title": "Search Error",
+                                "text": f"Search failed: {result.get('error', 'Unknown error')}",
+                                "url": None,
+                            }
+                        ]
                     }
 
                 # Transform results to OpenAI format
                 search_results = []
                 for item in result.get("results", []):
-                    search_results.append({
-                        "id": item.get("id", "unknown"),
-                        "title": item.get("title", "Untitled"),
-                        "text": item.get("text", "")[:500],  # Limit snippet length
-                        "url": item.get("url")  # Can be None
-                    })
+                    search_results.append(
+                        {
+                            "id": item.get("id", "unknown"),
+                            "title": item.get("title", "Untitled"),
+                            "text": item.get("text", "")[:500],  # Limit snippet length
+                            "url": item.get("url"),  # Can be None
+                        }
+                    )
 
                 return {"results": search_results}
 
@@ -123,15 +133,19 @@ def create_mcp_app() -> FastMCP:
         except Exception as e:
             logger.error(f"Error in search tool: {e}")
             return {
-                "results": [{
-                    "id": "internal_error",
-                    "title": "Internal Error",
-                    "text": f"An internal error occurred while searching: {e!s}",
-                    "url": None
-                }]
+                "results": [
+                    {
+                        "id": "internal_error",
+                        "title": "Internal Error",
+                        "text": f"An internal error occurred while searching: {e!s}",
+                        "url": None,
+                    }
+                ]
             }
 
-    @mcp.tool(description="Retrieves detailed content for a specific audiobook resource identified by the given ID. Use this after search to get complete content for citation purposes.")
+    @mcp.tool(
+        description="Retrieves detailed content for a specific audiobook resource identified by the given ID. Use this after search to get complete content for citation purposes."
+    )
     async def fetch(params: FetchParams, context: Context) -> dict[str, Any]:
         """Fetch detailed content for a specific audiobook resource.
 
@@ -141,17 +155,17 @@ def create_mcp_app() -> FastMCP:
         try:
             # Get authorization from MCP context
             auth_header = None
-            if hasattr(context, 'headers') and context.headers:
-                auth_header = context.headers.get('authorization')
-            elif hasattr(context, 'meta') and context.meta:
-                auth_header = context.meta.get('authorization')
+            if hasattr(context, "headers") and context.headers:
+                auth_header = context.headers.get("authorization")
+            elif hasattr(context, "meta") and context.meta:
+                auth_header = context.meta.get("authorization")
 
             if not auth_header:
                 return {
                     "id": params.id,
                     "title": "Authentication Required",
                     "text": "This tool requires authentication. Please authenticate via OAuth to access audiobook content.",
-                    "url": None
+                    "url": None,
                 }
 
             # Authenticate user
@@ -161,7 +175,7 @@ def create_mcp_app() -> FastMCP:
                     "id": params.id,
                     "title": "Authentication Failed",
                     "text": "Authentication failed. Please check your credentials and try again.",
-                    "url": None
+                    "url": None,
                 }
 
             try:
@@ -176,10 +190,7 @@ def create_mcp_app() -> FastMCP:
                     "title": "Content Fetch Not Yet Implemented",
                     "text": f"Fetch functionality for ID '{params.id}' is not yet implemented. Use the search tool to find content.",
                     "url": None,
-                    "metadata": {
-                        "status": "not_implemented",
-                        "user_id": auth_context.user.id
-                    }
+                    "metadata": {"status": "not_implemented", "user_id": auth_context.user.id},
                 }
 
             finally:
@@ -193,7 +204,7 @@ def create_mcp_app() -> FastMCP:
                 "id": params.id,
                 "title": "Internal Error",
                 "text": f"An internal error occurred while fetching content: {e!s}",
-                "url": None
+                "url": None,
             }
 
     return mcp

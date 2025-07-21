@@ -11,7 +11,7 @@ readme = "README.md"
 requires-python = ">=3.11,<4.0"
 dependencies = [
     "pydantic>=2.0.0",
-    "openai>=1.82.0",
+    "openai~=1.74.0",  # Required for Pipecat compatibility
     "python-dotenv>=1.0.0",
     "pydub>=0.25.1",
     "requests>=2.31.0",
@@ -38,6 +38,8 @@ dependencies = [
     "fastmcp>=2.9.0",
     "websockets>=12.0",
     "sse-starlette>=1.6.0",
+    "pipecat-ai[silero]>=0.0.47",
+    "mcp>=1.0.0",
 ]
 
 [project.optional-dependencies]
@@ -56,4 +58,5 @@ where = ["src"]
 [dependency-groups]
 dev = [
     "pre-commit>=4.2.0",
+    "pytest-asyncio>=1.0.0",
 ]

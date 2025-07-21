@@ -64,15 +64,9 @@ async def mcp_sse_endpoint(request: Request):
                 "method": "notifications/initialized",
                 "params": {
                     "protocolVersion": "2024-11-05",
-                    "capabilities": {
-                        "tools": {},
-                        "logging": {}
-                    },
-                    "serverInfo": {
-                        "name": "StorytimeTTS-Knowledge",
-                        "version": "1.0.0"
-                    }
-                }
+                    "capabilities": {"tools": {}, "logging": {}},
+                    "serverInfo": {"name": "StorytimeTTS-Knowledge", "version": "1.0.0"},
+                },
             }
             yield {"event": "message", "data": json.dumps(init_msg)}
 
@@ -80,10 +74,7 @@ async def mcp_sse_endpoint(request: Request):
             while True:
                 try:
                     # Wait for messages with timeout for keepalive
-                    message = await asyncio.wait_for(
-                        message_queue.get(),
-                        timeout=30.0
-                    )
+                    message = await asyncio.wait_for(message_queue.get(), timeout=30.0)
                     yield {"event": "message", "data": json.dumps(message)}
 
                 except TimeoutError:
@@ -91,7 +82,7 @@ async def mcp_sse_endpoint(request: Request):
                     keepalive = {
                         "jsonrpc": "2.0",
                         "method": "notifications/progress",
-                        "params": {"progressToken": "keepalive", "progress": 1, "total": 1}
+                        "params": {"progressToken": "keepalive", "progress": 1, "total": 1},
                     }
                     yield {"event": "message", "data": json.dumps(keepalive)}
 
@@ -100,7 +91,7 @@ async def mcp_sse_endpoint(request: Request):
             error_msg = {
                 "jsonrpc": "2.0",
                 "method": "notifications/message",
-                "params": {"level": "error", "message": str(e)}
+                "params": {"level": "error", "message": str(e)},
             }
             yield {"event": "message", "data": json.dumps(error_msg)}
         finally:
@@ -135,15 +126,9 @@ async def mcp_messages_endpoint(request: Request, session_id: str | None = Query
                 "id": request_id,
                 "result": {
                     "protocolVersion": "2024-11-05",
-                    "capabilities": {
-                        "tools": {},
-                        "logging": {}
-                    },
-                    "serverInfo": {
-                        "name": "StorytimeTTS-Knowledge",
-                        "version": "1.0.0"
-                    }
-                }
+                    "capabilities": {"tools": {}, "logging": {}},
+                    "serverInfo": {"name": "StorytimeTTS-Knowledge", "version": "1.0.0"},
+                },
             }
 
         elif method == "tools/list":
@@ -155,11 +140,18 @@ async def mcp_messages_endpoint(request: Request, session_id: str | None = Query
                     "inputSchema": {
                         "type": "object",
                         "properties": {
-                            "query": {"type": "string", "description": "Search query to find content across all audiobooks"},
-                            "max_results": {"type": "integer", "default": 10, "description": "Maximum number of results to return"}
+                            "query": {
+                                "type": "string",
+                                "description": "Search query to find content across all audiobooks",
+                            },
+                            "max_results": {
+                                "type": "integer",
+                                "default": 10,
+                                "description": "Maximum number of results to return",
+                            },
                         },
-                        "required": ["query"]
-                    }
+                        "required": ["query"],
+                    },
                 },
                 {
                     "name": "search_job",
@@ -167,12 +159,22 @@ async def mcp_messages_endpoint(request: Request, session_id: str | None = Query
                     "inputSchema": {
                         "type": "object",
                         "properties": {
-                            "job_id": {"type": "string", "description": "The job ID of the specific audiobook to search within"},
-                            "query": {"type": "string", "description": "Search query to find content within the specific audiobook"},
-                            "max_results": {"type": "integer", "default": 5, "description": "Maximum number of results to return"}
+                            "job_id": {
+                                "type": "string",
+                                "description": "The job ID of the specific audiobook to search within",
+                            },
+                            "query": {
+                                "type": "string",
+                                "description": "Search query to find content within the specific audiobook",
+                            },
+                            "max_results": {
+                                "type": "integer",
+                                "default": 5,
+                                "description": "Maximum number of results to return",
+                            },
                         },
-                        "required": ["job_id", "query"]
-                    }
+                        "required": ["job_id", "query"],
+                    },
                 },
                 {
                     "name": "ask_job_question",
@@ -180,19 +182,21 @@ async def mcp_messages_endpoint(request: Request, session_id: str | None = Query
                     "inputSchema": {
                         "type": "object",
                         "properties": {
-                            "job_id": {"type": "string", "description": "The job ID of the audiobook to ask about"},
-                            "question": {"type": "string", "description": "The question to ask about the audiobook's content"}
+                            "job_id": {
+                                "type": "string",
+                                "description": "The job ID of the audiobook to ask about",
+                            },
+                            "question": {
+                                "type": "string",
+                                "description": "The question to ask about the audiobook's content",
+                            },
                         },
-                        "required": ["job_id", "question"]
-                    }
-                }
+                        "required": ["job_id", "question"],
+                    },
+                },
             ]
 
-            response = {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "result": {"tools": tools}
-            }
+            response = {"jsonrpc": "2.0", "id": request_id, "result": {"tools": tools}}
 
         elif method == "tools/call":
             # Handle tool execution
@@ -209,34 +213,21 @@ async def mcp_messages_endpoint(request: Request, session_id: str | None = Query
                 response = {
                     "jsonrpc": "2.0",
                     "id": request_id,
-                    "error": {
-                        "code": -32601,
-                        "message": f"Unknown tool: {tool_name}"
-                    }
+                    "error": {"code": -32601, "message": f"Unknown tool: {tool_name}"},
                 }
 
             if response is None:  # Tool executed successfully
                 response = {
                     "jsonrpc": "2.0",
                     "id": request_id,
-                    "result": {
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": json.dumps(result, indent=2)
-                            }
-                        ]
-                    }
+                    "result": {"content": [{"type": "text", "text": json.dumps(result, indent=2)}]},
                 }
 
         else:
             response = {
                 "jsonrpc": "2.0",
                 "id": request_id,
-                "error": {
-                    "code": -32601,
-                    "message": f"Unknown method: {method}"
-                }
+                "error": {"code": -32601, "message": f"Unknown method: {method}"},
             }
 
         # Handle response based on connection type
@@ -255,10 +246,7 @@ async def mcp_messages_endpoint(request: Request, session_id: str | None = Query
         error_response = {
             "jsonrpc": "2.0",
             "id": body.get("id") if "body" in locals() else None,
-            "error": {
-                "code": -32603,
-                "message": f"Internal error: {e!s}"
-            }
+            "error": {"code": -32603, "message": f"Internal error: {e!s}"},
         }
         # Handle error response based on connection type
         if session_id and session_id in sse_sessions:
@@ -275,12 +263,14 @@ async def handle_search_library_tool(arguments: dict[str, Any], request: Request
     auth_context = await get_authenticated_context(request)
     if not auth_context:
         return {
-            "results": [{
-                "id": "auth_error",
-                "title": "Authentication Required",
-                "text": "This tool requires authentication. Please authenticate via OAuth to access your audiobook library.",
-                "url": None
-            }]
+            "results": [
+                {
+                    "id": "auth_error",
+                    "title": "Authentication Required",
+                    "text": "This tool requires authentication. Please authenticate via OAuth to access your audiobook library.",
+                    "url": None,
+                }
+            ]
         }
 
     try:
@@ -288,12 +278,14 @@ async def handle_search_library_tool(arguments: dict[str, Any], request: Request
         settings = get_settings()
         if not settings.openai_api_key:
             return {
-                "results": [{
-                    "id": "config_error",
-                    "title": "Service Configuration Error",
-                    "text": "OpenAI API key not configured. Please contact administrator.",
-                    "url": None
-                }]
+                "results": [
+                    {
+                        "id": "config_error",
+                        "title": "Service Configuration Error",
+                        "text": "OpenAI API key not configured. Please contact administrator.",
+                        "url": None,
+                    }
+                ]
             }
 
         openai_client = OpenAI(api_key=settings.openai_api_key)
@@ -305,29 +297,31 @@ async def handle_search_library_tool(arguments: dict[str, Any], request: Request
 
         if not query:
             return {
-                "results": [{
-                    "id": "missing_query",
-                    "title": "Missing Query",
-                    "text": "Search query is required",
-                    "url": None
-                }]
+                "results": [
+                    {
+                        "id": "missing_query",
+                        "title": "Missing Query",
+                        "text": "Search query is required",
+                        "url": None,
+                    }
+                ]
             }
 
         # Search user's library using the correct method
         result = await service.search_library(
-            user_id=auth_context.user.id,
-            query=query,
-            max_results=max_results
+            user_id=auth_context.user.id, query=query, max_results=max_results
         )
 
         if not result.get("success"):
             return {
-                "results": [{
-                    "id": "search_error",
-                    "title": "Search Error",
-                    "text": f"Search failed: {result.get('error', 'Unknown error')}",
-                    "url": None
-                }]
+                "results": [
+                    {
+                        "id": "search_error",
+                        "title": "Search Error",
+                        "text": f"Search failed: {result.get('error', 'Unknown error')}",
+                        "url": None,
+                    }
+                ]
             }
 
         # Transform results to MCP format - use the response_text as primary content
@@ -336,42 +330,50 @@ async def handle_search_library_tool(arguments: dict[str, Any], request: Request
         # If we have response_text, include it as the main result
         response_text = result.get("response_text", "")
         if response_text:
-            search_results.append({
-                "id": "library_search_response",
-                "title": f"Search Results for '{query}'",
-                "text": response_text,
-                "url": None
-            })
+            search_results.append(
+                {
+                    "id": "library_search_response",
+                    "title": f"Search Results for '{query}'",
+                    "text": response_text,
+                    "url": None,
+                }
+            )
 
         # Also include individual search results if available
         for i, item in enumerate(result.get("results", [])):
-            search_results.append({
-                "id": f"result_{i}_{item.get('id', 'unknown')}",
-                "title": item.get('title', f"Result {i+1}"),
-                "text": item.get('text', item.get('content', ''))[:500],  # Limit snippet length
-                "url": item.get('url')  # Can be None
-            })
+            search_results.append(
+                {
+                    "id": f"result_{i}_{item.get('id', 'unknown')}",
+                    "title": item.get("title", f"Result {i + 1}"),
+                    "text": item.get("text", item.get("content", ""))[:500],  # Limit snippet length
+                    "url": item.get("url"),  # Can be None
+                }
+            )
 
         # If no results at all, provide a helpful message
         if not search_results:
-            search_results.append({
-                "id": "no_results",
-                "title": "No Results Found",
-                "text": f"No content found for query '{query}' in your audiobook library. Try different search terms or check if content has been properly processed.",
-                "url": None
-            })
+            search_results.append(
+                {
+                    "id": "no_results",
+                    "title": "No Results Found",
+                    "text": f"No content found for query '{query}' in your audiobook library. Try different search terms or check if content has been properly processed.",
+                    "url": None,
+                }
+            )
 
         return {"results": search_results}
 
     except Exception as e:
         logger.error(f"Search tool error: {e}")
         return {
-            "results": [{
-                "id": "internal_error",
-                "title": "Internal Error",
-                "text": f"An internal error occurred while searching: {e!s}",
-                "url": None
-            }]
+            "results": [
+                {
+                    "id": "internal_error",
+                    "title": "Internal Error",
+                    "text": f"An internal error occurred while searching: {e!s}",
+                    "url": None,
+                }
+            ]
         }
 
     finally:
@@ -387,12 +389,14 @@ async def handle_search_job_tool(arguments: dict[str, Any], request: Request) ->
     auth_context = await get_authenticated_context(request)
     if not auth_context:
         return {
-            "results": [{
-                "id": "auth_error",
-                "title": "Authentication Required",
-                "text": "This tool requires authentication. Please authenticate via OAuth to access your audiobook library.",
-                "url": None
-            }]
+            "results": [
+                {
+                    "id": "auth_error",
+                    "title": "Authentication Required",
+                    "text": "This tool requires authentication. Please authenticate via OAuth to access your audiobook library.",
+                    "url": None,
+                }
+            ]
         }
 
     try:
@@ -400,12 +404,14 @@ async def handle_search_job_tool(arguments: dict[str, Any], request: Request) ->
         settings = get_settings()
         if not settings.openai_api_key:
             return {
-                "results": [{
-                    "id": "config_error",
-                    "title": "Service Configuration Error",
-                    "text": "OpenAI API key not configured. Please contact administrator.",
-                    "url": None
-                }]
+                "results": [
+                    {
+                        "id": "config_error",
+                        "title": "Service Configuration Error",
+                        "text": "OpenAI API key not configured. Please contact administrator.",
+                        "url": None,
+                    }
+                ]
             }
 
         openai_client = OpenAI(api_key=settings.openai_api_key)
@@ -418,30 +424,31 @@ async def handle_search_job_tool(arguments: dict[str, Any], request: Request) ->
 
         if not job_id or not query:
             return {
-                "results": [{
-                    "id": "missing_params",
-                    "title": "Missing Parameters",
-                    "text": "Both job_id and query are required for job search",
-                    "url": None
-                }]
+                "results": [
+                    {
+                        "id": "missing_params",
+                        "title": "Missing Parameters",
+                        "text": "Both job_id and query are required for job search",
+                        "url": None,
+                    }
+                ]
             }
 
         # Search within specific job content
         result = await service.search_job_content(
-            user_id=auth_context.user.id,
-            job_id=job_id,
-            query=query,
-            max_results=max_results
+            user_id=auth_context.user.id, job_id=job_id, query=query, max_results=max_results
         )
 
         if not result.get("success"):
             return {
-                "results": [{
-                    "id": "search_error",
-                    "title": "Job Search Error",
-                    "text": f"Job search failed: {result.get('error', 'Unknown error')}",
-                    "url": None
-                }]
+                "results": [
+                    {
+                        "id": "search_error",
+                        "title": "Job Search Error",
+                        "text": f"Job search failed: {result.get('error', 'Unknown error')}",
+                        "url": None,
+                    }
+                ]
             }
 
         # Transform results to MCP format
@@ -450,42 +457,50 @@ async def handle_search_job_tool(arguments: dict[str, Any], request: Request) ->
         # If we have response_text, include it as the main result
         response_text = result.get("response_text", "")
         if response_text:
-            search_results.append({
-                "id": f"job_search_response_{job_id}",
-                "title": f"Search Results for '{query}' in Job {job_id}",
-                "text": response_text,
-                "url": None
-            })
+            search_results.append(
+                {
+                    "id": f"job_search_response_{job_id}",
+                    "title": f"Search Results for '{query}' in Job {job_id}",
+                    "text": response_text,
+                    "url": None,
+                }
+            )
 
         # Also include individual search results if available
         for i, item in enumerate(result.get("results", [])):
-            search_results.append({
-                "id": f"job_result_{job_id}_{i}_{item.get('id', 'unknown')}",
-                "title": item.get('title', f"Job Result {i+1}"),
-                "text": item.get('text', item.get('content', ''))[:500],
-                "url": item.get('url')
-            })
+            search_results.append(
+                {
+                    "id": f"job_result_{job_id}_{i}_{item.get('id', 'unknown')}",
+                    "title": item.get("title", f"Job Result {i + 1}"),
+                    "text": item.get("text", item.get("content", ""))[:500],
+                    "url": item.get("url"),
+                }
+            )
 
         # If no results at all, provide a helpful message
         if not search_results:
-            search_results.append({
-                "id": "no_job_results",
-                "title": "No Results Found",
-                "text": f"No content found for query '{query}' in job {job_id}. Try different search terms or verify the job ID.",
-                "url": None
-            })
+            search_results.append(
+                {
+                    "id": "no_job_results",
+                    "title": "No Results Found",
+                    "text": f"No content found for query '{query}' in job {job_id}. Try different search terms or verify the job ID.",
+                    "url": None,
+                }
+            )
 
         return {"results": search_results}
 
     except Exception as e:
         logger.error(f"Job search tool error: {e}")
         return {
-            "results": [{
-                "id": "internal_error",
-                "title": "Internal Error",
-                "text": f"An internal error occurred while searching job content: {e!s}",
-                "url": None
-            }]
+            "results": [
+                {
+                    "id": "internal_error",
+                    "title": "Internal Error",
+                    "text": f"An internal error occurred while searching job content: {e!s}",
+                    "url": None,
+                }
+            ]
         }
 
     finally:
@@ -494,19 +509,23 @@ async def handle_search_job_tool(arguments: dict[str, Any], request: Request) ->
             await close_auth_context(auth_context)
 
 
-async def handle_ask_job_question_tool(arguments: dict[str, Any], request: Request) -> dict[str, Any]:
+async def handle_ask_job_question_tool(
+    arguments: dict[str, Any], request: Request
+) -> dict[str, Any]:
     """Handle ask job question tool execution."""
 
     # Get authentication context
     auth_context = await get_authenticated_context(request)
     if not auth_context:
         return {
-            "results": [{
-                "id": "auth_error",
-                "title": "Authentication Required",
-                "text": "This tool requires authentication. Please authenticate via OAuth to access your audiobook library.",
-                "url": None
-            }]
+            "results": [
+                {
+                    "id": "auth_error",
+                    "title": "Authentication Required",
+                    "text": "This tool requires authentication. Please authenticate via OAuth to access your audiobook library.",
+                    "url": None,
+                }
+            ]
         }
 
     try:
@@ -514,12 +533,14 @@ async def handle_ask_job_question_tool(arguments: dict[str, Any], request: Reque
         settings = get_settings()
         if not settings.openai_api_key:
             return {
-                "results": [{
-                    "id": "config_error",
-                    "title": "Service Configuration Error",
-                    "text": "OpenAI API key not configured. Please contact administrator.",
-                    "url": None
-                }]
+                "results": [
+                    {
+                        "id": "config_error",
+                        "title": "Service Configuration Error",
+                        "text": "OpenAI API key not configured. Please contact administrator.",
+                        "url": None,
+                    }
+                ]
             }
 
         openai_client = OpenAI(api_key=settings.openai_api_key)
@@ -531,29 +552,31 @@ async def handle_ask_job_question_tool(arguments: dict[str, Any], request: Reque
 
         if not job_id or not question:
             return {
-                "results": [{
-                    "id": "missing_params",
-                    "title": "Missing Parameters",
-                    "text": "Both job_id and question are required",
-                    "url": None
-                }]
+                "results": [
+                    {
+                        "id": "missing_params",
+                        "title": "Missing Parameters",
+                        "text": "Both job_id and question are required",
+                        "url": None,
+                    }
+                ]
             }
 
         # Ask question about job content
         result = await service.ask_question_about_job(
-            user_id=auth_context.user.id,
-            job_id=job_id,
-            question=question
+            user_id=auth_context.user.id, job_id=job_id, question=question
         )
 
         if not result.get("success"):
             return {
-                "results": [{
-                    "id": "question_error",
-                    "title": "Question Error",
-                    "text": f"Question failed: {result.get('error', 'Unknown error')}",
-                    "url": None
-                }]
+                "results": [
+                    {
+                        "id": "question_error",
+                        "title": "Question Error",
+                        "text": f"Question failed: {result.get('error', 'Unknown error')}",
+                        "url": None,
+                    }
+                ]
             }
 
         # Transform result to MCP format
@@ -561,23 +584,27 @@ async def handle_ask_job_question_tool(arguments: dict[str, Any], request: Reque
         job_title = result.get("job_title", f"Job {job_id}")
 
         return {
-            "results": [{
-                "id": f"job_answer_{job_id}",
-                "title": f"Answer about '{job_title}'",
-                "text": f"Question: {question}\n\nAnswer: {answer}",
-                "url": None
-            }]
+            "results": [
+                {
+                    "id": f"job_answer_{job_id}",
+                    "title": f"Answer about '{job_title}'",
+                    "text": f"Question: {question}\n\nAnswer: {answer}",
+                    "url": None,
+                }
+            ]
         }
 
     except Exception as e:
         logger.error(f"Ask job question tool error: {e}")
         return {
-            "results": [{
-                "id": "internal_error",
-                "title": "Internal Error",
-                "text": f"An internal error occurred while asking question: {e!s}",
-                "url": None
-            }]
+            "results": [
+                {
+                    "id": "internal_error",
+                    "title": "Internal Error",
+                    "text": f"An internal error occurred while asking question: {e!s}",
+                    "url": None,
+                }
+            ]
         }
 
     finally:
