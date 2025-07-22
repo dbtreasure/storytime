@@ -18,7 +18,7 @@ We've implemented a flexible feature flag system that adapts based on the enviro
 
 The environment is controlled by the `ENV` variable:
 - `ENV=dev` - Local development (signup enabled)
-- `ENV=docker` - Docker Compose (signup enabled)  
+- `ENV=docker` - Docker Compose (signup enabled)
 - `ENV=production` - Production/Kamal deployment (signup disabled)
 
 ### **Simplified React Client Deployment**
@@ -62,27 +62,6 @@ pip install -e .
 ruff check .
 ruff format .
 
-## Delegate-to-Codex Policy
-
-When encountering any code-related task—whether large features, minor fixes, tests, CI setup, or code cleanup—use OpenAI Codex:
-
-1. On receiving a coding task:
-   - Prompt: “Delegating coding tasks to Codex.”
-   - Trigger `codex` CLI in `full-auto` or `auto-edit` mode.
-2. Provide:
-   - The user’s original instructions.
-   - Key project context (files, style guides, domains).
-3. Let Codex:
-   - Read/write files.
-   - Run tests, linters, and shell commands in sandbox.
-   - Produce diffs, logs, and results.
-4. Capture Codex output:
-   - Display patch diffs, test outcomes, shell logs.
-   - If approval needed, show options and ask user.
-5. After Codex finishes:
-   - Summarize changes for the user.
-   - Ask: “Merge these changes into main/branch?”
-
 # Type checking (if mypy is installed)
 mypy src/
 ```
@@ -93,7 +72,7 @@ The project uses Claude Code hooks (`.claude.json`) to enforce code quality:
 ```bash
 # Hooks automatically run:
 # - Python: ruff check --fix && ruff format (after Python edits)
-# - Client: npm run lint && npm run typecheck (after TS/React edits)  
+# - Client: npm run lint && npm run typecheck (after TS/React edits)
 # - Build: npm run build (after client changes complete)
 
 # Manual validation commands:
@@ -174,14 +153,14 @@ npx @modelcontextprotocol/inspector
 
 **Important Setup Steps:**
 1. **Use the generated URL** - The session token changes each run
-2. **Transport Type**: Select "SSE" (not Streamable HTTP)  
+2. **Transport Type**: Select "SSE" (not Streamable HTTP)
 3. **URL**: Set to `http://localhost:8000/mcp-server/sse`
 4. **Authentication**: Use Bearer token from user login (JWT format)
 5. **Configuration**: The proxy session token is auto-filled from URL
 
 **Available Tools for Testing:**
 - `search_library` - Search across user's entire audiobook library
-- `search_job` - Search within specific audiobook by job ID  
+- `search_job` - Search within specific audiobook by job ID
 - `ask_job_question` - Ask questions about specific audiobook content
 
 **Authentication Requirements:**

@@ -10,6 +10,8 @@ from pydantic import BaseModel
 from storytime.api.settings import get_settings
 from storytime.mcp.auth import MCPAuthContext, authenticate_request, close_auth_context
 from storytime.mcp.tools import ask_about_book, search_audiobook, search_library
+from storytime.mcp.tools.tutor_chat import tutor_chat
+from storytime.mcp.tools.xray_lookup import xray_lookup
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +31,17 @@ class AskAboutBookParams(BaseModel):
 class SearchLibraryParams(BaseModel):
     query: str
     limit: int = 10
+
+
+class TutorChatParams(BaseModel):
+    job_id: str
+    user_message: str
+    conversation_history: str = ""
+
+
+class XrayLookupParams(BaseModel):
+    job_id: str
+    query: str
 
 
 # Global auth context storage for request handling
@@ -93,6 +106,43 @@ def create_mcp_server() -> FastMCP:
         except Exception as e:
             logger.error(f"Error in search_library_tool: {e}")
             return {"success": False, "error": f"Tool execution failed: {e!s}", "results": []}
+
+    @mcp.tool(description="Engage in Socratic tutoring dialogue about audiobook content")
+    async def tutor_chat_tool(params: TutorChatParams) -> dict[str, Any]:
+        """Engage in Socratic tutoring dialogue about audiobook content.
+
+        This tool provides tutoring conversations using the Socratic method
+        to help users deeply understand and engage with audiobook content.
+        """
+        try:
+            context = await get_auth_context()
+            return await tutor_chat(
+                job_id=params.job_id,
+                user_message=params.user_message,
+                conversation_history=params.conversation_history,
+                context=context
+            )
+        except Exception as e:
+            logger.error(f"Error in tutor_chat_tool: {e}")
+            return {"success": False, "error": f"Tool execution failed: {e!s}", "response": ""}
+
+    @mcp.tool(description="Contextual content lookup (Kindle X-ray style)")
+    async def xray_lookup_tool(params: XrayLookupParams) -> dict[str, Any]:
+        """Provide contextual content lookup similar to Kindle X-ray.
+
+        This tool answers contextual queries about characters, concepts,
+        settings, and events in the audiobook content.
+        """
+        try:
+            context = await get_auth_context()
+            return await xray_lookup(
+                job_id=params.job_id,
+                query=params.query,
+                context=context
+            )
+        except Exception as e:
+            logger.error(f"Error in xray_lookup_tool: {e}")
+            return {"success": False, "error": f"Tool execution failed: {e!s}", "answer": ""}
 
     return mcp
 

@@ -21,6 +21,8 @@ import {
   BookOpenIcon,
   DocumentTextIcon,
   ArrowUpIcon,
+  AcademicCapIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import { JobStepResponse } from '../schemas';
 import { EyeIcon } from '@heroicons/react/24/outline';
@@ -360,6 +362,34 @@ const JobDetails: React.FC = () => {
               <PlayIcon className="h-4 w-4 mr-2" />
               Play Audiobook
             </Button>
+          )}
+
+          {/* Tutoring buttons - show if tutoring analysis is available */}
+          {selectedJob.config?.tutoring_analysis && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // TODO: Open tutoring chat interface
+                  alert('Tutoring chat coming soon! This will open a Socratic dialogue about your audiobook.');
+                }}
+                className="text-blue-600 hover:text-blue-700 border-blue-300 hover:border-blue-400"
+              >
+                <AcademicCapIcon className="h-4 w-4 mr-2" />
+                Ask Tutor
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // TODO: Open X-ray lookup interface  
+                  alert('X-ray lookup coming soon! This will let you ask contextual questions while listening.');
+                }}
+                className="text-purple-600 hover:text-purple-700 border-purple-300 hover:border-purple-400"
+              >
+                <MagnifyingGlassIcon className="h-4 w-4 mr-2" />
+                X-ray Lookup
+              </Button>
+            </>
           )}
 
           {canCancel && (
