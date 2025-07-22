@@ -72,12 +72,12 @@ async def _initialize_assistant(user: User | None = None, jwt_token: str | None 
             port=8765,  # Standard Pipecat WebSocket port
             system_instructions="""You are a voice assistant for StorytimeTTS, an AI-powered audiobook platform.
 
-You can help users search their audiobook library, find specific content within books, 
+You can help users search their audiobook library, find specific content within books,
 and answer questions about their audiobooks.
 
 Available tools:
 - search_library: Search across user's entire audiobook library
-- search_job: Search within a specific audiobook by job ID  
+- search_job: Search within a specific audiobook by job ID
 - ask_job_question: Ask questions about specific audiobook content
 
 Your voice should be warm, engaging, and conversational.
@@ -93,7 +93,7 @@ Keep responses concise since this is voice interaction - one or two sentences un
     await _assistant_manager.start()
 
     # Wait for LLM service to be initialized (assistant.start() runs in background)
-    for i in range(10):  # Wait up to 5 seconds
+    for _ in range(10):  # Wait up to 5 seconds
         if assistant.llm is not None:
             logger.info("LLM service is ready")
             break
@@ -104,9 +104,6 @@ Keep responses concise since this is voice interaction - one or two sentences un
     # Register MCP client after assistant is started (when LLM service is initialized)
     if _mcp_client:
         await assistant.register_mcp_client(_mcp_client)
-    elif _mcp_functions:
-        # Fallback to legacy method if available
-        await assistant.register_mcp_functions(_mcp_functions)
 
     logger.info("Standard Pipecat assistant initialized and started")
 
@@ -125,7 +122,7 @@ async def start_assistant(user: User = Depends(get_current_user)):
         }
     except Exception as e:
         logger.error(f"Failed to start assistant: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to start assistant: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Failed to start assistant: {e!s}") from e
 
 
 @router.post("/stop")

@@ -2,32 +2,16 @@
 Pipecat Voice Assistant using official architecture patterns and best practices.
 
 Based on Pipecat best practices from:
-- examples/foundational/19-openai-realtime-beta.py 
+- examples/foundational/19-openai-realtime-beta.py
 - examples/foundational/39a-mcp-run-sse.py
 - examples/websocket/server/bot_websocket_server.py
 """
 
-# CRITICAL: Force IPv4-only resolution before importing Pipecat
-# This fixes Docker IPv6 binding issues
-import socket
-
-_original_getaddrinfo = socket.getaddrinfo
-def _ipv4_only_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
-    if host in ('localhost', '127.0.0.1'):
-        host = '127.0.0.1'
-        family = socket.AF_INET  # Force IPv4
-    return _original_getaddrinfo(host, port, family, type, proto, flags)
-socket.getaddrinfo = _ipv4_only_getaddrinfo
 
 import asyncio
+import contextlib
 import logging
 from collections.abc import Callable
-
-# Enable debug logging for OpenAI and audio processing
-logging.getLogger("pipecat.services.openai_realtime_beta").setLevel(logging.DEBUG)
-logging.getLogger("pipecat.transports.base_output").setLevel(logging.DEBUG)
-logging.getLogger("pipecat.frames").setLevel(logging.DEBUG)
-logging.getLogger("pipecat.services.mcp_service").setLevel(logging.DEBUG)
 
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.pipeline.pipeline import Pipeline
@@ -35,8 +19,6 @@ from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
 from pipecat.serializers.protobuf import ProtobufFrameSerializer
-
-# from pipecat.processors.transcript_processor import TranscriptProcessor  # Not available in this version
 from pipecat.services.openai_realtime_beta import (
     InputAudioTranscription,
     OpenAIRealtimeBetaLLMService,
@@ -48,11 +30,6 @@ from pipecat.transports.network.websocket_server import (
     WebsocketServerTransport,
 )
 
-try:
-    from pipecat.serializers.json import JSONFrameSerializer
-except ImportError:
-    JSONFrameSerializer = None
-
 logger = logging.getLogger(__name__)
 
 
@@ -63,8 +40,8 @@ class StandardPipecatVoiceAssistant:
         self,
         openai_api_key: str,
         mcp_tools: list | None = None,
-        host: str = "127.0.0.1",  # Use IPv4 localhost instead of 0.0.0.0
-        port: int = 8766,  # Use port 8766 to match your Docker config
+        host: str = "0.0.0.0",  # Bind to all interfaces
+        port: int = 8765,  # Standard Pipecat WebSocket port
         system_instructions: str | None = None,
     ):
         self.openai_api_key = openai_api_key
@@ -91,10 +68,10 @@ class StandardPipecatVoiceAssistant:
 
 You have access to the following tools to help users:
 - search_library: Search across the user's entire audiobook library
-- search_job: Search within specific audiobook content by job ID  
+- search_job: Search within specific audiobook content by job ID
 - ask_job_question: Ask questions about specific audiobook content
 
-IMPORTANT: When users ask about their audiobooks, search for books, or want to find specific content, 
+IMPORTANT: When users ask about their audiobooks, search for books, or want to find specific content,
 you MUST use the appropriate tools. Always search their library first before saying you don't know.
 
 Examples of when to use tools:
@@ -110,24 +87,18 @@ Keep responses concise since this is voice interaction - one or two sentences un
         """Start the Pipecat voice assistant server."""
         logger.info("Starting StandardPipecatVoiceAssistant.start() method")
 
-        # Create WebSocket transport - IPv4-only patching done at module level
-        try:
-            self.transport = WebsocketServerTransport(
-                host="0.0.0.0",  # Bind to all interfaces for Docker accessibility
-                port=self.port,    # Use port from constructor
-                params=WebsocketServerParams(
-                    serializer=JSONFrameSerializer() if JSONFrameSerializer else ProtobufFrameSerializer(),
-                    audio_in_enabled=True,
-                    audio_out_enabled=True,
-                    add_wav_header=False,
-                    vad_analyzer=SileroVADAnalyzer(),  # Use proven VAD implementation
-                    session_timeout=60 * 5,  # 5 minutes
-                )
-            )
-            logger.info(f"WebSocket transport created successfully on 0.0.0.0:{self.port}")
-        except Exception as e:
-            logger.error(f"Failed to create WebSocket transport: {e}")
-            raise
+        # Create WebSocket transport
+        self.transport = WebsocketServerTransport(
+            params=WebsocketServerParams(
+                serializer=ProtobufFrameSerializer(),
+                audio_in_enabled=True,
+                audio_out_enabled=True,
+                vad_analyzer=SileroVADAnalyzer(),
+            ),
+            host="0.0.0.0",  # Bind to all interfaces for Docker
+            port=self.port,
+        )
+        logger.info(f"WebSocket transport created successfully on 0.0.0.0:{self.port}")
 
         # Define tools for OpenAI Realtime session
         tools = [
@@ -211,51 +182,19 @@ Keep responses concise since this is voice interaction - one or two sentences un
                 start_audio_paused=False,
             )
 
-            # Force audio responses by configuring response format
-            if hasattr(self.llm, 'set_response_format'):
-                self.llm.set_response_format({
-                    "type": "audio",
-                    "format": "pcm16"
-                })
             logger.info("OpenAI Realtime service initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize OpenAI Realtime service: {e}")
             raise
 
-        # Register MCP tools first before creating context
+        # MCP tools will be registered after the client is available
         self._tools_schema = None
-        if self.mcp_tools:
-            try:
-                # We'll register the tools after MCP client is available
-                pass
-            except Exception as e:
-                logger.warning(f"MCP tools not available: {e}")
 
         # Create context aggregator for message handling
         context = OpenAILLMContext(
             messages=[{"role": "user", "content": "Ready to help!"}],
-            # tools will be set later when MCP client is registered
         )
         context_aggregator = self.llm.create_context_aggregator(context)
-
-        # User context should handle audio-to-text conversion automatically
-
-        # Create debug frame logger
-        class DebugFrameLogger:
-            def __init__(self, name):
-                self.name = name
-
-            async def process_frame(self, frame, direction):
-                logger.info(f"[{self.name}] Frame: {type(frame).__name__} - {direction}")
-                return frame
-
-            def input(self):
-                return self
-
-            def output(self):
-                return self
-
-        debug_logger = DebugFrameLogger("PIPELINE_DEBUG")
 
         # Create standard Pipecat pipeline with debugging
         self.pipeline = Pipeline([
@@ -337,22 +276,12 @@ Keep responses concise since this is voice interaction - one or two sentences un
                 self._tools_schema = result.get("tools_schema")
                 logger.info("Successfully registered MCP tools with LLM using official Pipecat patterns")
 
-                # The tools are now registered with the LLM service and will be available for OpenAI Realtime API calls
-                logger.info("MCP tools are now available for voice assistant interactions")
             else:
                 logger.error(f"Failed to register MCP tools: {result.get('error')}")
 
         except Exception as e:
             logger.error(f"Error registering MCP client: {e}")
 
-    async def register_mcp_functions(self, mcp_functions: dict) -> None:
-        """Register MCP functions with the LLM service (legacy method)."""
-        if not self.llm:
-            raise RuntimeError("LLM service not initialized")
-
-        for name, func in mcp_functions.items():
-            self.llm.register_function(name, func)
-            logger.info(f"Registered MCP function: {name}")
 
 
 class StandardPipecatManager:
@@ -382,10 +311,8 @@ class StandardPipecatManager:
 
         if self._task:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
 
         await self.assistant.stop()
         logger.info("Stopped standard Pipecat assistant task")
