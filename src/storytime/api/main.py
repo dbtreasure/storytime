@@ -6,6 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from storytime.mcp.auth.oauth import router as oauth_router
+from storytime.mcp.http_server import router as mcp_router
+
 from .auth import router as auth_router
 from .jobs import router as jobs_router
 from .knowledge import router as knowledge_router
@@ -13,6 +16,7 @@ from .middleware import LoggingMiddleware
 from .progress import router as progress_router
 from .settings import get_settings
 from .streaming import router as streaming_router
+from .voice_assistant import router as voice_assistant_router
 
 settings = get_settings()
 
@@ -22,7 +26,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Create FastAPI app first
 app = FastAPI(title="Storytime API", version="0.1.0")
+
+# Add HTTP-based MCP server
+app.include_router(mcp_router)
+logger.info("HTTP-based MCP server added")
 app.add_middleware(LoggingMiddleware)
 
 # CORS middleware (allow all for now; adjust in prod)
@@ -46,10 +55,12 @@ app.add_middleware(
 
 
 app.include_router(auth_router)
+app.include_router(oauth_router)
 app.include_router(jobs_router)
 app.include_router(streaming_router)
 app.include_router(progress_router)
 app.include_router(knowledge_router)
+app.include_router(voice_assistant_router)
 
 
 @app.get("/api/health", tags=["Utility"])

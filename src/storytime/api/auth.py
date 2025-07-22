@@ -56,6 +56,36 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
+async def verify_token(token: str) -> User | None:
+    """Verify JWT token and return user if valid."""
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    try:
+        logger.info(f"Decoding token with secret key length: {len(settings.jwt_secret_key)}")
+        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])
+        user_id: str = payload.get("sub")
+        logger.info(f"Token decoded successfully, user_id: {user_id}")
+        if user_id is None:
+            logger.error("No 'sub' field in token payload")
+            return None
+    except InvalidTokenError as e:
+        logger.error(f"JWT decode error: {e}")
+        return None
+
+    # Get user from database
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if user:
+            logger.info(f"User found: {user.email}")
+        else:
+            logger.error(f"No user found with id: {user_id}")
+
+    return user
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(lambda: AsyncSessionLocal()),

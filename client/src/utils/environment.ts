@@ -16,7 +16,8 @@ export async function getEnvironment(): Promise<EnvironmentInfo> {
   }
 
   try {
-    const response = await fetch('/api/v1/environment');
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+    const response = await fetch(`${apiBaseUrl}/api/v1/environment`);
     if (!response.ok) {
       throw new Error('Failed to fetch environment info');
     }

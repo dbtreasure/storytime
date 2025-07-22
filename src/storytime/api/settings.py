@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     # JWT Authentication
     jwt_secret_key: str = Field(..., description="JWT Secret Key")
 
+    # Base URL for OAuth and MCP server
+    base_url: str | None = Field(
+        default=None, description="Base URL for OAuth redirects and metadata"
+    )
+
     # DigitalOcean Spaces
     do_spaces_key: str | None = None
     do_spaces_secret: str | None = None

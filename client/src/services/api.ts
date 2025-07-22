@@ -232,6 +232,23 @@ class ApiClient {
     });
     return response.data;
   }
+
+  // Generic HTTP methods for direct API access
+  async get(url: string, config?: any) {
+    return this.client.get(url, config);
+  }
+
+  async post(url: string, data?: any, config?: any) {
+    return this.client.post(url, data, config);
+  }
+
+  async put(url: string, data?: any, config?: any) {
+    return this.client.put(url, data, config);
+  }
+
+  async delete(url: string, config?: any) {
+    return this.client.delete(url, config);
+  }
 }
 
 export const apiClient = new ApiClient();

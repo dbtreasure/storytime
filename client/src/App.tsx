@@ -16,6 +16,7 @@ import Jobs from './pages/Jobs';
 import JobDetails from './pages/JobDetails';
 import Library from './pages/Library';
 import BookDetails from './pages/BookDetails';
+import VoiceAssistant from './pages/VoiceAssistant';
 
 // Protected Route component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -100,6 +101,11 @@ function AppContent() {
         <Route path="/library/:jobId" element={
           <ProtectedRoute>
             <BookDetails />
+          </ProtectedRoute>
+        } />
+        <Route path="/voice-assistant" element={
+          <ProtectedRoute>
+            <VoiceAssistant />
           </ProtectedRoute>
         } />
 

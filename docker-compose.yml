@@ -12,12 +12,14 @@ services:
     environment:
       - NODE_ENV=development
       - VITE_API_BASE_URL=http://localhost:8000
+      - VITE_OPENAI_API_KEY=${OPENAI_API_KEY}
     depends_on:
       - api
   api:
     build: .
     ports:
       - "8000:8000"
+      - "8765:8765"  # Pipecat WebSocket server
     env_file:
       - .env.docker
     environment:
@@ -29,6 +31,9 @@ services:
       - db
       - redis
     command: ["uvicorn", "storytime.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
+      - net.ipv6.conf.default.disable_ipv6=1
   worker:
     build: .
     command:
