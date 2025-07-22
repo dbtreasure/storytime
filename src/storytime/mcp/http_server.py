@@ -13,6 +13,8 @@ from sse_starlette import EventSourceResponse
 
 from storytime.api.settings import get_settings
 from storytime.mcp.auth.jwt_middleware import authenticate_mcp_request, close_auth_context
+from storytime.mcp.tools.tutor_chat import tutor_chat
+from storytime.mcp.tools.xray_lookup import xray_lookup
 from storytime.services.responses_api_service import ResponsesAPIVectorStoreService
 
 logger = logging.getLogger(__name__)
@@ -123,7 +125,7 @@ async def mcp_messages_endpoint(request: Request, session_id: str | None = Query
             }
 
         elif method == "tools/list":
-            # Return available tools - all knowledge API endpoints
+            # Return available tools - all knowledge API endpoints + tutoring tools
             tools = [
                 {
                     "name": "search_library",
@@ -185,6 +187,47 @@ async def mcp_messages_endpoint(request: Request, session_id: str | None = Query
                         "required": ["job_id", "question"],
                     },
                 },
+                {
+                    "name": "tutor_chat",
+                    "description": "Engage in Socratic tutoring dialogue about audiobook content using the Socratic method to help users deeply understand and engage with content.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "job_id": {
+                                "type": "string",
+                                "description": "The job ID of the audiobook to discuss",
+                            },
+                            "user_message": {
+                                "type": "string",
+                                "description": "The user's message or question for the tutoring conversation",
+                            },
+                            "conversation_history": {
+                                "type": "string",
+                                "default": "",
+                                "description": "Previous conversation context for continuity",
+                            },
+                        },
+                        "required": ["job_id", "user_message"],
+                    },
+                },
+                {
+                    "name": "xray_lookup",
+                    "description": "Provide contextual content lookup similar to Kindle X-ray, answering queries about characters, concepts, settings, and events in audiobook content.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "job_id": {
+                                "type": "string",
+                                "description": "The job ID of the audiobook to query",
+                            },
+                            "query": {
+                                "type": "string",
+                                "description": "The contextual query (e.g., 'Who is Elizabeth?', 'What is happening?')",
+                            },
+                        },
+                        "required": ["job_id", "query"],
+                    },
+                },
             ]
 
             response = {"jsonrpc": "2.0", "id": request_id, "result": {"tools": tools}}
@@ -200,6 +243,10 @@ async def mcp_messages_endpoint(request: Request, session_id: str | None = Query
                 result = await handle_search_job_tool(arguments, request)
             elif tool_name == "ask_job_question":
                 result = await handle_ask_job_question_tool(arguments, request)
+            elif tool_name == "tutor_chat":
+                result = await handle_tutor_chat_tool(arguments, request)
+            elif tool_name == "xray_lookup":
+                result = await handle_xray_lookup_tool(arguments, request)
             else:
                 response = {
                     "jsonrpc": "2.0",
@@ -599,6 +646,185 @@ async def handle_ask_job_question_tool(
                     "id": "internal_error",
                     "title": "Internal Error",
                     "text": f"An internal error occurred while asking question: {e!s}",
+                    "url": None,
+                }
+            ]
+        }
+
+    finally:
+        # Always close database session
+        if auth_context:
+            await close_auth_context(auth_context)
+
+
+async def handle_tutor_chat_tool(arguments: dict[str, Any], request: Request) -> dict[str, Any]:
+    """Handle tutor chat tool execution."""
+
+    # Get authentication context
+    auth_context = await get_authenticated_context(request)
+    if not auth_context:
+        return {
+            "results": [
+                {
+                    "id": "auth_error",
+                    "title": "Authentication Required",
+                    "text": "This tool requires authentication. Please authenticate via OAuth to access your audiobook library.",
+                    "url": None,
+                }
+            ]
+        }
+
+    try:
+        # Parse tutoring parameters
+        job_id = arguments.get("job_id")
+        user_message = arguments.get("user_message")
+        conversation_history = arguments.get("conversation_history", "")
+
+        if not job_id or not user_message:
+            return {
+                "results": [
+                    {
+                        "id": "missing_params",
+                        "title": "Missing Parameters",
+                        "text": "Both job_id and user_message are required for tutoring",
+                        "url": None,
+                    }
+                ]
+            }
+
+        # Use the tutor_chat tool
+        result = await tutor_chat(
+            job_id=job_id,
+            user_message=user_message,
+            conversation_history=conversation_history,
+            user_id=auth_context.user.id,
+            db_session=auth_context.db_session
+        )
+
+        if not result.get("success"):
+            return {
+                "results": [
+                    {
+                        "id": "tutor_error",
+                        "title": "Tutoring Error",
+                        "text": f"Tutoring failed: {result.get('error', 'Unknown error')}",
+                        "url": None,
+                    }
+                ]
+            }
+
+        # Transform result to MCP format
+        tutor_response = result.get("response", "")
+        job_title = result.get("job_title", f"Job {job_id}")
+
+        return {
+            "results": [
+                {
+                    "id": f"tutor_response_{job_id}",
+                    "title": f"Tutoring Discussion about '{job_title}'",
+                    "text": tutor_response,
+                    "url": None,
+                }
+            ]
+        }
+
+    except Exception as e:
+        logger.error(f"Tutor chat tool error: {e}")
+        return {
+            "results": [
+                {
+                    "id": "internal_error",
+                    "title": "Internal Error",
+                    "text": f"An internal error occurred during tutoring: {e!s}",
+                    "url": None,
+                }
+            ]
+        }
+
+    finally:
+        # Always close database session
+        if auth_context:
+            await close_auth_context(auth_context)
+
+
+async def handle_xray_lookup_tool(arguments: dict[str, Any], request: Request) -> dict[str, Any]:
+    """Handle xray lookup tool execution."""
+
+    # Get authentication context
+    auth_context = await get_authenticated_context(request)
+    if not auth_context:
+        return {
+            "results": [
+                {
+                    "id": "auth_error",
+                    "title": "Authentication Required",
+                    "text": "This tool requires authentication. Please authenticate via OAuth to access your audiobook library.",
+                    "url": None,
+                }
+            ]
+        }
+
+    try:
+        # Parse xray parameters
+        job_id = arguments.get("job_id")
+        query = arguments.get("query")
+
+        if not job_id or not query:
+            return {
+                "results": [
+                    {
+                        "id": "missing_params",
+                        "title": "Missing Parameters",
+                        "text": "Both job_id and query are required for X-ray lookup",
+                        "url": None,
+                    }
+                ]
+            }
+
+        # Use the xray_lookup tool
+        result = await xray_lookup(
+            job_id=job_id,
+            query=query,
+            user_id=auth_context.user.id,
+            db_session=auth_context.db_session
+        )
+
+        if not result.get("success"):
+            return {
+                "results": [
+                    {
+                        "id": "xray_error",
+                        "title": "X-ray Lookup Error",
+                        "text": f"X-ray lookup failed: {result.get('error', 'Unknown error')}",
+                        "url": None,
+                    }
+                ]
+            }
+
+        # Transform result to MCP format
+        xray_response = result.get("response", "")
+        lookup_type = result.get("lookup_type", "general")
+        job_title = result.get("job_title", f"Job {job_id}")
+
+        return {
+            "results": [
+                {
+                    "id": f"xray_response_{job_id}_{lookup_type}",
+                    "title": f"X-ray Lookup: '{query}' in '{job_title}'",
+                    "text": xray_response,
+                    "url": None,
+                }
+            ]
+        }
+
+    except Exception as e:
+        logger.error(f"X-ray lookup tool error: {e}")
+        return {
+            "results": [
+                {
+                    "id": "internal_error",
+                    "title": "Internal Error",
+                    "text": f"An internal error occurred during X-ray lookup: {e!s}",
                     "url": None,
                 }
             ]

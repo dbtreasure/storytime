@@ -84,6 +84,7 @@ class JobConfig(BaseModel):
         None, description="Text preprocessing configuration"
     )
     provider: str | None = Field(None, description="TTS provider (for backwards compatibility)")
+    tutoring_analysis: dict[str, Any] | None = Field(None, description="Tutoring analysis data for Socratic dialogue")
 
 
 class JobResultData(BaseModel):

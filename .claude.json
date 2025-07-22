@@ -14,9 +14,9 @@
     ],
     "post-tool-use": [
       {
-        "name": "python-lint-and-format",
-        "command": "uvx ruff check . --fix && uvx ruff format .",
-        "description": "Auto-fix Python linting issues and format code",
+        "name": "immediate-python-check",
+        "command": "echo '🔧 Running Python checks...' && uvx ruff check . --fix && uvx ruff format . && echo '✅ Python checks complete'",
+        "description": "Immediate Python validation with output",
         "match": {
           "tool": ["Edit", "MultiEdit", "Write"],
           "file_pattern": "**/*.py"

@@ -63,22 +63,60 @@ class StandardPipecatVoiceAssistant:
         self.on_error: Callable[[Exception], None] | None = None
 
     def _default_instructions(self) -> str:
-        """Default system instructions for the voice assistant."""
-        return """You are a voice assistant for StorytimeTTS, an AI-powered audiobook platform.
+        """Default system instructions for the voice assistant, built dynamically from available tools."""
+        
+        # Tool descriptions that match the MCP server definitions
+        tool_descriptions = {
+            "search_library": "Search across the user's entire audiobook library",
+            "search_job": "Search within specific audiobook content by job ID", 
+            "ask_job_question": "Ask questions about specific audiobook content",
+            "tutor_chat": "Engage in Socratic tutoring dialogue about audiobook content",
+            "xray_lookup": "Provide contextual content lookup (characters, concepts, settings)"
+        }
+        
+        # Tool usage examples
+        tool_examples = {
+            "search_library": [
+                '"What books do I have?" → use search_library',
+                '"Do I have any books about science?" → use search_library with "science"',
+                '"Search for books by Shakespeare" → use search_library with "Shakespeare"'
+            ],
+            "search_job": [
+                '"Search within this specific book" → use search_job with job ID'
+            ],
+            "ask_job_question": [
+                '"What is this book about?" → use ask_job_question'
+            ],
+            "tutor_chat": [
+                '"Help me understand this book better" → use tutor_chat for Socratic dialogue',
+                '"Teach me about the themes in this book" → use tutor_chat'
+            ],
+            "xray_lookup": [
+                '"Who is this character?" → use xray_lookup for contextual information',
+                '"What does this concept mean?" → use xray_lookup'
+            ]
+        }
+        
+        # Build tools list dynamically (all tools should be available)
+        available_tools = list(tool_descriptions.keys())
+        tools_text = "\n".join([f"- {tool}: {tool_descriptions[tool]}" for tool in available_tools])
+        
+        # Build examples dynamically
+        examples = []
+        for tool in available_tools:
+            examples.extend(tool_examples.get(tool, []))
+        examples_text = "\n".join([f"- {example}" for example in examples])
+        
+        return f"""You are a voice assistant for StorytimeTTS, an AI-powered audiobook platform.
 
 You have access to the following tools to help users:
-- search_library: Search across the user's entire audiobook library
-- search_job: Search within specific audiobook content by job ID
-- ask_job_question: Ask questions about specific audiobook content
+{tools_text}
 
 IMPORTANT: When users ask about their audiobooks, search for books, or want to find specific content,
 you MUST use the appropriate tools. Always search their library first before saying you don't know.
 
 Examples of when to use tools:
-- "What books do I have?" → use search_library
-- "Do I have any books about science?" → use search_library with "science"
-- "Search for books by Shakespeare" → use search_library with "Shakespeare"
-- "What's in my library?" → use search_library
+{examples_text}
 
 Your voice should be warm and engaging with a friendly tone.
 Keep responses concise since this is voice interaction - one or two sentences unless asked to elaborate."""
@@ -153,6 +191,48 @@ Keep responses concise since this is voice interaction - one or two sentences un
                         }
                     },
                     "required": ["job_id", "question"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "tutor_chat",
+                "description": "Engage in Socratic tutoring dialogue about audiobook content using the Socratic method to help users deeply understand and engage with content.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "job_id": {
+                            "type": "string",
+                            "description": "Job ID of the audiobook to discuss"
+                        },
+                        "user_message": {
+                            "type": "string",
+                            "description": "The user's message or question for the tutoring conversation"
+                        },
+                        "conversation_history": {
+                            "type": "string",
+                            "description": "Previous conversation context for continuity"
+                        }
+                    },
+                    "required": ["job_id", "user_message"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "xray_lookup",
+                "description": "Provide contextual content lookup similar to Kindle X-ray, answering queries about characters, concepts, settings, and events in audiobook content.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "job_id": {
+                            "type": "string",
+                            "description": "Job ID of the audiobook to query"
+                        },
+                        "query": {
+                            "type": "string",
+                            "description": "The contextual query (e.g., 'Who is Elizabeth?', 'What is happening?')"
+                        }
+                    },
+                    "required": ["job_id", "query"]
                 }
             }
         ]

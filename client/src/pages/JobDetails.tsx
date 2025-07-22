@@ -79,6 +79,11 @@ const JobDetails: React.FC = () => {
         progress: selectedJob.progress,
         steps: selectedJob.steps?.map(s => ({ name: s.step_name, status: s.status, progress: s.progress }))
       });
+      console.log('Job config:', selectedJob.config);
+      console.log('Has tutoring analysis:', !!selectedJob.config?.tutoring_analysis);
+      if (selectedJob.config?.tutoring_analysis) {
+        console.log('Tutoring analysis:', selectedJob.config.tutoring_analysis);
+      }
     }
   }, [selectedJob]);
 
@@ -370,8 +375,8 @@ const JobDetails: React.FC = () => {
               <Button
                 variant="outline"
                 onClick={() => {
-                  // TODO: Open tutoring chat interface
-                  alert('Tutoring chat coming soon! This will open a Socratic dialogue about your audiobook.');
+                  // Navigate to voice assistant with tutoring context
+                  navigate(`/voice-assistant?mode=tutor&jobId=${selectedJob.id}`);
                 }}
                 className="text-blue-600 hover:text-blue-700 border-blue-300 hover:border-blue-400"
               >
@@ -381,8 +386,8 @@ const JobDetails: React.FC = () => {
               <Button
                 variant="outline"
                 onClick={() => {
-                  // TODO: Open X-ray lookup interface  
-                  alert('X-ray lookup coming soon! This will let you ask contextual questions while listening.');
+                  // Navigate to voice assistant with X-ray lookup context
+                  navigate(`/voice-assistant?mode=xray&jobId=${selectedJob.id}`);
                 }}
                 className="text-purple-600 hover:text-purple-700 border-purple-300 hover:border-purple-400"
               >
