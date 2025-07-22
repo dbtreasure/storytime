@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { 
@@ -9,9 +9,17 @@ import {
   XCircleIcon
 } from '@heroicons/react/24/outline';
 import { useAppSelector } from '../hooks/redux';
+import { 
+  PipecatClient,
+  PipecatClientOptions,
+  RTVIEvent 
+} from '@pipecat-ai/client-js';
+import { WebSocketTransport } from '@pipecat-ai/websocket-transport';
+import { apiClient } from '../services/api';
 
 interface VoiceAssistantState {
   serviceStatus: 'unknown' | 'stopped' | 'starting' | 'running' | 'error';
+  clientStatus: 'disconnected' | 'connecting' | 'connected' | 'error';
   error: string | null;
   websocketUrl: string | null;
   mcpFunctions: string[];
@@ -20,12 +28,15 @@ interface VoiceAssistantState {
 const VoiceAssistant: React.FC = () => {
   const [state, setState] = useState<VoiceAssistantState>({
     serviceStatus: 'unknown',
+    clientStatus: 'disconnected',
     error: null,
     websocketUrl: null,
     mcpFunctions: []
   });
 
   const { user } = useAppSelector((state) => state.auth);
+  const pipecatClientRef = useRef<PipecatClient | null>(null);
+  const botAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const updateState = useCallback((updates: Partial<VoiceAssistantState>) => {
     setState(prev => ({ ...prev, ...updates }));
@@ -34,27 +45,19 @@ const VoiceAssistant: React.FC = () => {
   // Check service status
   const checkStatus = useCallback(async () => {
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      const response = await fetch(`${apiBaseUrl}/api/v1/voice-assistant/status`);
+      const response = await apiClient.get('/api/v1/voice-assistant/status');
+      const data = response.data;
       
-      if (response.ok) {
-        const data = await response.json();
-        updateState({
-          serviceStatus: data.status === 'running' ? 'running' : 'stopped',
-          websocketUrl: data.websocket_url,
-          mcpFunctions: data.mcp_functions || [],
-          error: null
-        });
-      } else {
-        updateState({ 
-          serviceStatus: 'error',
-          error: `Status check failed: ${response.status}` 
-        });
-      }
-    } catch (error) {
+      updateState({
+        serviceStatus: data.status === 'running' ? 'running' : 'stopped',
+        websocketUrl: data.websocket_url,
+        mcpFunctions: data.mcp_functions || [],
+        error: null
+      });
+    } catch (error: any) {
       updateState({ 
         serviceStatus: 'error',
-        error: `Failed to check status: ${error}` 
+        error: error.response?.data?.detail || `Failed to check status: ${error.message}` 
       });
     }
   }, [updateState]);
@@ -64,30 +67,19 @@ const VoiceAssistant: React.FC = () => {
     updateState({ serviceStatus: 'starting', error: null });
     
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      const response = await fetch(`${apiBaseUrl}/api/v1/voice-assistant/start`, {
-        method: 'POST'
-      });
+      const response = await apiClient.post('/api/v1/voice-assistant/start');
+      const data = response.data;
       
-      if (response.ok) {
-        const data = await response.json();
-        updateState({
-          serviceStatus: 'running',
-          websocketUrl: data.websocket_url,
-          mcpFunctions: data.mcp_functions || [],
-          error: null
-        });
-      } else {
-        const errorData = await response.json();
-        updateState({ 
-          serviceStatus: 'error',
-          error: errorData.detail || `Failed to start: ${response.status}` 
-        });
-      }
-    } catch (error) {
+      updateState({
+        serviceStatus: 'running',
+        websocketUrl: data.websocket_url,
+        mcpFunctions: data.mcp_functions || [],
+        error: null
+      });
+    } catch (error: any) {
       updateState({ 
         serviceStatus: 'error',
-        error: `Failed to start service: ${error}` 
+        error: error.response?.data?.detail || `Failed to start service: ${error.message}` 
       });
     }
   }, [updateState]);
@@ -95,62 +87,147 @@ const VoiceAssistant: React.FC = () => {
   // Stop the voice assistant service
   const stopService = useCallback(async () => {
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      const response = await fetch(`${apiBaseUrl}/api/v1/voice-assistant/stop`, {
-        method: 'POST'
-      });
+      await apiClient.post('/api/v1/voice-assistant/stop');
       
-      if (response.ok) {
-        updateState({
-          serviceStatus: 'stopped',
-          websocketUrl: null,
-          mcpFunctions: [],
-          error: null
-        });
-      } else {
-        updateState({ 
-          serviceStatus: 'error',
-          error: `Failed to stop: ${response.status}` 
-        });
-      }
-    } catch (error) {
+      updateState({
+        serviceStatus: 'stopped',
+        websocketUrl: null,
+        mcpFunctions: [],
+        error: null
+      });
+    } catch (error: any) {
       updateState({ 
         serviceStatus: 'error',
-        error: `Failed to stop service: ${error}` 
+        error: error.response?.data?.detail || `Failed to stop service: ${error.message}` 
       });
     }
   }, [updateState]);
 
-  // Connect to the voice assistant WebSocket
+  // Connect to voice assistant using official Pipecat client
   const connectToVoiceAssistant = useCallback(async () => {
     if (!state.websocketUrl) return;
     
+    updateState({ clientStatus: 'connecting' });
+    
     try {
-      // Request microphone permission
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Create bot audio element if it doesn't exist
+      if (!botAudioRef.current) {
+        botAudioRef.current = document.createElement('audio');
+        botAudioRef.current.autoplay = true;
+        document.body.appendChild(botAudioRef.current);
+      }
       
-      // Connect to WebSocket
-      const ws = new WebSocket(state.websocketUrl);
-      
-      ws.onopen = () => {
-        console.log('Connected to voice assistant');
-        // Start listening to microphone and speaking to assistant
+      const setupAudioTrack = (track: MediaStreamTrack) => {
+        console.log('Setting up audio track');
+        if (botAudioRef.current) {
+          if (botAudioRef.current.srcObject && 'getAudioTracks' in botAudioRef.current.srcObject) {
+            const oldTrack = botAudioRef.current.srcObject.getAudioTracks()[0];
+            if (oldTrack?.id === track.id) return;
+          }
+          botAudioRef.current.srcObject = new MediaStream([track]);
+        }
       };
-      
-      ws.onmessage = (event) => {
-        // Handle audio and text responses from assistant
-        console.log('Received from assistant:', event.data);
+
+      const setupMediaTracks = () => {
+        if (!pipecatClientRef.current) return;
+        const tracks = pipecatClientRef.current.tracks();
+        if (tracks.bot?.audio) {
+          setupAudioTrack(tracks.bot.audio);
+        }
       };
-      
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
+
+      // Configure Pipecat client
+      const pipecatConfig: PipecatClientOptions = {
+        transport: new WebSocketTransport(),
+        enableMic: true,
+        enableCam: false,
+        callbacks: {
+          onConnected: () => {
+            console.log('Pipecat client connected');
+            updateState({ clientStatus: 'connected', error: null });
+          },
+          onDisconnected: () => {
+            console.log('Pipecat client disconnected');
+            updateState({ clientStatus: 'disconnected' });
+          },
+          onBotReady: (data) => {
+            console.log('Bot ready:', data);
+            setupMediaTracks();
+          },
+          onUserTranscript: (data) => {
+            if (data.final) {
+              console.log('User spoke:', data.text);
+            }
+          },
+          onBotTranscript: (data) => {
+            console.log('Bot speaking:', data.text);
+          },
+          onMessageError: (error) => {
+            console.error('Pipecat message error:', error);
+            updateState({ clientStatus: 'error', error: error.message });
+          },
+          onError: (error) => {
+            console.error('Pipecat error:', error);
+            updateState({ clientStatus: 'error', error: error.message });
+          },
+        },
       };
+
+      // Create Pipecat client
+      pipecatClientRef.current = new PipecatClient(pipecatConfig);
+
+      // Set up track listeners
+      pipecatClientRef.current.on(RTVIEvent.TrackStarted, (track, participant) => {
+        if (!participant?.local && track.kind === 'audio') {
+          setupAudioTrack(track);
+        }
+      });
+
+      pipecatClientRef.current.on(RTVIEvent.TrackStopped, (track, participant) => {
+        console.log(`Track stopped: ${track.kind} from ${participant?.name || 'unknown'}`);
+      });
+
+      // Initialize devices and connect
+      await pipecatClientRef.current.initDevices();
+      
+      // Use API server endpoint for Pipecat connection with authentication
+      const response = await apiClient.post('/api/v1/voice-assistant/connect');
+      const connectionData = response.data;
+      
+      await pipecatClientRef.current.connect({ 
+        connectionUrl: connectionData.connectionUrl 
+      });
+
+      console.log('Successfully connected to Pipecat voice assistant');
       
     } catch (error) {
-      console.error('Failed to connect:', error);
-      alert('Failed to access microphone or connect to voice assistant');
+      console.error('Failed to connect to voice assistant:', error);
+      updateState({ 
+        clientStatus: 'error', 
+        error: `Connection failed: ${error instanceof Error ? error.message : error}` 
+      });
     }
-  }, [state.websocketUrl]);
+  }, [state.websocketUrl, updateState]);
+
+  // Disconnect from voice assistant
+  const disconnectFromVoiceAssistant = useCallback(async () => {
+    if (pipecatClientRef.current) {
+      try {
+        await pipecatClientRef.current.disconnect();
+        pipecatClientRef.current = null;
+        
+        if (botAudioRef.current?.srcObject && 'getAudioTracks' in botAudioRef.current.srcObject) {
+          botAudioRef.current.srcObject.getAudioTracks().forEach((track) => track.stop());
+          botAudioRef.current.srcObject = null;
+        }
+        
+        updateState({ clientStatus: 'disconnected' });
+        console.log('Disconnected from voice assistant');
+      } catch (error) {
+        console.error('Error disconnecting from voice assistant:', error);
+      }
+    }
+  }, [updateState]);
 
   // Check status on mount
   useEffect(() => {
@@ -185,6 +262,26 @@ const VoiceAssistant: React.FC = () => {
       case 'stopped': return 'Voice Assistant Stopped';
       case 'error': return 'Error';
       default: return 'Unknown Status';
+    }
+  };
+
+  const getClientStatusColor = () => {
+    switch (state.clientStatus) {
+      case 'connected': return 'bg-green-500';
+      case 'connecting': return 'bg-yellow-500 animate-pulse';
+      case 'disconnected': return 'bg-gray-500';
+      case 'error': return 'bg-red-500';
+      default: return 'bg-gray-400';
+    }
+  };
+
+  const getClientStatusText = () => {
+    switch (state.clientStatus) {
+      case 'connected': return 'Connected to Voice Assistant';
+      case 'connecting': return 'Connecting...';
+      case 'disconnected': return 'Not Connected';
+      case 'error': return 'Connection Error';
+      default: return 'Unknown';
     }
   };
 
@@ -241,7 +338,48 @@ const VoiceAssistant: React.FC = () => {
           )}
         </Card>
 
-        {/* Control Buttons */}
+        {/* Client Connection Status */}
+        <Card className="mb-6 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <div className={`w-3 h-3 rounded-full ${getClientStatusColor()}`} />
+              <span className="text-lg font-semibold">{getClientStatusText()}</span>
+            </div>
+          </div>
+          
+          <div className="flex space-x-4">
+            {state.serviceStatus === 'running' && state.clientStatus === 'disconnected' && (
+              <Button
+                onClick={connectToVoiceAssistant}
+                variant="primary"
+                className="flex items-center"
+              >
+                <MicrophoneIcon className="h-5 w-5 mr-2" />
+                Connect & Start Voice Chat
+              </Button>
+            )}
+            
+            {state.clientStatus === 'connected' && (
+              <Button
+                onClick={disconnectFromVoiceAssistant}
+                variant="secondary"
+                className="flex items-center"
+              >
+                <StopIcon className="h-5 w-5 mr-2" />
+                Disconnect Voice Chat
+              </Button>
+            )}
+            
+            {state.clientStatus === 'connecting' && (
+              <Button disabled variant="secondary" className="flex items-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mr-2"></div>
+                Connecting...
+              </Button>
+            )}
+          </div>
+        </Card>
+
+        {/* Service Control */}
         <Card className="mb-6 p-6">
           <h2 className="text-xl font-semibold mb-4">Service Control</h2>
           <div className="flex space-x-4">
@@ -263,17 +401,6 @@ const VoiceAssistant: React.FC = () => {
               <StopIcon className="h-5 w-5 mr-2" />
               Stop Voice Assistant
             </Button>
-
-            {state.websocketUrl && (
-              <Button
-                onClick={connectToVoiceAssistant}
-                variant="primary"
-                className="flex items-center"
-              >
-                <MicrophoneIcon className="h-5 w-5 mr-2" />
-                Start Voice Chat
-              </Button>
-            )}
           </div>
         </Card>
 

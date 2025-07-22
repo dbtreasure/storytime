@@ -19,7 +19,7 @@ services:
     build: .
     ports:
       - "8000:8000"
-      - "8766:8766"  # Pipecat WebSocket server
+      - "8765:8765"  # Pipecat WebSocket server
     env_file:
       - .env.docker
     environment:

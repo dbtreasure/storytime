@@ -8,8 +8,9 @@ Based on Pipecat best practices from:
 """
 
 # CRITICAL: Force IPv4-only resolution before importing Pipecat
-# This fixes Docker IPv6 binding issues 
+# This fixes Docker IPv6 binding issues
 import socket
+
 _original_getaddrinfo = socket.getaddrinfo
 def _ipv4_only_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
     if host in ('localhost', '127.0.0.1'):
@@ -20,14 +21,21 @@ socket.getaddrinfo = _ipv4_only_getaddrinfo
 
 import asyncio
 import logging
-import os
-from typing import Callable
+from collections.abc import Callable
+
+# Enable debug logging for OpenAI and audio processing
+logging.getLogger("pipecat.services.openai_realtime_beta").setLevel(logging.DEBUG)
+logging.getLogger("pipecat.transports.base_output").setLevel(logging.DEBUG)
+logging.getLogger("pipecat.frames").setLevel(logging.DEBUG)
+logging.getLogger("pipecat.services.mcp_service").setLevel(logging.DEBUG)
 
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
+from pipecat.serializers.protobuf import ProtobufFrameSerializer
+
 # from pipecat.processors.transcript_processor import TranscriptProcessor  # Not available in this version
 from pipecat.services.openai_realtime_beta import (
     InputAudioTranscription,
@@ -39,7 +47,11 @@ from pipecat.transports.network.websocket_server import (
     WebsocketServerParams,
     WebsocketServerTransport,
 )
-from pipecat.serializers.protobuf import ProtobufFrameSerializer
+
+try:
+    from pipecat.serializers.json import JSONFrameSerializer
+except ImportError:
+    JSONFrameSerializer = None
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +63,8 @@ class StandardPipecatVoiceAssistant:
         self,
         openai_api_key: str,
         mcp_tools: list | None = None,
-        host: str = "0.0.0.0",
-        port: int = 7860,
+        host: str = "127.0.0.1",  # Use IPv4 localhost instead of 0.0.0.0
+        port: int = 8766,  # Use port 8766 to match your Docker config
         system_instructions: str | None = None,
     ):
         self.openai_api_key = openai_api_key
@@ -60,14 +72,14 @@ class StandardPipecatVoiceAssistant:
         self.host = host
         self.port = port
         self.system_instructions = system_instructions or self._default_instructions()
-        
+
         # Pipeline components
         self.transport: WebsocketServerTransport | None = None
         self.llm: OpenAIRealtimeBetaLLMService | None = None
         self.pipeline: Pipeline | None = None
         self.task: PipelineTask | None = None
         self.runner: PipelineRunner | None = None
-        
+
         # Event callbacks
         self.on_connected: Callable[[], None] | None = None
         self.on_disconnected: Callable[[], None] | None = None
@@ -77,95 +89,218 @@ class StandardPipecatVoiceAssistant:
         """Default system instructions for the voice assistant."""
         return """You are a voice assistant for StorytimeTTS, an AI-powered audiobook platform.
 
-You can help users search their audiobook library, find specific content within books, 
-and answer questions about their audiobooks.
+You have access to the following tools to help users:
+- search_library: Search across the user's entire audiobook library
+- search_job: Search within specific audiobook content by job ID  
+- ask_job_question: Ask questions about specific audiobook content
 
-When users ask about their audiobooks or want to search for specific content, 
-use the provided tools to access their library.
+IMPORTANT: When users ask about their audiobooks, search for books, or want to find specific content, 
+you MUST use the appropriate tools. Always search their library first before saying you don't know.
 
-Your voice and personality should be warm and engaging, with a friendly tone.
-Keep your responses concise and conversational since this is a voice interaction.
-One or two sentences at most unless specifically asked to elaborate."""
+Examples of when to use tools:
+- "What books do I have?" → use search_library
+- "Do I have any books about science?" → use search_library with "science"
+- "Search for books by Shakespeare" → use search_library with "Shakespeare"
+- "What's in my library?" → use search_library
+
+Your voice should be warm and engaging with a friendly tone.
+Keep responses concise since this is voice interaction - one or two sentences unless asked to elaborate."""
 
     async def start(self) -> None:
         """Start the Pipecat voice assistant server."""
         logger.info("Starting StandardPipecatVoiceAssistant.start() method")
-        
+
         # Create WebSocket transport - IPv4-only patching done at module level
         try:
             self.transport = WebsocketServerTransport(
+                host="0.0.0.0",  # Bind to all interfaces for Docker accessibility
+                port=self.port,    # Use port from constructor
                 params=WebsocketServerParams(
-                    serializer=ProtobufFrameSerializer(),
+                    serializer=JSONFrameSerializer() if JSONFrameSerializer else ProtobufFrameSerializer(),
                     audio_in_enabled=True,
                     audio_out_enabled=True,
                     add_wav_header=False,
                     vad_analyzer=SileroVADAnalyzer(),  # Use proven VAD implementation
                     session_timeout=60 * 5,  # 5 minutes
-                    host="127.0.0.1",  # Force IPv4 localhost
-                    port=8766,  # Use different port to avoid IPv6 conflicts
                 )
             )
-            logger.info("WebSocket transport created successfully with IPv4 patch")
+            logger.info(f"WebSocket transport created successfully on 0.0.0.0:{self.port}")
         except Exception as e:
             logger.error(f"Failed to create WebSocket transport: {e}")
             raise
 
+        # Define tools for OpenAI Realtime session
+        tools = [
+            {
+                "type": "function",
+                "name": "search_library",
+                "description": "Search across user's entire audiobook library using the provided query string and returns matching results with excerpts.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Search query to find audiobooks in the library"
+                        }
+                    },
+                    "required": ["query"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "search_job",
+                "description": "Search within specific audiobook content by job ID and returns relevant excerpts from that specific book.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "job_id": {
+                            "type": "string",
+                            "description": "Job ID of the specific audiobook to search within"
+                        },
+                        "query": {
+                            "type": "string",
+                            "description": "Search query to find content within the book"
+                        }
+                    },
+                    "required": ["job_id", "query"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "ask_job_question",
+                "description": "Ask a specific question about an audiobook's content and get an AI-generated answer based on the book's content.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "job_id": {
+                            "type": "string",
+                            "description": "Job ID of the audiobook to ask about"
+                        },
+                        "question": {
+                            "type": "string",
+                            "description": "Question to ask about the audiobook content"
+                        }
+                    },
+                    "required": ["job_id", "question"]
+                }
+            }
+        ]
+
         # Create OpenAI Realtime service with proper session configuration
         try:
             session_properties = SessionProperties(
-                input_audio_transcription=InputAudioTranscription(),
-                turn_detection=TurnDetection(silence_duration_ms=800),
-                instructions=self.system_instructions,
+                input_audio_transcription=InputAudioTranscription(model="whisper-1"),
+                turn_detection=TurnDetection(
+                    type="server_vad",
+                    threshold=0.5,
+                    prefix_padding_ms=300,
+                    silence_duration_ms=1200  # Increase to reduce interruption sensitivity
+                ),
+                instructions=f"{self.system_instructions}\n\nIMPORTANT: Always respond with audio. Keep responses conversational and concise.",
+                voice="alloy",  # Explicitly set voice for audio output
+                input_audio_format="pcm16",
+                output_audio_format="pcm16",
+                modalities=["text", "audio"],  # Enable both text and audio
+                tool_choice="auto",  # Enable tool usage
+                tools=tools,  # Add tools to OpenAI session
             )
-            
+
             self.llm = OpenAIRealtimeBetaLLMService(
                 api_key=self.openai_api_key,
                 session_properties=session_properties,
                 start_audio_paused=False,
             )
+
+            # Force audio responses by configuring response format
+            if hasattr(self.llm, 'set_response_format'):
+                self.llm.set_response_format({
+                    "type": "audio",
+                    "format": "pcm16"
+                })
             logger.info("OpenAI Realtime service initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize OpenAI Realtime service: {e}")
             raise
 
-        # Create transcript processor for logging (skipped - not available in this version)
-        # transcript = TranscriptProcessor()
+        # Register MCP tools first before creating context
+        self._tools_schema = None
+        if self.mcp_tools:
+            try:
+                # We'll register the tools after MCP client is available
+                pass
+            except Exception as e:
+                logger.warning(f"MCP tools not available: {e}")
 
         # Create context aggregator for message handling
         context = OpenAILLMContext(
             messages=[{"role": "user", "content": "Ready to help!"}],
-            # tools=self.mcp_tools,  # TODO: Add MCP tools
+            # tools will be set later when MCP client is registered
         )
         context_aggregator = self.llm.create_context_aggregator(context)
 
-        # Create standard Pipecat pipeline
+        # User context should handle audio-to-text conversion automatically
+
+        # Create debug frame logger
+        class DebugFrameLogger:
+            def __init__(self, name):
+                self.name = name
+
+            async def process_frame(self, frame, direction):
+                logger.info(f"[{self.name}] Frame: {type(frame).__name__} - {direction}")
+                return frame
+
+            def input(self):
+                return self
+
+            def output(self):
+                return self
+
+        debug_logger = DebugFrameLogger("PIPELINE_DEBUG")
+
+        # Create standard Pipecat pipeline with debugging
         self.pipeline = Pipeline([
             self.transport.input(),     # Audio input from WebSocket
             context_aggregator.user(),  # User message aggregation
             self.llm,                   # OpenAI Realtime LLM service
-            # transcript.user(),        # Transcript processing (skipped)
-            context_aggregator.assistant(),  # Assistant response aggregation  
+            context_aggregator.assistant(),  # Assistant response aggregation
             self.transport.output(),    # Audio output to WebSocket
         ])
+
+        logger.info("Pipeline created with components: input -> user_context -> llm -> assistant_context -> output")
 
         # Create pipeline task
         self.task = PipelineTask(
             self.pipeline,
             params=PipelineParams(
-                allow_interruptions=True,
+                allow_interruptions=True,  # Enable interruptions for natural conversation
                 enable_metrics=True,
                 enable_usage_metrics=True,
             )
         )
 
+        # Register WebSocket event handlers
+        @self.transport.event_handler("on_websocket_ready")
+        async def on_websocket_ready(transport):
+            logger.info(f"WebSocket server ready and listening on 0.0.0.0:{self.port}")
+            if self.on_connected:
+                self.on_connected()
+
+        @self.transport.event_handler("on_client_connected")
+        async def on_client_connected(transport, client):
+            logger.info(f"Client connected from {client.remote_address}")
+            # Kick off the conversation when client connects
+            await self.task.queue_frames([context_aggregator.user().get_context_frame()])
+
+        @self.transport.event_handler("on_client_disconnected")
+        async def on_client_disconnected(transport, client):
+            logger.info(f"Client disconnected from {client.remote_address}")
+            await self.task.cancel()
+
         # Start the pipeline runner
         self.runner = PipelineRunner(handle_sigint=False)
-        
-        logger.info(f"Starting standard Pipecat voice assistant on {self.host}:{self.port}")
-        
-        if self.on_connected:
-            self.on_connected()
-            
+
+        logger.info("Starting standard Pipecat voice assistant...")
+
         try:
             await self.runner.run(self.task)
         except Exception as e:
@@ -178,31 +313,35 @@ One or two sentences at most unless specifically asked to elaborate."""
         """Stop the voice assistant."""
         if self.runner:
             await self.runner.cancel()
-            
+
         if self.on_disconnected:
             self.on_disconnected()
-            
+
         logger.info("Standard Pipecat voice assistant stopped")
 
     async def register_mcp_client(self, mcp_client) -> None:
         """Register MCP client with the LLM service using official Pipecat patterns."""
         if not self.llm:
             raise RuntimeError("LLM service not initialized")
-        
+
         if not mcp_client:
             logger.warning("No MCP client provided")
             return
-            
+
         try:
             # Use official Pipecat method to register MCP tools
             from .pipecat_mcp_integration import register_mcp_tools_with_llm
             result = await register_mcp_tools_with_llm(mcp_client, self.llm)
-            
+
             if result.get("success"):
+                self._tools_schema = result.get("tools_schema")
                 logger.info("Successfully registered MCP tools with LLM using official Pipecat patterns")
+
+                # The tools are now registered with the LLM service and will be available for OpenAI Realtime API calls
+                logger.info("MCP tools are now available for voice assistant interactions")
             else:
                 logger.error(f"Failed to register MCP tools: {result.get('error')}")
-                
+
         except Exception as e:
             logger.error(f"Error registering MCP client: {e}")
 
@@ -210,7 +349,7 @@ One or two sentences at most unless specifically asked to elaborate."""
         """Register MCP functions with the LLM service (legacy method)."""
         if not self.llm:
             raise RuntimeError("LLM service not initialized")
-            
+
         for name, func in mcp_functions.items():
             self.llm.register_function(name, func)
             logger.info(f"Registered MCP function: {name}")
@@ -218,7 +357,7 @@ One or two sentences at most unless specifically asked to elaborate."""
 
 class StandardPipecatManager:
     """Manager for running the standard Pipecat assistant in a separate task."""
-    
+
     def __init__(self, assistant: StandardPipecatVoiceAssistant):
         self.assistant = assistant
         self._task: asyncio.Task | None = None
@@ -229,7 +368,7 @@ class StandardPipecatManager:
         if self._running:
             logger.warning("Assistant already running")
             return
-            
+
         self._running = True
         self._task = asyncio.create_task(self.assistant.start())
         logger.info("Started standard Pipecat assistant task")
@@ -238,16 +377,16 @@ class StandardPipecatManager:
         """Stop the assistant task."""
         if not self._running:
             return
-            
+
         self._running = False
-        
+
         if self._task:
             self._task.cancel()
             try:
                 await self._task
             except asyncio.CancelledError:
                 pass
-                
+
         await self.assistant.stop()
         logger.info("Stopped standard Pipecat assistant task")
 

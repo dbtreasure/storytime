@@ -11,4 +11,12 @@ export default defineConfig({
   define: {
     'process.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'http://localhost:8000'),
   },
+  optimizeDeps: {
+    include: ['@pipecat-ai/client-js', '@pipecat-ai/websocket-transport']
+  },
+  resolve: {
+    alias: {
+      'events': 'events'
+    }
+  }
 })

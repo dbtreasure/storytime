@@ -58,17 +58,8 @@ async def mcp_sse_endpoint(request: Request):
             endpoint_data = f"/mcp-server/messages?session_id={session_id}"
             yield {"event": "endpoint", "data": endpoint_data}
 
-            # Send initialization message
-            init_msg = {
-                "jsonrpc": "2.0",
-                "method": "notifications/initialized",
-                "params": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {"tools": {}, "logging": {}},
-                    "serverInfo": {"name": "StorytimeTTS-Knowledge", "version": "1.0.0"},
-                },
-            }
-            yield {"event": "message", "data": json.dumps(init_msg)}
+            # Wait for client initialization - don't send notifications/initialized
+            # The client will send this notification after receiving our initialize response
 
             # Process messages from queue
             while True:
@@ -222,6 +213,12 @@ async def mcp_messages_endpoint(request: Request, session_id: str | None = Query
                     "id": request_id,
                     "result": {"content": [{"type": "text", "text": json.dumps(result, indent=2)}]},
                 }
+
+        elif method == "notifications/initialized":
+            # Client is notifying us they've initialized - this is correct!
+            logger.info("Client initialized successfully")
+            # No response needed for notifications (notifications don't have responses)
+            response = None
 
         else:
             response = {

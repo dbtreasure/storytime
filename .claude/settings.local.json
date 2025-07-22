@@ -60,7 +60,8 @@
       "Bash(uv add:*)",
       "Bash(rm:*)",
       "Bash(mv:*)",
-      "Bash(uvx:*)"
+      "Bash(uvx:*)",
+      "Bash(npm search:*)"
     ],
     "deny": []
   }
