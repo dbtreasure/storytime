@@ -65,7 +65,8 @@
       "WebFetch(domain:pypi.org)",
       "Bash(source:*)",
       "Bash(pip install:*)",
-      "Bash(git remote add:*)"
+      "Bash(git remote add:*)",
+      "WebFetch(domain:kamal-deploy.org)"
     ],
     "deny": []
   }
