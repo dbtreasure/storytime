@@ -8,6 +8,8 @@ image: storytime/app
 
 # Deployment timeouts
 deploy_timeout: 120
+readiness_delay: 5
+max_attempts: 10
 
 # Registry for storing images
 registry:
