@@ -6,6 +6,9 @@ service: storytime
 # Docker image configuration
 image: storytime/app
 
+# Deployment timeouts
+deploy_timeout: 120
+
 # Registry for storing images
 registry:
   server: registry.digitalocean.com/storytime
