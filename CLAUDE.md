@@ -387,7 +387,7 @@ tool_descriptions = {
 2. **`search_job`**: Search within specific audiobook by job ID  
 3. **`ask_job_question`**: Ask questions about specific audiobook content
 4. **`tutor_chat`**: Engage in Socratic tutoring dialogue about content ⭐
-5. **`xray_lookup`**: Contextual content lookup (Kindle X-ray style) ⭐
+5. **`xray_lookup`**: Progress-aware contextual lookup with spoiler prevention ⭐ (Phase 2)
 
 ### **Voice Assistant Integration Flow**
 

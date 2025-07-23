@@ -785,8 +785,7 @@ async def handle_xray_lookup_tool(arguments: dict[str, Any], request: Request) -
         result = await xray_lookup(
             job_id=job_id,
             query=query,
-            user_id=auth_context.user.id,
-            db_session=auth_context.db_session
+            context=auth_context
         )
 
         if not result.get("success"):
@@ -801,17 +800,35 @@ async def handle_xray_lookup_tool(arguments: dict[str, Any], request: Request) -
                 ]
             }
 
-        # Transform result to MCP format
-        xray_response = result.get("response", "")
+        # Transform result to MCP format with progress context
+        xray_response = result.get("answer", "")
         lookup_type = result.get("lookup_type", "general")
-        job_title = result.get("job_title", f"Job {job_id}")
+        content_context = result.get("content_context", {})
+        job_title = content_context.get("title", f"Job {job_id}")
+        spoiler_warning = result.get("spoiler_warning", {})
+        
+        # Add spoiler warning if needed
+        response_text = xray_response
+        if spoiler_warning.get("potential_spoiler"):
+            warning_msg = spoiler_warning.get("warning", "")
+            suggestion = spoiler_warning.get("suggestion", "")
+            response_text = f"⚠️ SPOILER WARNING: {warning_msg}\n"
+            if suggestion:
+                response_text += f"💡 {suggestion}\n\n"
+            response_text += xray_response
+        
+        # Add progress context
+        if content_context.get("progress_percentage", 0) > 0:
+            progress_pct = content_context["progress_percentage"] * 100
+            chapter = content_context.get("current_chapter", "Beginning")
+            response_text += f"\n\n📖 Your Progress: {progress_pct:.1f}% (Chapter: {chapter})"
 
         return {
             "results": [
                 {
                     "id": f"xray_response_{job_id}_{lookup_type}",
                     "title": f"X-ray Lookup: '{query}' in '{job_title}'",
-                    "text": xray_response,
+                    "text": response_text,
                     "url": None,
                 }
             ]

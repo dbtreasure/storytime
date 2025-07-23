@@ -7,18 +7,14 @@ from openai import OpenAI
 from sqlalchemy import select
 
 from storytime.api.settings import get_settings
-from storytime.database import Job
+from storytime.database import Job, ProgressRecord
 from storytime.mcp.auth import MCPAuthContext
-from storytime.services.responses_api_service import ResponsesAPIVectorStoreService
+from storytime.services.progress_aware_search import ProgressAwareSearchService
 
 logger = logging.getLogger(__name__)
 
 
-async def xray_lookup(
-    job_id: str,
-    query: str,
-    context: MCPAuthContext = None
-) -> dict[str, Any]:
+async def xray_lookup(job_id: str, query: str, context: MCPAuthContext = None) -> dict[str, Any]:
     """Provide contextual content lookup (Kindle X-ray style).
 
     Args:
@@ -45,30 +41,38 @@ async def xray_lookup(
         # Get tutoring analysis for context (if available)
         tutoring_data = job.config.get("tutoring_analysis") if job.config else None
 
-        # Create OpenAI client and vector store service for content access
+        # Get user's reading progress for spoiler prevention
+        progress_result = await context.db_session.execute(
+            select(ProgressRecord).where(
+                ProgressRecord.user_id == context.user.id, ProgressRecord.job_id == job_id
+            )
+        )
+        progress = progress_result.scalar_one_or_none()
+
+        # Calculate progress context
+        current_chapter = progress.current_chapter if progress else None
+        progress_percentage = progress.percentage_complete if progress else 0.0
+
+        # Create OpenAI client and progress-aware service for content access
         settings = get_settings()
         if not settings.openai_api_key:
             return {"success": False, "error": "OpenAI API key not configured", "answer": ""}
 
         openai_client = OpenAI(api_key=settings.openai_api_key)
-        vector_service = ResponsesAPIVectorStoreService(openai_client, context.db_session)
+        progress_service = ProgressAwareSearchService(openai_client, context.db_session)
 
-        # Build X-ray lookup question
-        xray_question = _build_xray_question(
-            query, job.title or "this content", tutoring_data
-        )
-
-        # Use the existing vector service to get contextual response
-        result = await vector_service.ask_question_about_job(
-            user_id=context.user.id,
-            job_id=job_id,
-            question=xray_question
+        # Use progress-aware service to answer question with automatic filtering
+        result = await progress_service.ask_question_with_progress_filter(
+            user_id=context.user.id, job_id=job_id, question=query
         )
 
         if result["success"]:
             logger.info(
                 f"MCP xray_lookup: user={context.user.id}, job={job_id}, query='{query[:50]}...'"
             )
+
+            # Get progress information from the result
+            user_progress = result.get("user_progress", {})
 
             return {
                 "success": True,
@@ -77,53 +81,25 @@ async def xray_lookup(
                 "lookup_type": _classify_lookup_type(query),
                 "content_context": {
                     "title": job.title,
-                    "has_tutoring_data": tutoring_data is not None
-                }
+                    "has_tutoring_data": tutoring_data is not None,
+                    "current_chapter": user_progress.get("chapter", current_chapter),
+                    "progress_percentage": user_progress.get("percentage", progress_percentage),
+                    "progress_filtered": result.get("progress_filtered", True),
+                },
+                "spoiler_warning": _check_for_spoilers(
+                    query, user_progress.get("percentage", progress_percentage)
+                ),
             }
         else:
             return {
                 "success": False,
                 "error": result.get("error", "X-ray lookup failed"),
-                "answer": "I couldn't find information about that in the content."
+                "answer": "I couldn't find information about that in the content.",
             }
 
     except Exception as e:
         logger.error(f"Error in xray_lookup MCP tool: {e}")
         return {"success": False, "error": f"X-ray lookup failed: {e!s}", "answer": ""}
-
-
-def _build_xray_question(query: str, content_title: str, tutoring_data: dict = None) -> str:
-    """Build X-ray lookup question with context (grug-brain approach)."""
-
-    # Add context from tutoring analysis if available
-    context_info = ""
-    if tutoring_data:
-        characters_text = ", ".join([f"{char['name']} ({char['role']})" for char in tutoring_data["characters"]])
-        themes_text = ", ".join(tutoring_data["themes"])
-        setting_text = f"{tutoring_data['setting']['time']} in {tutoring_data['setting']['place']}"
-
-        context_info = f"""
-CONTENT CONTEXT:
-- Content Type: {tutoring_data['content_type']}
-- Main Characters/Figures: {characters_text}
-- Key Themes: {themes_text}
-- Setting: {setting_text}
-"""
-
-    return f"""This is a contextual lookup query for "{content_title}" (similar to Kindle X-ray functionality).
-
-{context_info}
-
-USER'S X-RAY QUERY: {query}
-
-Please provide a clear, concise answer that explains:
-1. The specific information requested (who, what, where, when, why)
-2. Relevant context from the content 
-3. Any important background or significance
-
-Focus on being helpful and informative, like a reference tool. If it's about a character, explain who they are and their role. If it's about a concept or event, explain what it is and why it matters in the story/content.
-
-Keep the response focused and informative - this is meant to quickly orient the reader/listener."""
 
 
 def _classify_lookup_type(query: str) -> str:
@@ -141,7 +117,61 @@ def _classify_lookup_type(query: str) -> str:
         return "time"
     elif any(word in query_lower for word in ["why", "how", "explain", "meaning", "significance"]):
         return "explanation"
-    elif any(word in query_lower for word in ["what happened", "what's happening", "event", "scene"]):
+    elif any(
+        word in query_lower for word in ["what happened", "what's happening", "event", "scene"]
+    ):
         return "event"
     else:
         return "general"
+
+
+def _check_for_spoilers(query: str, progress_percentage: float) -> dict[str, Any]:
+    """Check if query might contain spoilers based on progress."""
+    query_lower = query.lower()
+
+    # Keywords that often indicate future events
+    spoiler_keywords = [
+        "ending",
+        "end",
+        "finale",
+        "conclusion",
+        "resolution",
+        "dies",
+        "death",
+        "killed",
+        "married",
+        "marries",
+        "reveal",
+        "revealed",
+        "turns out",
+        "actually",
+        "twist",
+        "surprise",
+        "secret",
+        "hidden",
+        "later",
+        "eventually",
+        "finally",
+        "ultimately",
+    ]
+
+    # Check if query contains potential spoiler keywords
+    contains_spoiler_keywords = any(keyword in query_lower for keyword in spoiler_keywords)
+
+    # More likely to be spoiler if user is early in the book
+    early_in_book = progress_percentage < 0.5
+
+    if contains_spoiler_keywords and early_in_book:
+        return {
+            "potential_spoiler": True,
+            "warning": "This query might involve information from later in the content.",
+            "suggestion": "Consider rephrasing to ask about what's happened so far.",
+        }
+    elif contains_spoiler_keywords:
+        return {
+            "potential_spoiler": True,
+            "warning": "This query might involve future events.",
+            "suggestion": None,
+        }
+    else:
+        return {"potential_spoiler": False, "warning": None, "suggestion": None}
