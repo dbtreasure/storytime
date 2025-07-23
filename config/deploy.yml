@@ -75,7 +75,6 @@ proxy:
   ssl: true
   host: plinytheai.com
   app_port: 8000
-  deploy_timeout: 120s
   healthcheck:
     path: /up
     interval: 10
