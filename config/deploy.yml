@@ -82,7 +82,6 @@ proxy:
     path: /up
     interval: 10
     timeout: 10
-    max_attempts: 10
 
 # Builder configuration
 builder:
