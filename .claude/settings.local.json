@@ -61,7 +61,11 @@
       "Bash(rm:*)",
       "Bash(mv:*)",
       "Bash(uvx:*)",
-      "Bash(npm search:*)"
+      "Bash(npm search:*)",
+      "WebFetch(domain:pypi.org)",
+      "Bash(source:*)",
+      "Bash(pip install:*)",
+      "Bash(git remote add:*)"
     ],
     "deny": []
   }

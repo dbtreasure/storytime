@@ -1,10 +1,22 @@
 {
   "hooks": {
+    "user-prompt-submit": [
+      {
+        "name": "grug-brain-planning-reminder",
+        "command": "echo '🧠 GRUG BRAIN PLANNING REMINDER:\n\n• complexity very very bad - keep simple\n• say no to unnecessary features\n• prefer 80/20 solutions - maximum value, minimal code\n• avoid premature abstraction and over-engineering\n• prototype first to understand before big changes\n• integration tests > unit tests for most cases\n• working code > perfect processes\n• when stuck, step back and ask: \"what simplest thing that work?\"\n\nRemember: grug brain developer avoid complexity like fire. Simple good. Complex bad.'",
+        "description": "Remind Claude to follow grug-brained principles when planning tasks",
+        "match": {
+          "tool": ["TodoWrite", "Task"],
+          "content_pattern": ".*plan.*|.*implement.*|.*build.*|.*create.*|.*add.*"
+        },
+        "on_error": "continue"
+      }
+    ],
     "post-tool-use": [
       {
-        "name": "python-lint-and-format",
-        "command": "uvx ruff check . --fix && uvx ruff format .",
-        "description": "Auto-fix Python linting issues and format code",
+        "name": "immediate-python-check",
+        "command": "echo '🔧 Running Python checks...' && uvx ruff check . --fix && uvx ruff format . && echo '✅ Python checks complete'",
+        "description": "Immediate Python validation with output",
         "match": {
           "tool": ["Edit", "MultiEdit", "Write"],
           "file_pattern": "**/*.py"

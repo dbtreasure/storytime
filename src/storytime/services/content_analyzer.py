@@ -22,6 +22,16 @@ class ContentAnalysisResult(BaseModel):
     content_characteristics: list[str]
 
 
+class TutoringAnalysisResult(BaseModel):
+    """Basic tutoring analysis for uploaded content."""
+
+    themes: list[str]
+    characters: list[dict[str, str]]  # [{"name": "...", "role": "..."}]
+    setting: dict[str, str]  # {"time": "...", "place": "..."}
+    discussion_questions: list[str]
+    content_type: str  # "fiction", "non-fiction", "academic", etc.
+
+
 class ContentAnalyzer:
     """Service for analyzing content to determine optimal job type."""
 
@@ -225,3 +235,147 @@ Analyze this content and respond with the JSON structure above."""
             "model": "gemini-2.5-pro" if self.is_available() else None,
             "google_api_configured": get_settings().google_api_key is not None,
         }
+
+    async def analyze_for_tutoring(self, content: str, title: str | None = None) -> TutoringAnalysisResult:
+        """
+        Analyze content for tutoring capabilities.
+        
+        Simple grug-brain version that extracts basic info for tutoring conversations.
+        
+        Args:
+            content: The text content to analyze
+            title: Optional title to help with analysis
+            
+        Returns:
+            TutoringAnalysisResult with themes, characters, setting, and discussion questions
+        """
+        if not self.client:
+            logger.warning("Gemini client not available, returning basic tutoring analysis")
+            return TutoringAnalysisResult(
+                themes=["learning", "education"],
+                characters=[],
+                setting={"time": "unknown", "place": "unknown"},
+                discussion_questions=["What are the main ideas in this content?"],
+                content_type="unknown"
+            )
+
+        if not content or len(content.strip()) < 100:
+            logger.info("Content too short for tutoring analysis")
+            return TutoringAnalysisResult(
+                themes=["short content"],
+                characters=[],
+                setting={"time": "present", "place": "unspecified"},
+                discussion_questions=["What can you learn from this content?"],
+                content_type="short-form"
+            )
+
+        logger.info(f"Analyzing content for tutoring: {len(content)} characters")
+
+        try:
+            prompt = self._build_tutoring_prompt(content, title)
+            response = self.model.generate_content(prompt)
+
+            if not response.text:
+                logger.warning("Gemini returned empty response for tutoring analysis")
+                return self._fallback_tutoring_analysis()
+
+            result = self._parse_tutoring_result(response.text)
+            logger.info(f"Tutoring analysis completed: {len(result.themes)} themes, {len(result.characters)} characters")
+            return result
+
+        except Exception as e:
+            logger.error(f"Tutoring analysis failed: {e}", exc_info=True)
+            return self._fallback_tutoring_analysis()
+
+    def _build_tutoring_prompt(self, content: str, title: str | None) -> str:
+        """Build tutoring analysis prompt for Gemini."""
+
+        title_context = f"\n**Title:** {title}" if title else ""
+
+        # Use first 4000 characters for tutoring analysis
+        analysis_content = content[:4000]
+        if len(content) > 4000:
+            analysis_content += "\n\n[Content truncated for analysis...]"
+
+        prompt = f"""### ROLE
+You are an expert tutor and content analyst. Your job is to analyze content and extract key information needed for tutoring conversations.
+
+### TASK
+Analyze the provided content and extract tutoring-relevant information. Focus on creating a foundation for Socratic dialogue and engaged learning.
+
+### RESPONSE FORMAT
+Respond with a JSON object containing exactly these fields:
+```json
+{{
+    "themes": ["list of 3-5 main themes or concepts"],
+    "characters": [{{"name": "Character Name", "role": "brief description"}}],
+    "setting": {{"time": "time period", "place": "location/setting"}},
+    "discussion_questions": ["list of 3-5 thought-provoking questions for Socratic dialogue"],
+    "content_type": "fiction|non-fiction|academic|poetry|biography|history|science|philosophy|etc"
+}}
+```
+
+### GUIDELINES
+- **Themes**: Extract core concepts, ideas, or topics (not just plot points)
+- **Characters**: For fiction, list main characters. For non-fiction, list key figures/people mentioned
+- **Setting**: Time period and place. For non-fiction, consider historical/intellectual context
+- **Discussion Questions**: Create open-ended questions that promote deep thinking and analysis
+- **Content Type**: Categorize to help tailor tutoring approach
+
+### CONTENT TO ANALYZE{title_context}
+
+**Content Length:** {len(content):,} characters
+
+**Content:**
+```
+{analysis_content}
+```
+
+Provide the JSON analysis:"""
+
+        return prompt
+
+    def _parse_tutoring_result(self, response_text: str) -> TutoringAnalysisResult:
+        """Parse tutoring analysis response from Gemini."""
+        import json
+
+        try:
+            # Extract JSON from response
+            response_text = response_text.strip()
+
+            if "```json" in response_text:
+                start = response_text.find("```json") + 7
+                end = response_text.find("```", start)
+                json_text = response_text[start:end].strip()
+            elif "```" in response_text:
+                start = response_text.find("```") + 3
+                end = response_text.find("```", start)
+                json_text = response_text[start:end].strip()
+            else:
+                start = response_text.find("{")
+                end = response_text.rfind("}") + 1
+                if start != -1 and end != 0:
+                    json_text = response_text[start:end]
+                else:
+                    raise ValueError("No JSON structure found")
+
+            result_data = json.loads(json_text)
+            return TutoringAnalysisResult(**result_data)
+
+        except Exception as e:
+            logger.warning(f"Failed to parse tutoring analysis JSON: {e}")
+            return self._fallback_tutoring_analysis()
+
+    def _fallback_tutoring_analysis(self) -> TutoringAnalysisResult:
+        """Fallback tutoring analysis if parsing fails."""
+        return TutoringAnalysisResult(
+            themes=["main concepts", "key ideas", "important topics"],
+            characters=[{"name": "Content", "role": "main subject"}],
+            setting={"time": "contemporary", "place": "general"},
+            discussion_questions=[
+                "What are the main ideas presented in this content?",
+                "How does this relate to your existing knowledge?",
+                "What questions does this content raise for you?"
+            ],
+            content_type="general"
+        )

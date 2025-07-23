@@ -303,11 +303,67 @@ class JobProcessor:
             )
 
             # Update overall job progress (content acquired)
-            await self._update_job_status(job.id, JobStatus.PROCESSING, progress=0.33)
+            await self._update_job_status(job.id, JobStatus.PROCESSING, progress=0.25)
 
-            # Step 2: Text Preprocessing
+            # Step 2: Tutoring Analysis (simple version - runs parallel with processing)
+            tutoring_step = await self._create_job_step(
+                job.id, "tutoring_analysis", 1, "Analyze content for tutoring capabilities"
+            )
+
+            try:
+                await self._update_job_step(
+                    tutoring_step.id, StepStatus.RUNNING, started_at=datetime.utcnow()
+                )
+
+                # Run tutoring analysis (grug-brain simple version)
+                logger.info(f"Running tutoring analysis for job {job.id}")
+                tutoring_result = await self.content_analyzer.analyze_for_tutoring(
+                    text_content, job.title
+                )
+
+                # Store tutoring analysis in job config (grug-brain storage)
+                if not job.config:
+                    job.config = {}
+                job.config["tutoring_analysis"] = {
+                    "themes": tutoring_result.themes,
+                    "characters": tutoring_result.characters,
+                    "setting": tutoring_result.setting,
+                    "discussion_questions": tutoring_result.discussion_questions,
+                    "content_type": tutoring_result.content_type,
+                    "analyzed_at": datetime.utcnow().isoformat()
+                }
+                await self._update_job_config(job.id, job.config)
+
+                await self._update_job_step(
+                    tutoring_step.id,
+                    StepStatus.COMPLETED,
+                    progress=1.0,
+                    completed_at=datetime.utcnow(),
+                    step_metadata={
+                        "themes_count": len(tutoring_result.themes),
+                        "characters_count": len(tutoring_result.characters),
+                        "questions_count": len(tutoring_result.discussion_questions),
+                        "content_type": tutoring_result.content_type,
+                    }
+                )
+                logger.info(f"Tutoring analysis completed for job {job.id}")
+
+            except Exception as e:
+                logger.warning(f"Tutoring analysis failed for job {job.id}: {e}")
+                await self._update_job_step(
+                    tutoring_step.id,
+                    StepStatus.FAILED,
+                    error_message=str(e),
+                    completed_at=datetime.utcnow(),
+                )
+                # Don't fail the whole job if tutoring analysis fails
+
+            # Update overall job progress (tutoring analysis complete)
+            await self._update_job_status(job.id, JobStatus.PROCESSING, progress=0.4)
+
+            # Step 3: Text Preprocessing
             preprocessing_step = await self._create_job_step(
-                job.id, "preprocess_text", 1, "Preprocess text content for TTS"
+                job.id, "preprocess_text", 2, "Preprocess text content for TTS"
             )
 
             # Update preprocessing step to running
@@ -333,9 +389,9 @@ class JobProcessor:
             # Update overall job progress (preprocessing complete)
             await self._update_job_status(job.id, JobStatus.PROCESSING, progress=0.66)
 
-            # Step 3: TTS Generation
+            # Step 4: TTS Generation
             tts_step = await self._create_job_step(
-                job.id, "text_to_audio", 2, "Convert processed text to audio using TTS"
+                job.id, "text_to_audio", 3, "Convert processed text to audio using TTS"
             )
 
             # Update TTS step to running

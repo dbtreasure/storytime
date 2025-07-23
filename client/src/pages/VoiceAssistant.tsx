@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { 
@@ -6,7 +7,9 @@ import {
   StopIcon,
   PlayIcon,
   CheckCircleIcon,
-  XCircleIcon
+  XCircleIcon,
+  AcademicCapIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
 import { useAppSelector } from '../hooks/redux';
 import { 
@@ -26,6 +29,10 @@ interface VoiceAssistantState {
 }
 
 const VoiceAssistant: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const mode = searchParams.get('mode'); // 'tutor' or 'xray'
+  const jobId = searchParams.get('jobId');
+  
   const [state, setState] = useState<VoiceAssistantState>({
     serviceStatus: 'unknown',
     clientStatus: 'disconnected',
@@ -67,7 +74,12 @@ const VoiceAssistant: React.FC = () => {
     updateState({ serviceStatus: 'starting', error: null });
     
     try {
-      const response = await apiClient.post('/api/v1/voice-assistant/start');
+      // Pass mode and jobId parameters to backend for context-aware initialization
+      const params: any = {};
+      if (mode) params.mode = mode;
+      if (jobId) params.jobId = jobId;
+      
+      const response = await apiClient.post('/api/v1/voice-assistant/start', params);
       const data = response.data;
       
       updateState({
@@ -289,9 +301,20 @@ const VoiceAssistant: React.FC = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Voice Assistant</h1>
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+            {mode === 'tutor' && <AcademicCapIcon className="h-8 w-8 text-blue-600 mr-3" />}
+            {mode === 'xray' && <MagnifyingGlassIcon className="h-8 w-8 text-purple-600 mr-3" />}
+            Voice Assistant
+            {mode === 'tutor' && <span className="ml-3 text-blue-600"> - Tutoring Mode</span>}
+            {mode === 'xray' && <span className="ml-3 text-purple-600"> - X-ray Lookup</span>}
+          </h1>
           <p className="mt-2 text-gray-600">
-            AI-powered voice assistant with your audiobook library access
+            {mode === 'tutor' && jobId && 
+              `Ready for Socratic dialogue about your audiobook. Ask questions and explore ideas!`}
+            {mode === 'xray' && jobId && 
+              `Ask contextual questions while listening - "Who is Elizabeth?", "What is happening?", etc.`}
+            {!mode && 
+              `AI-powered voice assistant with your audiobook library access`}
           </p>
         </div>
 

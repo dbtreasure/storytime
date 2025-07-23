@@ -1,10 +1,10 @@
-"""MCP (Model Context Protocol) server implementation for StorytimeTTS.
+"""MCP (Model Context Protocol) HTTP server for StorytimeTTS.
 
-This module provides an MCP server that exposes StorytimeTTS's vector store search
-capabilities as tools for OpenAI's Realtime API, enabling voice conversations
+This module provides MCP HTTP endpoints that expose StorytimeTTS's vector store search
+and tutoring capabilities as tools for OpenAI's Realtime API, enabling voice conversations
 about audiobook content.
 """
 
-from .fastapi_integration import create_mcp_app
+from .http_server import router as mcp_router
 
-__all__ = ["create_mcp_app"]
+__all__ = ["mcp_router"]

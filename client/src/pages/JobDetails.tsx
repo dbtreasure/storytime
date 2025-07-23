@@ -21,6 +21,8 @@ import {
   BookOpenIcon,
   DocumentTextIcon,
   ArrowUpIcon,
+  AcademicCapIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import { JobStepResponse } from '../schemas';
 import { EyeIcon } from '@heroicons/react/24/outline';
@@ -77,6 +79,11 @@ const JobDetails: React.FC = () => {
         progress: selectedJob.progress,
         steps: selectedJob.steps?.map(s => ({ name: s.step_name, status: s.status, progress: s.progress }))
       });
+      console.log('Job config:', selectedJob.config);
+      console.log('Has tutoring analysis:', !!selectedJob.config?.tutoring_analysis);
+      if (selectedJob.config?.tutoring_analysis) {
+        console.log('Tutoring analysis:', selectedJob.config.tutoring_analysis);
+      }
     }
   }, [selectedJob]);
 
@@ -360,6 +367,34 @@ const JobDetails: React.FC = () => {
               <PlayIcon className="h-4 w-4 mr-2" />
               Play Audiobook
             </Button>
+          )}
+
+          {/* Tutoring buttons - show if tutoring analysis is available */}
+          {selectedJob.config?.tutoring_analysis && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // Navigate to voice assistant with tutoring context
+                  navigate(`/voice-assistant?mode=tutor&jobId=${selectedJob.id}`);
+                }}
+                className="text-blue-600 hover:text-blue-700 border-blue-300 hover:border-blue-400"
+              >
+                <AcademicCapIcon className="h-4 w-4 mr-2" />
+                Ask Tutor
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // Navigate to voice assistant with X-ray lookup context
+                  navigate(`/voice-assistant?mode=xray&jobId=${selectedJob.id}`);
+                }}
+                className="text-purple-600 hover:text-purple-700 border-purple-300 hover:border-purple-400"
+              >
+                <MagnifyingGlassIcon className="h-4 w-4 mr-2" />
+                X-ray Lookup
+              </Button>
+            </>
           )}
 
           {canCancel && (

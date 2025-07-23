@@ -25,6 +25,7 @@ export const ChapterSchema = z.object({
 export const JobConfigSchema = z.object({
   voice_config: VoiceConfigSchema.nullable().optional(),
   provider: z.string().nullable().optional(), // backwards compatibility
+  tutoring_analysis: z.record(z.unknown()).nullable().optional(), // tutoring analysis data
 });
 
 // Job result data
