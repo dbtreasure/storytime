@@ -64,16 +64,16 @@ class StandardPipecatVoiceAssistant:
 
     def _default_instructions(self) -> str:
         """Default system instructions for the voice assistant, built dynamically from available tools."""
-        
+
         # Tool descriptions that match the MCP server definitions
         tool_descriptions = {
             "search_library": "Search across the user's entire audiobook library",
-            "search_job": "Search within specific audiobook content by job ID", 
+            "search_job": "Search within specific audiobook content by job ID",
             "ask_job_question": "Ask questions about specific audiobook content",
             "tutor_chat": "Engage in Socratic tutoring dialogue about audiobook content",
             "xray_lookup": "Provide contextual content lookup (characters, concepts, settings)"
         }
-        
+
         # Tool usage examples
         tool_examples = {
             "search_library": [
@@ -96,17 +96,17 @@ class StandardPipecatVoiceAssistant:
                 '"What does this concept mean?" → use xray_lookup'
             ]
         }
-        
+
         # Build tools list dynamically (all tools should be available)
         available_tools = list(tool_descriptions.keys())
         tools_text = "\n".join([f"- {tool}: {tool_descriptions[tool]}" for tool in available_tools])
-        
+
         # Build examples dynamically
         examples = []
         for tool in available_tools:
             examples.extend(tool_examples.get(tool, []))
         examples_text = "\n".join([f"- {example}" for example in examples])
-        
+
         return f"""You are a voice assistant for StorytimeTTS, an AI-powered audiobook platform.
 
 You have access to the following tools to help users:

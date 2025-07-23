@@ -806,7 +806,7 @@ async def handle_xray_lookup_tool(arguments: dict[str, Any], request: Request) -
         content_context = result.get("content_context", {})
         job_title = content_context.get("title", f"Job {job_id}")
         spoiler_warning = result.get("spoiler_warning", {})
-        
+
         # Add spoiler warning if needed
         response_text = xray_response
         if spoiler_warning.get("potential_spoiler"):
@@ -816,7 +816,7 @@ async def handle_xray_lookup_tool(arguments: dict[str, Any], request: Request) -
             if suggestion:
                 response_text += f"💡 {suggestion}\n\n"
             response_text += xray_response
-        
+
         # Add progress context
         if content_context.get("progress_percentage", 0) > 0:
             progress_pct = content_context["progress_percentage"] * 100
