@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Audiobook parsing and TTS generation toolkit"
 authors = [{ name = "Storytime" }]
 readme = "README.md"
-requires-python = ">=3.11,<4.0"
+requires-python = ">=3.12,<4.0"
 dependencies = [
     "pydantic>=2.0.0",
     "openai~=1.74.0",  # Required for Pipecat compatibility
@@ -38,7 +38,8 @@ dependencies = [
     "fastmcp>=2.9.0",
     "websockets~=13.1",
     "sse-starlette>=1.6.0",
-    "pipecat-ai[silero]>=0.0.47",
+    "pipecat-ai[silero]>=0.0.76",
+    "soxr>=0.5.0",  # Replace resampy with soxr for Python 3.12+ compatibility
     "mcp>=1.0.0",
 ]
 
@@ -54,6 +55,13 @@ development = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.uv]
+# Fix dependency conflicts by using compatible versions
+constraint-dependencies = [
+    "numba>=0.60.0",    # Force newer numba that supports Python 3.12+
+    "llvmlite>=0.40.0", # Force newer llvmlite that supports Python 3.12+
+]
 
 [dependency-groups]
 dev = [

@@ -7,7 +7,7 @@ from openai import OpenAI
 from sqlalchemy import select
 
 from storytime.api.settings import get_settings
-from storytime.database import Job, ProgressRecord
+from storytime.database import Job, PlaybackProgress
 from storytime.mcp.auth import MCPAuthContext
 from storytime.services.progress_aware_search import ProgressAwareSearchService
 
@@ -43,8 +43,8 @@ async def xray_lookup(job_id: str, query: str, context: MCPAuthContext = None) -
 
         # Get user's reading progress for spoiler prevention
         progress_result = await context.db_session.execute(
-            select(ProgressRecord).where(
-                ProgressRecord.user_id == context.user.id, ProgressRecord.job_id == job_id
+            select(PlaybackProgress).where(
+                PlaybackProgress.user_id == context.user.id, PlaybackProgress.job_id == job_id
             )
         )
         progress = progress_result.scalar_one_or_none()

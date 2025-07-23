@@ -6,7 +6,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from ..database import AsyncSessionLocal, User, Job
+from ..database import AsyncSessionLocal, Job, User
 from ..voice_assistant.pipecat_assistant import (
     StandardPipecatManager,
     StandardPipecatVoiceAssistant,
@@ -23,7 +23,7 @@ router = APIRouter(prefix="/api/v1/voice-assistant", tags=["voice-assistant"])
 class VoiceAssistantStartRequest(BaseModel):
     """Request model for starting voice assistant with context."""
 
-    mode: str | None = None  # 'tutor', 'xray', etc.  
+    mode: str | None = None  # 'tutor', 'xray', etc.
     jobId: str | None = None  # Job ID for context-aware initialization
 
 
