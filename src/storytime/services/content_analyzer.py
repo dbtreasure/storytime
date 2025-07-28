@@ -32,6 +32,17 @@ class TutoringAnalysisResult(BaseModel):
     content_type: str  # "fiction", "non-fiction", "academic", etc.
 
 
+class OpeningLectureResult(BaseModel):
+    """Opening lecture content for tutor sessions."""
+
+    introduction: str  # Opening hook and context setting
+    key_concepts_overview: str  # Brief overview of main concepts
+    learning_objectives: str  # What students will explore
+    engagement_questions: list[str]  # Questions to get students thinking
+    lecture_duration_minutes: int  # Estimated duration
+    extension_topics: list[str]  # Topics for deeper exploration if requested
+
+
 class ContentAnalyzer:
     """Service for analyzing content to determine optimal job type."""
 
@@ -236,16 +247,18 @@ Analyze this content and respond with the JSON structure above."""
             "google_api_configured": get_settings().google_api_key is not None,
         }
 
-    async def analyze_for_tutoring(self, content: str, title: str | None = None) -> TutoringAnalysisResult:
+    async def analyze_for_tutoring(
+        self, content: str, title: str | None = None
+    ) -> TutoringAnalysisResult:
         """
         Analyze content for tutoring capabilities.
-        
+
         Simple grug-brain version that extracts basic info for tutoring conversations.
-        
+
         Args:
             content: The text content to analyze
             title: Optional title to help with analysis
-            
+
         Returns:
             TutoringAnalysisResult with themes, characters, setting, and discussion questions
         """
@@ -256,7 +269,7 @@ Analyze this content and respond with the JSON structure above."""
                 characters=[],
                 setting={"time": "unknown", "place": "unknown"},
                 discussion_questions=["What are the main ideas in this content?"],
-                content_type="unknown"
+                content_type="unknown",
             )
 
         if not content or len(content.strip()) < 100:
@@ -266,7 +279,7 @@ Analyze this content and respond with the JSON structure above."""
                 characters=[],
                 setting={"time": "present", "place": "unspecified"},
                 discussion_questions=["What can you learn from this content?"],
-                content_type="short-form"
+                content_type="short-form",
             )
 
         logger.info(f"Analyzing content for tutoring: {len(content)} characters")
@@ -280,7 +293,9 @@ Analyze this content and respond with the JSON structure above."""
                 return self._fallback_tutoring_analysis()
 
             result = self._parse_tutoring_result(response.text)
-            logger.info(f"Tutoring analysis completed: {len(result.themes)} themes, {len(result.characters)} characters")
+            logger.info(
+                f"Tutoring analysis completed: {len(result.themes)} themes, {len(result.characters)} characters"
+            )
             return result
 
         except Exception as e:
@@ -375,7 +390,191 @@ Provide the JSON analysis:"""
             discussion_questions=[
                 "What are the main ideas presented in this content?",
                 "How does this relate to your existing knowledge?",
-                "What questions does this content raise for you?"
+                "What questions does this content raise for you?",
             ],
-            content_type="general"
+            content_type="general",
+        )
+
+    async def analyze_for_opening_lecture(
+        self,
+        content: str,
+        title: str | None = None,
+        tutoring_analysis: TutoringAnalysisResult | None = None,
+    ) -> OpeningLectureResult:
+        """
+        Generate opening lecture content for tutor sessions.
+
+        Creates a 2-3 minute opening lecture that introduces the content and sets up
+        Socratic dialogue. Uses tutoring analysis if available for richer context.
+
+        Args:
+            content: The text content to analyze
+            title: Optional title to help with analysis
+            tutoring_analysis: Previous tutoring analysis results for context
+
+        Returns:
+            OpeningLectureResult with structured lecture content
+        """
+        if not self.client:
+            logger.warning("Gemini client not available, returning basic opening lecture")
+            return self._fallback_opening_lecture(title)
+
+        if not content or len(content.strip()) < 100:
+            logger.info("Content too short for opening lecture generation")
+            return self._fallback_opening_lecture(title)
+
+        logger.info(f"Generating opening lecture for content: {len(content)} characters")
+
+        try:
+            prompt = self._build_opening_lecture_prompt(content, title, tutoring_analysis)
+            response = self.model.generate_content(prompt)
+
+            if not response.text:
+                logger.warning("Gemini returned empty response for opening lecture")
+                return self._fallback_opening_lecture(title)
+
+            result = self._parse_opening_lecture_result(response.text)
+            logger.info(
+                f"Opening lecture generated: {result.lecture_duration_minutes} minutes, {len(result.engagement_questions)} questions"
+            )
+            return result
+
+        except Exception as e:
+            logger.error(f"Opening lecture generation failed: {e}", exc_info=True)
+            return self._fallback_opening_lecture(title)
+
+    def _build_opening_lecture_prompt(
+        self, content: str, title: str | None, tutoring_analysis: TutoringAnalysisResult | None
+    ) -> str:
+        """Build opening lecture generation prompt following structured guidelines."""
+
+        # Prepare context sections
+        title_context = f"\n**Title:** {title}" if title else ""
+
+        tutoring_context = ""
+        if tutoring_analysis:
+            tutoring_context = f"""
+**Available Context from Prior Analysis:**
+- Themes: {", ".join(tutoring_analysis.themes)}
+- Content Type: {tutoring_analysis.content_type}
+- Key Characters: {len(tutoring_analysis.characters)} identified
+- Setting: {tutoring_analysis.setting.get("time", "unknown")} / {tutoring_analysis.setting.get("place", "unknown")}
+"""
+
+        # Use first 3000 characters for lecture generation
+        analysis_content = content[:3000]
+        if len(content) > 3000:
+            analysis_content += "\n\n[Content truncated for analysis...]"
+
+        prompt = f"""### ROLE AND OBJECTIVE
+You are an expert educational content designer and tutor. Your goal is to create an engaging 2-3 minute opening lecture that introduces content to students and prepares them for Socratic dialogue.
+
+### INSTRUCTIONS / RESPONSE RULES
+- Create a warm, welcoming introduction that hooks student interest
+- Provide a clear overview of key concepts without spoiling details
+- Set learning expectations and objectives
+- Generate 3-4 engagement questions to prime student thinking
+- Keep the tone conversational and accessible
+- Aim for 2-3 minutes of speaking time (approximately 300-450 words)
+- DO NOT include detailed analysis or answers - focus on setting up curiosity
+- DO NOT spoil plot points or key revelations if this is narrative content
+
+### CONTEXT{title_context}
+**Content Length:** {len(content):,} characters{tutoring_context}
+
+**Content to Introduce:**
+```
+{analysis_content}
+```
+
+### EXAMPLES
+Example JSON response structure:
+```json
+{{
+    "introduction": "Welcome! Today we're diving into fascinating content that explores...",
+    "key_concepts_overview": "We'll be examining three main areas: first, the concept of...",
+    "learning_objectives": "By the end of our discussion, you'll be able to...",
+    "engagement_questions": ["What do you already know about...?", "How might this relate to...?"],
+    "lecture_duration_minutes": 3,
+    "extension_topics": ["Advanced concept A", "Historical context B"]
+}}
+```
+
+### REASONING STEPS
+Think step by step:
+1. Identify the most compelling hook from the content
+2. Determine 2-3 core concepts that are accessible entry points
+3. Consider what learning outcomes are realistic for a tutoring session
+4. Craft questions that activate prior knowledge and curiosity
+5. Identify natural extension points for deeper exploration
+
+### OUTPUT FORMATTING CONSTRAINTS
+Respond with a JSON object containing exactly these fields:
+```json
+{{
+    "introduction": "string - warm, engaging opening that hooks interest (100-150 words)",
+    "key_concepts_overview": "string - brief overview of main concepts to explore (100-150 words)", 
+    "learning_objectives": "string - what students will gain from the session (50-100 words)",
+    "engagement_questions": ["array of 3-4 open-ended questions to prime thinking"],
+    "lecture_duration_minutes": "integer - estimated speaking time (2-4 minutes)",
+    "extension_topics": ["array of 2-4 topics for deeper exploration if requested"]
+}}
+```
+
+### CONTENT ANALYSIS
+Generate the opening lecture JSON:"""
+
+        return prompt
+
+    def _parse_opening_lecture_result(self, response_text: str) -> OpeningLectureResult:
+        """Parse opening lecture response from Gemini."""
+        import json
+
+        try:
+            # Extract JSON from response
+            response_text = response_text.strip()
+
+            if "```json" in response_text:
+                start = response_text.find("```json") + 7
+                end = response_text.find("```", start)
+                json_text = response_text[start:end].strip()
+            elif "```" in response_text:
+                start = response_text.find("```") + 3
+                end = response_text.find("```", start)
+                json_text = response_text[start:end].strip()
+            else:
+                start = response_text.find("{")
+                end = response_text.rfind("}") + 1
+                if start != -1 and end != 0:
+                    json_text = response_text[start:end]
+                else:
+                    raise ValueError("No JSON structure found")
+
+            result_data = json.loads(json_text)
+            return OpeningLectureResult(**result_data)
+
+        except Exception as e:
+            logger.warning(f"Failed to parse opening lecture JSON: {e}")
+            return self._fallback_opening_lecture()
+
+    def _fallback_opening_lecture(self, title: str | None = None) -> OpeningLectureResult:
+        """Fallback opening lecture if generation fails."""
+        content_ref = f" '{title}'" if title else ""
+
+        return OpeningLectureResult(
+            introduction=f"Welcome to our tutoring session! Today we'll be exploring the content{content_ref} together. This material offers rich opportunities for discussion and deeper understanding. Let's embark on this learning journey with curiosity and open minds.",
+            key_concepts_overview="We'll examine the main themes and ideas presented in this content, considering different perspectives and interpretations. Our discussion will focus on understanding the key concepts and how they connect to broader knowledge.",
+            learning_objectives="Through our Socratic dialogue, you'll develop critical thinking skills, deepen your understanding of the material, and discover new connections and insights.",
+            engagement_questions=[
+                "What are your initial thoughts about this content?",
+                "What questions does this material raise for you?",
+                "How might this relate to what you already know?",
+            ],
+            lecture_duration_minutes=2,
+            extension_topics=[
+                "Critical analysis",
+                "Historical context",
+                "Contemporary relevance",
+                "Personal connections",
+            ],
         )

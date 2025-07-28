@@ -10,6 +10,15 @@
           "content_pattern": ".*plan.*|.*implement.*|.*build.*|.*create.*|.*add.*"
         },
         "on_error": "continue"
+      },
+      {
+        "name": "llm-prompt-guidelines-reminder",
+        "command": "echo '🤖 LLM PROMPT GUIDELINES REMINDER:\n\nWhen writing prompts for LLMs, follow this structure:\n\n1. 🎭 ROLE AND OBJECTIVE\n   • Define the LLM'\''s persona and goal\n   • Example: \"You are a helpful and creative recipe assistant...\"\n\n2. 📋 INSTRUCTIONS / RESPONSE RULES\n   • Clear, specific, unambiguous directives\n   • What to do, what not to do\n   • Example: \"Always list ingredients before steps.\" \"Do not suggest recipes requiring rare ingredients unless specified.\"\n\n3. 🌍 CONTEXT\n   • Relevant background info/data\n   • Example: user'\''s available ingredients, dietary restrictions, cooking skill level\n\n4. 💡 EXAMPLES (Few-Shot Prompting)\n   • Input-output pairs demonstrating desired format, style, detail\n\n5. 🧠 REASONING STEPS (Chain-of-Thought - CoT)\n   • Instruct the model to \"think step by step\" for complex requests\n\n6. 📐 OUTPUT FORMATTING CONSTRAINTS\n   • Define structure clearly\n   • Example: \"Respond in JSON with keys: '\''recipe_name'\'', '\''ingredients'\'' (as a list), '\''steps'\'' (as a list of strings)\"\n\n7. 🏗️ DELIMITERS AND STRUCTURE\n   • Use markers (###, ```, XML tags) to separate prompt sections\n\nRemember: Well-structured prompts = better, more consistent results!'",
+        "description": "Remind Claude to follow LLM prompt structure guidelines",
+        "match": {
+          "content_pattern": ".*prompt.*|.*gemini.*|.*openai.*|.*gpt.*|.*llm.*|.*generate_content.*|.*build.*prompt.*|.*response.*format.*"
+        },
+        "on_error": "continue"
       }
     ],
     "post-tool-use": [

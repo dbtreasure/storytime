@@ -91,8 +91,12 @@ class TestPerformanceBenchmarks:
         print("\nMemory Usage:")
         print(f"  Baseline: {baseline_memory:.1f} MB")
         print(f"  Original: {original_memory:.1f} MB (+{original_memory - baseline_memory:.1f} MB)")
-        print(f"  Basic Pipecat: {pipecat_memory:.1f} MB (+{pipecat_memory - baseline_memory:.1f} MB)")
-        print(f"  Enhanced Pipecat: {enhanced_memory:.1f} MB (+{enhanced_memory - baseline_memory:.1f} MB)")
+        print(
+            f"  Basic Pipecat: {pipecat_memory:.1f} MB (+{pipecat_memory - baseline_memory:.1f} MB)"
+        )
+        print(
+            f"  Enhanced Pipecat: {enhanced_memory:.1f} MB (+{enhanced_memory - baseline_memory:.1f} MB)"
+        )
 
         # Memory usage should be reasonable (all under 100MB additional)
         assert (original_memory - baseline_memory) < 100
@@ -116,9 +120,7 @@ class TestPerformanceBenchmarks:
                 os.environ[key] = value
 
             start_time = time.time()
-            assistant = EnhancedRealtimeVoiceAssistant(
-                openai_api_key="test_key"
-            )
+            assistant = EnhancedRealtimeVoiceAssistant(openai_api_key="test_key")
             selection_time = time.time() - start_time
 
             # Verify correct selection
@@ -169,7 +171,7 @@ class TestPerformanceBenchmarks:
         with pytest.MonkeyPatch().context() as m:
             m.setattr(
                 "storytime.voice_assistant.enhanced_pipecat_assistant.EnhancedPipecatVoiceAssistant",
-                lambda **kwargs: mock_enhanced
+                lambda **kwargs: mock_enhanced,
             )
 
             start_time = time.time()
@@ -219,7 +221,7 @@ class TestScalabilityMetrics:
 
         print("\nScalability Test:")
         print(f"  Created 10 assistants in {creation_time:.4f}s")
-        print(f"  Average: {creation_time/10:.4f}s per assistant")
+        print(f"  Average: {creation_time / 10:.4f}s per assistant")
         print(f"  Pipecat backends: {pipecat_count}/10")
         print(f"  Enhanced backends: {enhanced_count}/10")
 
@@ -246,15 +248,12 @@ class TestScalabilityMetrics:
         assistants = []
 
         for i, config in enumerate(configs):
-            assistant = EnhancedRealtimeVoiceAssistant(
-                openai_api_key=f"test_key_{i}",
-                **config
-            )
+            assistant = EnhancedRealtimeVoiceAssistant(openai_api_key=f"test_key_{i}", **config)
             assistants.append(assistant)
 
             current_memory = process.memory_info().rss
             config_name = f"{'Pipecat' if config['use_pipecat'] else 'Original'}"
-            if config.get('use_enhanced_features'):
+            if config.get("use_enhanced_features"):
                 config_name += " Enhanced"
 
             memory_usage[config_name] = (current_memory - baseline) / 1024 / 1024  # MB

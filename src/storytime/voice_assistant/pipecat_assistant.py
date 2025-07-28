@@ -7,10 +7,11 @@ Based on Pipecat best practices from:
 - examples/websocket/server/bot_websocket_server.py
 """
 
-
 import asyncio
 import contextlib
+import json
 import logging
+import re
 from collections.abc import Callable
 
 from pipecat.audio.vad.silero import SileroVADAnalyzer
@@ -62,6 +63,54 @@ class StandardPipecatVoiceAssistant:
         self.on_disconnected: Callable[[], None] | None = None
         self.on_error: Callable[[Exception], None] | None = None
 
+    def _get_initial_conversation(self) -> list[dict]:
+        """Get initial conversation to trigger tutoring flow if in tutor mode."""
+        # Check if this is a tutoring session by looking for tutoring context in instructions
+        if (
+            "TUTORING CONTEXT" in self.system_instructions
+            and "CRITICAL: This is a tutoring session" in self.system_instructions
+        ):
+            # Extract job ID from system instructions
+            job_id_match = re.search(r"Job ID: ([a-f0-9\-]+)", self.system_instructions)
+            if job_id_match:
+                job_id = job_id_match.group(1)
+                # Return initial conversation that forces tutor_chat call
+                return [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "Hello, I'm ready to start our tutoring session.",
+                            }
+                        ],
+                    },
+                    {
+                        "role": "assistant",
+                        "tool_calls": [
+                            {
+                                "id": "call_initial_tutor",
+                                "type": "function",
+                                "function": {
+                                    "name": "tutor_chat",
+                                    "arguments": json.dumps(
+                                        {
+                                            "job_id": job_id,
+                                            "user_message": "Hello, I'm ready to start our tutoring session.",
+                                        }
+                                    ),
+                                },
+                            }
+                        ],
+                    },
+                ]
+        return []  # No initial conversation for non-tutoring modes
+
+    def _get_tool_choice(self) -> str:
+        """Get tool choice configuration - force tool usage in tutoring mode."""
+        # Use auto for now to debug tool availability
+        return "auto"
+
     def _default_instructions(self) -> str:
         """Default system instructions for the voice assistant, built dynamically from available tools."""
 
@@ -71,7 +120,8 @@ class StandardPipecatVoiceAssistant:
             "search_job": "Search within specific audiobook content by job ID",
             "ask_job_question": "Ask questions about specific audiobook content",
             "tutor_chat": "Engage in Socratic tutoring dialogue about audiobook content",
-            "xray_lookup": "Provide contextual content lookup (characters, concepts, settings)"
+            "xray_lookup": "Provide contextual content lookup (characters, concepts, settings)",
+            "opening_lecture": "Fetch pre-generated opening lecture content to introduce audiobooks before tutoring",
         }
 
         # Tool usage examples
@@ -79,22 +129,22 @@ class StandardPipecatVoiceAssistant:
             "search_library": [
                 '"What books do I have?" → use search_library',
                 '"Do I have any books about science?" → use search_library with "science"',
-                '"Search for books by Shakespeare" → use search_library with "Shakespeare"'
+                '"Search for books by Shakespeare" → use search_library with "Shakespeare"',
             ],
-            "search_job": [
-                '"Search within this specific book" → use search_job with job ID'
-            ],
-            "ask_job_question": [
-                '"What is this book about?" → use ask_job_question'
-            ],
+            "search_job": ['"Search within this specific book" → use search_job with job ID'],
+            "ask_job_question": ['"What is this book about?" → use ask_job_question'],
             "tutor_chat": [
                 '"Help me understand this book better" → use tutor_chat for Socratic dialogue',
-                '"Teach me about the themes in this book" → use tutor_chat'
+                '"Teach me about the themes in this book" → use tutor_chat',
             ],
             "xray_lookup": [
                 '"Who is this character?" → use xray_lookup for contextual information',
-                '"What does this concept mean?" → use xray_lookup'
-            ]
+                '"What does this concept mean?" → use xray_lookup',
+            ],
+            "opening_lecture": [
+                '"Give me an introduction to this book" → use opening_lecture to provide prepared lecture content',
+                '"Start with an overview" → use opening_lecture at the beginning of tutoring sessions',
+            ],
         }
 
         # Build tools list dynamically (all tools should be available)
@@ -112,14 +162,37 @@ class StandardPipecatVoiceAssistant:
 You have access to the following tools to help users:
 {tools_text}
 
-IMPORTANT: When users ask about their audiobooks, search for books, or want to find specific content,
+TUTORING SESSION PROTOCOL:
+When users are in tutoring mode, follow this flow:
+
+1. IMMEDIATE FIRST ACTION: If system instructions contain "CRITICAL: This is a tutoring session", you MUST call tutor_chat as your very first response without waiting for user input. The tutor_chat tool will automatically:
+   - Check the database for existing conversations
+   - If no intro has been delivered, fetch and present the opening lecture content
+   - Mark the intro as completed for future sessions
+   - Handle all conversation tracking in the database
+
+2. EVERY INTERACTION: Use tutor_chat for ALL tutoring interactions:
+   - First time: Delivers opening lecture automatically, then ready for dialogue
+   - Subsequent times: Goes straight to Socratic dialogue
+   - Handles interruptions and user preferences naturally
+   - Tracks all conversation history in database
+
+3. NEVER call opening_lecture directly - tutor_chat handles everything automatically
+
+GENERAL TOOL USAGE:
+When users ask about their audiobooks, search for books, or want to find specific content,
 you MUST use the appropriate tools. Always search their library first before saying you don't know.
 
 Examples of when to use tools:
 {examples_text}
 
-Your voice should be warm and engaging with a friendly tone.
-Keep responses concise since this is voice interaction - one or two sentences unless asked to elaborate."""
+VOICE INTERACTION GUIDELINES:
+- Keep responses concise and conversational for voice interaction
+- Use natural speech patterns and pauses
+- Be warm, engaging, and encouraging
+- Respond immediately to interruptions with acknowledgment
+- For tutoring: Guide discovery through questions rather than lecturing (except during opening lecture)
+- Always be ready to pivot based on user needs and interruptions"""
 
     async def start(self) -> None:
         """Start the Pipecat voice assistant server."""
@@ -149,11 +222,11 @@ Keep responses concise since this is voice interaction - one or two sentences un
                     "properties": {
                         "query": {
                             "type": "string",
-                            "description": "Search query to find audiobooks in the library"
+                            "description": "Search query to find audiobooks in the library",
                         }
                     },
-                    "required": ["query"]
-                }
+                    "required": ["query"],
+                },
             },
             {
                 "type": "function",
@@ -164,15 +237,15 @@ Keep responses concise since this is voice interaction - one or two sentences un
                     "properties": {
                         "job_id": {
                             "type": "string",
-                            "description": "Job ID of the specific audiobook to search within"
+                            "description": "Job ID of the specific audiobook to search within",
                         },
                         "query": {
                             "type": "string",
-                            "description": "Search query to find content within the book"
-                        }
+                            "description": "Search query to find content within the book",
+                        },
                     },
-                    "required": ["job_id", "query"]
-                }
+                    "required": ["job_id", "query"],
+                },
             },
             {
                 "type": "function",
@@ -183,15 +256,15 @@ Keep responses concise since this is voice interaction - one or two sentences un
                     "properties": {
                         "job_id": {
                             "type": "string",
-                            "description": "Job ID of the audiobook to ask about"
+                            "description": "Job ID of the audiobook to ask about",
                         },
                         "question": {
                             "type": "string",
-                            "description": "Question to ask about the audiobook content"
-                        }
+                            "description": "Question to ask about the audiobook content",
+                        },
                     },
-                    "required": ["job_id", "question"]
-                }
+                    "required": ["job_id", "question"],
+                },
             },
             {
                 "type": "function",
@@ -202,19 +275,19 @@ Keep responses concise since this is voice interaction - one or two sentences un
                     "properties": {
                         "job_id": {
                             "type": "string",
-                            "description": "Job ID of the audiobook to discuss"
+                            "description": "Job ID of the audiobook to discuss",
                         },
                         "user_message": {
                             "type": "string",
-                            "description": "The user's message or question for the tutoring conversation"
+                            "description": "The user's message or question for the tutoring conversation",
                         },
                         "conversation_history": {
                             "type": "string",
-                            "description": "Previous conversation context for continuity"
-                        }
+                            "description": "Previous conversation context for continuity",
+                        },
                     },
-                    "required": ["job_id", "user_message"]
-                }
+                    "required": ["job_id", "user_message"],
+                },
             },
             {
                 "type": "function",
@@ -225,16 +298,31 @@ Keep responses concise since this is voice interaction - one or two sentences un
                     "properties": {
                         "job_id": {
                             "type": "string",
-                            "description": "Job ID of the audiobook to query"
+                            "description": "Job ID of the audiobook to query",
                         },
                         "query": {
                             "type": "string",
-                            "description": "The contextual query (e.g., 'Who is Elizabeth?', 'What is happening?')"
+                            "description": "The contextual query (e.g., 'Who is Elizabeth?', 'What is happening?')",
+                        },
+                    },
+                    "required": ["job_id", "query"],
+                },
+            },
+            {
+                "type": "function",
+                "name": "opening_lecture",
+                "description": "Fetch pre-generated opening lecture content for a specific audiobook to introduce the content before Socratic tutoring begins.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "job_id": {
+                            "type": "string",
+                            "description": "Job ID of the audiobook to get opening lecture for",
                         }
                     },
-                    "required": ["job_id", "query"]
-                }
-            }
+                    "required": ["job_id"],
+                },
+            },
         ]
 
         # Create OpenAI Realtime service with proper session configuration
@@ -245,15 +333,17 @@ Keep responses concise since this is voice interaction - one or two sentences un
                     type="server_vad",
                     threshold=0.5,
                     prefix_padding_ms=300,
-                    silence_duration_ms=1200  # Increase to reduce interruption sensitivity
+                    silence_duration_ms=1200,  # Increase to reduce interruption sensitivity
                 ),
                 instructions=f"{self.system_instructions}\n\nIMPORTANT: Always respond with audio. Keep responses conversational and concise.",
                 voice="alloy",  # Explicitly set voice for audio output
                 input_audio_format="pcm16",
                 output_audio_format="pcm16",
                 modalities=["text", "audio"],  # Enable both text and audio
-                tool_choice="auto",  # Enable tool usage
+                tool_choice=self._get_tool_choice(),  # Force tutor_chat in tutoring mode
                 tools=tools,  # Add tools to OpenAI session
+                # Add initial conversation to trigger tutoring flow if needed
+                # conversation=self._get_initial_conversation()  # Temporarily disabled to restore audio
             )
 
             self.llm = OpenAIRealtimeBetaLLMService(
@@ -271,21 +361,30 @@ Keep responses concise since this is voice interaction - one or two sentences un
         self._tools_schema = None
 
         # Create context aggregator for message handling
+        # Check if this is a tutoring session and inject appropriate initial message
+        initial_message = "Ready to help!"
+        if "CRITICAL: This is a tutoring session" in self.system_instructions:
+            initial_message = "Hello, I'm ready to start our tutoring session."
+
         context = OpenAILLMContext(
-            messages=[{"role": "user", "content": "Ready to help!"}],
+            messages=[{"role": "user", "content": initial_message}],
         )
         context_aggregator = self.llm.create_context_aggregator(context)
 
         # Create standard Pipecat pipeline with debugging
-        self.pipeline = Pipeline([
-            self.transport.input(),     # Audio input from WebSocket
-            context_aggregator.user(),  # User message aggregation
-            self.llm,                   # OpenAI Realtime LLM service
-            context_aggregator.assistant(),  # Assistant response aggregation
-            self.transport.output(),    # Audio output to WebSocket
-        ])
+        self.pipeline = Pipeline(
+            [
+                self.transport.input(),  # Audio input from WebSocket
+                context_aggregator.user(),  # User message aggregation
+                self.llm,  # OpenAI Realtime LLM service
+                context_aggregator.assistant(),  # Assistant response aggregation
+                self.transport.output(),  # Audio output to WebSocket
+            ]
+        )
 
-        logger.info("Pipeline created with components: input -> user_context -> llm -> assistant_context -> output")
+        logger.info(
+            "Pipeline created with components: input -> user_context -> llm -> assistant_context -> output"
+        )
 
         # Create pipeline task
         self.task = PipelineTask(
@@ -294,7 +393,7 @@ Keep responses concise since this is voice interaction - one or two sentences un
                 allow_interruptions=True,  # Enable interruptions for natural conversation
                 enable_metrics=True,
                 enable_usage_metrics=True,
-            )
+            ),
         )
 
         # Register WebSocket event handlers
@@ -350,18 +449,20 @@ Keep responses concise since this is voice interaction - one or two sentences un
         try:
             # Use official Pipecat method to register MCP tools
             from .pipecat_mcp_integration import register_mcp_tools_with_llm
+
             result = await register_mcp_tools_with_llm(mcp_client, self.llm)
 
             if result.get("success"):
                 self._tools_schema = result.get("tools_schema")
-                logger.info("Successfully registered MCP tools with LLM using official Pipecat patterns")
+                logger.info(
+                    "Successfully registered MCP tools with LLM using official Pipecat patterns"
+                )
 
             else:
                 logger.error(f"Failed to register MCP tools: {result.get('error')}")
 
         except Exception as e:
             logger.error(f"Error registering MCP client: {e}")
-
 
 
 class StandardPipecatManager:

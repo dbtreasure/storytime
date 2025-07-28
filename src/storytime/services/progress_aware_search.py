@@ -22,19 +22,14 @@ class ProgressAwareSearchService:
         self.base_service = ResponsesAPIVectorStoreService(openai_client, db_session)
 
     async def search_with_progress_filter(
-        self,
-        user_id: str,
-        job_id: str,
-        query: str,
-        max_results: int = 5
+        self, user_id: str, job_id: str, query: str, max_results: int = 5
     ) -> dict[str, Any]:
         """Search job content with progress-based filtering."""
         try:
             # Get user's progress
             progress_result = await self.db_session.execute(
                 select(PlaybackProgress).where(
-                    PlaybackProgress.user_id == user_id,
-                    PlaybackProgress.job_id == job_id
+                    PlaybackProgress.user_id == user_id, PlaybackProgress.job_id == job_id
                 )
             )
             progress = progress_result.scalar_one_or_none()
@@ -55,10 +50,7 @@ class ProgressAwareSearchService:
             # For now, we'll add progress context to the query
             # In a full implementation, we'd filter chunks by position
             filtered_query = self._build_progress_aware_query(
-                query,
-                progress_percentage,
-                current_chapter,
-                job.title
+                query, progress_percentage, current_chapter, job.title
             )
 
             # Use base service with filtered query
@@ -71,7 +63,7 @@ class ProgressAwareSearchService:
                 result["progress_context"] = {
                     "percentage_complete": progress_percentage,
                     "current_chapter": current_chapter,
-                    "filtered": True
+                    "filtered": True,
                 }
 
             return result
@@ -81,18 +73,14 @@ class ProgressAwareSearchService:
             return {"success": False, "error": str(e), "results": []}
 
     async def ask_question_with_progress_filter(
-        self,
-        user_id: str,
-        job_id: str,
-        question: str
+        self, user_id: str, job_id: str, question: str
     ) -> dict[str, Any]:
         """Ask question about job content with progress filtering."""
         try:
             # Get user's progress
             progress_result = await self.db_session.execute(
                 select(PlaybackProgress).where(
-                    PlaybackProgress.user_id == user_id,
-                    PlaybackProgress.job_id == job_id
+                    PlaybackProgress.user_id == user_id, PlaybackProgress.job_id == job_id
                 )
             )
             progress = progress_result.scalar_one_or_none()
@@ -126,7 +114,7 @@ When answering, you must:
                 result["progress_filtered"] = True
                 result["user_progress"] = {
                     "percentage": progress_percentage,
-                    "chapter": current_chapter
+                    "chapter": current_chapter,
                 }
 
             return result
@@ -136,30 +124,26 @@ When answering, you must:
             return {"success": False, "error": str(e), "answer": ""}
 
     def _build_progress_aware_query(
-        self,
-        query: str,
-        progress_percentage: float,
-        current_chapter: str | None,
-        title: str | None
+        self, query: str, progress_percentage: float, current_chapter: str | None, title: str | None
     ) -> str:
         """Build a query that includes progress context."""
         context = f"In '{title or 'this content'}', "
 
         if current_chapter:
-            context += f"up to chapter '{current_chapter}' ({progress_percentage * 100:.1f}% complete), "
+            context += (
+                f"up to chapter '{current_chapter}' ({progress_percentage * 100:.1f}% complete), "
+            )
         else:
             context += f"in the first {progress_percentage * 100:.1f}% of the content, "
 
         return context + query
 
     async def get_content_chunks_with_positions(
-        self,
-        job_id: str,
-        user_id: str
+        self, job_id: str, user_id: str
     ) -> list[dict[str, Any]]:
         """
         Get content chunks with position metadata.
-        
+
         This is a placeholder for future implementation where we'd:
         1. Store chunks with position metadata during job processing
         2. Retrieve chunks with their positions from vector store

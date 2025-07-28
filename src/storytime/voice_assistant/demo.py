@@ -18,8 +18,7 @@ from storytime.voice_assistant.pipecat_assistant import (
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,7 @@ async def main():
     # Create MCP client for StorytimeTTS integration
     mcp_client = MCPClient(
         server_url="http://localhost:8000/mcp-server/sse",
-        auth_token=os.getenv("MCP_AUTH_TOKEN", "test-token")
+        auth_token=os.getenv("MCP_AUTH_TOKEN", "test-token"),
     )
 
     # Create voice assistant with IPv4 configuration

@@ -87,8 +87,18 @@ The user accessed you from the {mode} mode for this specific audiobook."""
 
 TUTORING CONTEXT: This book covers themes including: {themes}
 Key characters include: {characters}
-Use the tutor_chat tool to engage in Socratic dialogue about this content.
-Begin the conversation by acknowledging you're ready to discuss '{job.title}' and ask what aspect they'd like to explore."""
+
+CRITICAL: This is a tutoring session. You MUST immediately call tutor_chat as your FIRST response when the user connects. Do not wait for the user to speak first.
+
+IMMEDIATE ACTION REQUIRED: As soon as the session begins, call tutor_chat with the message "Hello! I'm ready to start our tutoring session." 
+
+The tutor_chat tool will automatically:
+- Check if an opening lecture has been delivered for this job
+- If not, deliver the pre-generated opening lecture content
+- If already delivered, proceed with Socratic dialogue
+- Track all conversation history in the database
+
+NEVER start with a general greeting or question. Your FIRST action must be calling tutor_chat for '{job.title}'."""
 
                     elif mode == "xray":
                         job_context += f"""

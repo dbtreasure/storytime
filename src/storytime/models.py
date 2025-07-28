@@ -84,7 +84,12 @@ class JobConfig(BaseModel):
         None, description="Text preprocessing configuration"
     )
     provider: str | None = Field(None, description="TTS provider (for backwards compatibility)")
-    tutoring_analysis: dict[str, Any] | None = Field(None, description="Tutoring analysis data for Socratic dialogue")
+    tutoring_analysis: dict[str, Any] | None = Field(
+        None, description="Tutoring analysis data for Socratic dialogue"
+    )
+    opening_lecture: dict[str, Any] | None = Field(
+        None, description="Pre-generated opening lecture content for tutor sessions"
+    )
 
 
 class JobResultData(BaseModel):
@@ -342,3 +347,43 @@ class SearchLibraryRequest(BaseModel):
 
     query: str = Field(..., description="Search query for the user's audiobook library")
     max_results: int = Field(10, description="Maximum number of search results to return")
+
+
+# =============================================================================
+# Tutor Conversation Models
+# =============================================================================
+
+
+class TutorConversationResponse(BaseModel):
+    """Response model for tutor conversations."""
+
+    id: str
+    user_id: str
+    job_id: str
+    session_type: str
+    is_intro_completed: bool
+    messages: dict[str, Any] | None = None
+    summary: str | None = None
+    session_metadata: dict[str, Any] | None = None
+    created_at: datetime
+    updated_at: datetime
+    completed_at: datetime | None = None
+
+
+class CreateTutorConversationRequest(BaseModel):
+    """Request model for creating a tutor conversation."""
+
+    job_id: str = Field(..., description="Job ID for the tutoring session")
+    session_type: str = Field("socratic", description="Type of tutoring session")
+    messages: dict[str, Any] | None = Field(None, description="Initial conversation messages")
+    session_metadata: dict[str, Any] | None = Field(None, description="Session-specific metadata")
+
+
+class UpdateTutorConversationRequest(BaseModel):
+    """Request model for updating a tutor conversation."""
+
+    messages: dict[str, Any] | None = Field(None, description="Updated conversation messages")
+    summary: str | None = Field(None, description="Conversation summary")
+    is_intro_completed: bool | None = Field(None, description="Whether intro is completed")
+    session_metadata: dict[str, Any] | None = Field(None, description="Updated session metadata")
+    completed_at: datetime | None = Field(None, description="Completion timestamp")

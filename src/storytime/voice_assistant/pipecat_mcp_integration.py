@@ -10,6 +10,7 @@ from typing import Any
 try:
     from mcp.client.session_group import SseServerParameters
     from pipecat.services.mcp_service import MCPClient
+
     MCP_AVAILABLE = True
 except ImportError:
     MCP_AVAILABLE = False
@@ -23,12 +24,14 @@ async def create_mcp_client(mcp_base_url: str, mcp_access_token: str) -> MCPClie
     """Create and initialize MCP client using official Pipecat MCP service."""
 
     if not MCP_AVAILABLE:
-        raise ImportError("MCP dependencies not available. Install with: pip install pipecat-ai[mcp]")
+        raise ImportError(
+            "MCP dependencies not available. Install with: pip install pipecat-ai[mcp]"
+        )
 
     # Create SSE server parameters for MCP connection
     sse_params = SseServerParameters(
         url=f"{mcp_base_url}/mcp-server/sse",
-        headers={"Authorization": f"Bearer {mcp_access_token}"}
+        headers={"Authorization": f"Bearer {mcp_access_token}"},
     )
 
     # Create MCP client using official Pipecat service
@@ -54,8 +57,7 @@ async def register_mcp_tools_with_llm(mcp_client: MCPClient, llm) -> dict[str, A
 
 
 async def create_mcp_integration(
-    mcp_base_url: str,
-    mcp_access_token: str
+    mcp_base_url: str, mcp_access_token: str
 ) -> tuple[None | Any, dict[str, Any]]:
     """Create and initialize MCP integration using official Pipecat patterns."""
 

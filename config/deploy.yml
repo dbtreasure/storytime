@@ -26,7 +26,11 @@ servers:
   worker:
     hosts:
       - 129.212.136.218
-    cmd: celery -A storytime.worker.celery_app:celery_app worker --loglevel=info
+    cmd: celery -A storytime.worker.celery_app:celery_app worker --loglevel=info --concurrency=1 --max-memory-per-child=1000000
+    options:
+      memory: 1500m
+      memory-swap: 1500m
+      cpus: "1.0"
 
 # Environment variables
 env:

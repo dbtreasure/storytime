@@ -6,7 +6,7 @@ import pytest
 import pytest_asyncio
 
 # Configure pytest-asyncio
-pytest_plugins = ('pytest_asyncio',)
+pytest_plugins = ("pytest_asyncio",)
 
 from pipecat.frames.frames import (
     BotInterruptionFrame,
@@ -325,9 +325,7 @@ class TestEnhancedRealtimeVoiceAssistant:
     @patch.dict("os.environ", {"USE_PIPECAT_BACKEND": "true", "USE_ENHANCED_FEATURES": "true"})
     def test_environment_variable_detection(self):
         """Test automatic backend detection from environment variables."""
-        assistant = EnhancedRealtimeVoiceAssistant(
-            openai_api_key="test_key"
-        )
+        assistant = EnhancedRealtimeVoiceAssistant(openai_api_key="test_key")
 
         # Should auto-detect enhanced Pipecat from environment
         assert assistant.use_pipecat is True

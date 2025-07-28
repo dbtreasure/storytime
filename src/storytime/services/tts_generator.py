@@ -92,30 +92,72 @@ class TTSGenerator:
         chunks = self._chunk_text(text, max_chars)
         logger.info(f"Split text into {len(chunks)} chunks for TTS processing")
 
-        audio_segments = []
+        # Use file-based concatenation to avoid loading all segments in memory
+        temp_files = []
 
-        for i, chunk in enumerate(chunks):
-            logger.debug(f"Processing chunk {i + 1}/{len(chunks)} ({len(chunk)} chars)")
-            chunk_audio = await self._generate_single_chunk(chunk, voice_id)
+        try:
+            # Generate audio chunks and save to temporary files
+            for i, chunk in enumerate(chunks):
+                logger.debug(f"Processing chunk {i + 1}/{len(chunks)} ({len(chunk)} chars)")
+                chunk_audio = await self._generate_single_chunk(chunk, voice_id)
 
-            # Convert to AudioSegment for concatenation
-            with tempfile.NamedTemporaryFile(suffix=".mp3") as tmp_file:
+                # Save chunk to temporary file
+                tmp_file = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
                 tmp_file.write(chunk_audio)
                 tmp_file.flush()
-                segment = AudioSegment.from_mp3(tmp_file.name)
-                audio_segments.append(segment)
+                tmp_file.close()
+                temp_files.append(tmp_file.name)
 
-        # Concatenate all segments
-        logger.info(f"Concatenating {len(audio_segments)} audio segments")
-        combined_audio = audio_segments[0]
-        for segment in audio_segments[1:]:
-            combined_audio += segment
+            # Memory-efficient concatenation using file operations
+            logger.info(
+                f"Concatenating {len(temp_files)} audio segments using memory-efficient method"
+            )
 
-        # Export to bytes
-        with tempfile.NamedTemporaryFile(suffix=".mp3") as tmp_file:
-            combined_audio.export(tmp_file.name, format="mp3")
-            with open(tmp_file.name, "rb") as f:
-                return f.read()
+            # Create output file
+            output_file = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
+            output_file.close()
+
+            # Load and concatenate one segment at a time
+            combined_audio = None
+            for i, temp_file_path in enumerate(temp_files):
+                logger.debug(f"Loading segment {i + 1}/{len(temp_files)}")
+                segment = AudioSegment.from_mp3(temp_file_path)
+
+                if combined_audio is None:
+                    combined_audio = segment
+                else:
+                    combined_audio += segment
+
+                # Free memory by deleting the segment reference
+                del segment
+
+                # For very large files, save intermediate results to disk
+                if i > 0 and i % 10 == 0:
+                    logger.debug(f"Saving intermediate result after {i + 1} segments")
+                    combined_audio.export(output_file.name, format="mp3")
+                    # Reload to free memory
+                    combined_audio = AudioSegment.from_mp3(output_file.name)
+
+            # Export final result
+            combined_audio.export(output_file.name, format="mp3")
+
+            # Read the final result
+            with open(output_file.name, "rb") as f:
+                result = f.read()
+
+            # Clean up output file
+            os.unlink(output_file.name)
+
+            return result
+
+        finally:
+            # Clean up all temporary files
+            for temp_file_path in temp_files:
+                try:
+                    if os.path.exists(temp_file_path):
+                        os.unlink(temp_file_path)
+                except Exception as e:
+                    logger.warning(f"Failed to delete temp file {temp_file_path}: {e}")
 
     def _chunk_text(self, text: str, max_chars: int) -> list[str]:
         """Split text into chunks that respect sentence boundaries when possible."""

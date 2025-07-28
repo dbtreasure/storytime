@@ -47,6 +47,7 @@ class User(Base):
     jobs = relationship("Job", back_populates="user")
     progress_records = relationship("PlaybackProgress", back_populates="user")
     vector_store = relationship("UserVectorStore", back_populates="user", uselist=False)
+    tutor_conversations = relationship("TutorConversation", back_populates="user")
 
     def verify_password(self, password: str) -> bool:
         """Verify a password against the hash."""
@@ -117,6 +118,7 @@ class Job(Base):
     steps = relationship("JobStep", back_populates="job", cascade="all, delete-orphan")
     progress_records = relationship("PlaybackProgress", back_populates="job")
     vector_store_file = relationship("VectorStoreFile", back_populates="job", uselist=False)
+    tutor_conversations = relationship("TutorConversation", back_populates="job")
 
     @property
     def duration(self) -> float | None:
@@ -292,6 +294,52 @@ class VectorStoreFile(Base):
     )  # Will need to add this to Job model
 
 
+class TutorConversation(Base):
+    """Tutor conversation sessions for tracking dialogue history and progress."""
+
+    __tablename__ = "tutor_conversations"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False, index=True)
+    job_id: Mapped[str] = mapped_column(String, ForeignKey("jobs.id"), nullable=False, index=True)
+
+    # Conversation metadata
+    session_type: Mapped[str] = mapped_column(
+        String, nullable=False, default="socratic"
+    )  # "opening_lecture", "socratic", "qa"
+    is_intro_completed: Mapped[bool] = mapped_column(
+        Integer, nullable=False, default=False
+    )  # SQLite compatibility
+
+    # Conversation content
+    messages: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON, nullable=True
+    )  # Conversation history
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)  # Post-conversation summary
+
+    # Session metadata
+    session_metadata: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON, nullable=True
+    )  # Session-specific data
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    # Relationships
+    user = relationship("User", back_populates="tutor_conversations")
+    job = relationship("Job", back_populates="tutor_conversations")
+
+    # Constraints
+    __table_args__ = (
+        Index("idx_tutor_conv_user_job", "user_id", "job_id"),
+        Index("idx_tutor_conv_created", "created_at"),
+    )
+
+
 settings = get_settings()
 engine = create_async_engine(settings.database_url, echo=True, future=True)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
@@ -310,5 +358,5 @@ async def create_all():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logging.getLogger(__name__).info(
-        "Database tables created (User, Job, JobStep, PlaybackProgress, UserVectorStore, VectorStoreFile)"
+        "Database tables created (User, Job, JobStep, PlaybackProgress, UserVectorStore, VectorStoreFile, TutorConversation)"
     )

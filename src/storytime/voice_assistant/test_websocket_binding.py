@@ -5,11 +5,15 @@
 import socket
 
 _original_getaddrinfo = socket.getaddrinfo
+
+
 def _ipv4_only_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
-    if host in ('localhost', '::1', ''):
-        host = '127.0.0.1'
+    if host in ("localhost", "::1", ""):
+        host = "127.0.0.1"
         family = socket.AF_INET  # Force IPv4
     return _original_getaddrinfo(host, port, family, type, proto, flags)
+
+
 socket.getaddrinfo = _ipv4_only_getaddrinfo
 
 import asyncio
@@ -19,6 +23,7 @@ import websockets
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 async def test_websocket_server():
     """Test basic WebSocket server binding."""
@@ -49,6 +54,7 @@ async def test_websocket_server():
 
         except Exception as e:
             logger.error(f"✗ Failed to bind to {host}:{port}: {e}")
+
 
 if __name__ == "__main__":
     asyncio.run(test_websocket_server())

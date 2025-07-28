@@ -120,7 +120,7 @@ def create_mcp_server() -> FastMCP:
                 job_id=params.job_id,
                 user_message=params.user_message,
                 conversation_history=params.conversation_history,
-                context=context
+                context=context,
             )
         except Exception as e:
             logger.error(f"Error in tutor_chat_tool: {e}")
@@ -135,11 +135,7 @@ def create_mcp_server() -> FastMCP:
         """
         try:
             context = await get_auth_context()
-            return await xray_lookup(
-                job_id=params.job_id,
-                query=params.query,
-                context=context
-            )
+            return await xray_lookup(job_id=params.job_id, query=params.query, context=context)
         except Exception as e:
             logger.error(f"Error in xray_lookup_tool: {e}")
             return {"success": False, "error": f"Tool execution failed: {e!s}", "answer": ""}

@@ -13,6 +13,7 @@ from sse_starlette import EventSourceResponse
 
 from storytime.api.settings import get_settings
 from storytime.mcp.auth.jwt_middleware import authenticate_mcp_request, close_auth_context
+from storytime.mcp.tools.opening_lecture import opening_lecture
 from storytime.mcp.tools.tutor_chat import tutor_chat
 from storytime.mcp.tools.xray_lookup import xray_lookup
 from storytime.services.responses_api_service import ResponsesAPIVectorStoreService
@@ -228,6 +229,20 @@ async def mcp_messages_endpoint(request: Request, session_id: str | None = Query
                         "required": ["job_id", "query"],
                     },
                 },
+                {
+                    "name": "opening_lecture",
+                    "description": "Fetch pre-generated opening lecture content for a specific audiobook to introduce the content before Socratic tutoring begins.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "job_id": {
+                                "type": "string",
+                                "description": "The job ID of the audiobook to get opening lecture for",
+                            },
+                        },
+                        "required": ["job_id"],
+                    },
+                },
             ]
 
             response = {"jsonrpc": "2.0", "id": request_id, "result": {"tools": tools}}
@@ -247,6 +262,8 @@ async def mcp_messages_endpoint(request: Request, session_id: str | None = Query
                 result = await handle_tutor_chat_tool(arguments, request)
             elif tool_name == "xray_lookup":
                 result = await handle_xray_lookup_tool(arguments, request)
+            elif tool_name == "opening_lecture":
+                result = await handle_opening_lecture_tool(arguments, request)
             else:
                 response = {
                     "jsonrpc": "2.0",
@@ -697,8 +714,7 @@ async def handle_tutor_chat_tool(arguments: dict[str, Any], request: Request) ->
             job_id=job_id,
             user_message=user_message,
             conversation_history=conversation_history,
-            user_id=auth_context.user.id,
-            db_session=auth_context.db_session
+            context=auth_context,
         )
 
         if not result.get("success"):
@@ -782,11 +798,7 @@ async def handle_xray_lookup_tool(arguments: dict[str, Any], request: Request) -
             }
 
         # Use the xray_lookup tool
-        result = await xray_lookup(
-            job_id=job_id,
-            query=query,
-            context=auth_context
-        )
+        result = await xray_lookup(job_id=job_id, query=query, context=auth_context)
 
         if not result.get("success"):
             return {
@@ -842,6 +854,96 @@ async def handle_xray_lookup_tool(arguments: dict[str, Any], request: Request) -
                     "id": "internal_error",
                     "title": "Internal Error",
                     "text": f"An internal error occurred during X-ray lookup: {e!s}",
+                    "url": None,
+                }
+            ]
+        }
+
+    finally:
+        # Always close database session
+        if auth_context:
+            await close_auth_context(auth_context)
+
+
+async def handle_opening_lecture_tool(
+    arguments: dict[str, Any], request: Request
+) -> dict[str, Any]:
+    """Handle opening lecture tool execution."""
+
+    # Get authentication context
+    auth_context = await get_authenticated_context(request)
+    if not auth_context:
+        return {
+            "results": [
+                {
+                    "id": "auth_error",
+                    "title": "Authentication Required",
+                    "text": "This tool requires authentication. Please authenticate via OAuth to access your audiobook library.",
+                    "url": None,
+                }
+            ]
+        }
+
+    try:
+        # Parse opening lecture parameters
+        job_id = arguments.get("job_id")
+
+        if not job_id:
+            return {
+                "results": [
+                    {
+                        "id": "missing_params",
+                        "title": "Missing Parameters",
+                        "text": "job_id is required for opening lecture retrieval",
+                        "url": None,
+                    }
+                ]
+            }
+
+        # Call the opening lecture tool
+        result = await opening_lecture(auth_context.db_session, auth_context.user.id, job_id)
+
+        # Format the response based on success/failure
+        if result.get("success"):
+            lecture_data = result["opening_lecture"]
+            return {
+                "results": [
+                    {
+                        "id": "opening_lecture_content",
+                        "title": f"Opening Lecture: {result['job_title']}",
+                        "text": f"Introduction: {lecture_data['introduction']}\n\nKey Concepts: {lecture_data['key_concepts_overview']}\n\nLearning Objectives: {lecture_data['learning_objectives']}",
+                        "url": None,
+                        "metadata": {
+                            "lecture_duration_minutes": lecture_data["lecture_duration_minutes"],
+                            "engagement_questions": lecture_data["engagement_questions"],
+                            "extension_topics": lecture_data["extension_topics"],
+                            "generated_at": lecture_data.get("generated_at"),
+                        },
+                    }
+                ]
+            }
+        else:
+            return {
+                "results": [
+                    {
+                        "id": "lecture_error",
+                        "title": "Opening Lecture Not Available",
+                        "text": result.get(
+                            "message", "Opening lecture content could not be retrieved"
+                        ),
+                        "url": None,
+                    }
+                ]
+            }
+
+    except Exception as e:
+        logger.error(f"Opening lecture tool error: {e}")
+        return {
+            "results": [
+                {
+                    "id": "internal_error",
+                    "title": "Internal Error",
+                    "text": f"An internal error occurred while retrieving opening lecture: {e!s}",
                     "url": None,
                 }
             ]

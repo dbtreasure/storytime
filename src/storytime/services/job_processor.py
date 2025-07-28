@@ -310,6 +310,7 @@ class JobProcessor:
                 job.id, "tutoring_analysis", 1, "Analyze content for tutoring capabilities"
             )
 
+            tutoring_result = None  # Initialize tutoring_result for later use
             try:
                 await self._update_job_step(
                     tutoring_step.id, StepStatus.RUNNING, started_at=datetime.utcnow()
@@ -330,7 +331,7 @@ class JobProcessor:
                     "setting": tutoring_result.setting,
                     "discussion_questions": tutoring_result.discussion_questions,
                     "content_type": tutoring_result.content_type,
-                    "analyzed_at": datetime.utcnow().isoformat()
+                    "analyzed_at": datetime.utcnow().isoformat(),
                 }
                 await self._update_job_config(job.id, job.config)
 
@@ -344,7 +345,7 @@ class JobProcessor:
                         "characters_count": len(tutoring_result.characters),
                         "questions_count": len(tutoring_result.discussion_questions),
                         "content_type": tutoring_result.content_type,
-                    }
+                    },
                 )
                 logger.info(f"Tutoring analysis completed for job {job.id}")
 
@@ -359,6 +360,67 @@ class JobProcessor:
                 # Don't fail the whole job if tutoring analysis fails
 
             # Update overall job progress (tutoring analysis complete)
+            await self._update_job_status(job.id, JobStatus.PROCESSING, progress=0.3)
+
+            # Step 2.5: Opening Lecture Generation
+            opening_lecture_step = await self._create_job_step(
+                job.id,
+                "opening_lecture_generation",
+                1.5,
+                "Generate opening lecture content for tutor sessions",
+            )
+
+            try:
+                await self._update_job_step(
+                    opening_lecture_step.id, StepStatus.RUNNING, started_at=datetime.utcnow()
+                )
+
+                # Generate opening lecture using tutoring analysis context
+                opening_lecture_result = await self.content_analyzer.analyze_for_opening_lecture(
+                    text_content, job.title, tutoring_result
+                )
+
+                # Store opening lecture in job config
+                if not job.config:
+                    job.config = {}
+                job.config["opening_lecture"] = {
+                    "introduction": opening_lecture_result.introduction,
+                    "key_concepts_overview": opening_lecture_result.key_concepts_overview,
+                    "learning_objectives": opening_lecture_result.learning_objectives,
+                    "engagement_questions": opening_lecture_result.engagement_questions,
+                    "lecture_duration_minutes": opening_lecture_result.lecture_duration_minutes,
+                    "extension_topics": opening_lecture_result.extension_topics,
+                    "generated_at": datetime.utcnow().isoformat(),
+                }
+
+                await self._update_job_step(
+                    opening_lecture_step.id,
+                    StepStatus.COMPLETED,
+                    progress=1.0,
+                    completed_at=datetime.utcnow(),
+                    step_metadata={
+                        "duration_minutes": opening_lecture_result.lecture_duration_minutes,
+                        "engagement_questions_count": len(
+                            opening_lecture_result.engagement_questions
+                        ),
+                        "extension_topics_count": len(opening_lecture_result.extension_topics),
+                    },
+                )
+                logger.info(
+                    f"Opening lecture generated for job {job.id}: {opening_lecture_result.lecture_duration_minutes} minutes"
+                )
+
+            except Exception as e:
+                logger.warning(f"Opening lecture generation failed for job {job.id}: {e}")
+                await self._update_job_step(
+                    opening_lecture_step.id,
+                    StepStatus.FAILED,
+                    error_message=str(e),
+                    completed_at=datetime.utcnow(),
+                )
+                # Don't fail the whole job if opening lecture generation fails
+
+            # Update overall job progress (opening lecture complete)
             await self._update_job_status(job.id, JobStatus.PROCESSING, progress=0.4)
 
             # Step 3: Text Preprocessing

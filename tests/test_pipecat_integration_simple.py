@@ -85,9 +85,7 @@ class TestEnhancedRealtimeVoiceAssistant:
     @patch.dict("os.environ", {"USE_PIPECAT_BACKEND": "true", "USE_ENHANCED_FEATURES": "true"})
     def test_environment_variable_detection(self):
         """Test automatic backend detection from environment variables."""
-        assistant = EnhancedRealtimeVoiceAssistant(
-            openai_api_key="test_key"
-        )
+        assistant = EnhancedRealtimeVoiceAssistant(openai_api_key="test_key")
 
         # Should auto-detect enhanced Pipecat from environment
         assert assistant.use_pipecat is True
@@ -164,10 +162,7 @@ class TestBackendCompatibility:
         ]
 
         for config in test_configs:
-            assistant = EnhancedRealtimeVoiceAssistant(
-                openai_api_key="test_key",
-                **config
-            )
+            assistant = EnhancedRealtimeVoiceAssistant(openai_api_key="test_key", **config)
 
             # Check common interface
             assert hasattr(assistant, "connect")
@@ -190,10 +185,7 @@ class TestBackendCompatibility:
         ]
 
         for config in valid_configs:
-            assistant = EnhancedRealtimeVoiceAssistant(
-                openai_api_key="test_key",
-                **config
-            )
+            assistant = EnhancedRealtimeVoiceAssistant(openai_api_key="test_key", **config)
             assert assistant.use_pipecat == config["use_pipecat"]
             assert assistant.use_enhanced_features == config["use_enhanced_features"]
 
@@ -266,10 +258,7 @@ class TestPerformanceMetrics:
         ]
 
         for backend in backends:
-            assistant = EnhancedRealtimeVoiceAssistant(
-                openai_api_key="test_key",
-                **backend
-            )
+            assistant = EnhancedRealtimeVoiceAssistant(openai_api_key="test_key", **backend)
 
             # Verify configuration was applied
             assert assistant.use_pipecat == backend["use_pipecat"]
