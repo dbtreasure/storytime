@@ -3,7 +3,9 @@ from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta
 
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import InvalidTokenError
 from pydantic import BaseModel, EmailStr
@@ -186,3 +188,39 @@ async def get_me(current_user: User = Depends(get_current_user)):
     return UserResponse(
         id=current_user.id, email=current_user.email, created_at=current_user.created_at
     )
+
+
+async def get_current_user_websocket(
+    websocket: WebSocket,
+    db: AsyncSession = Depends(get_db),
+) -> Optional[User]:
+    """
+    Authenticate user from WebSocket connection.
+    Returns None if authentication fails (allows handling in endpoint).
+    """
+    # Try to get token from query parameters or headers
+    token = None
+    
+    # Check query parameters first (common for WebSocket connections)
+    if "token" in websocket.query_params:
+        token = websocket.query_params["token"]
+    # Check Authorization header
+    elif "authorization" in websocket.headers:
+        auth = websocket.headers["authorization"]
+        if auth.startswith("Bearer "):
+            token = auth[7:]
+    
+    if not token:
+        return None
+    
+    try:
+        payload = jwt.decode(token, get_settings().jwt_secret_key, algorithms=["HS256"])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            return None
+    except InvalidTokenError:
+        return None
+    
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    return user

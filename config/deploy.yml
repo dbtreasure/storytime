@@ -88,11 +88,6 @@ proxy:
     interval: 10
     timeout: 10
 
-# Additional port mapping for WebSocket
-# Note: Kamal proxy handles HTTP/HTTPS, but WebSocket needs direct port access
-# We need to expose 8765 for voice assistant WebSocket connections
-publish:
-  - "8765:8765"
 
 # Builder configuration
 builder:

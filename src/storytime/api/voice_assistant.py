@@ -41,17 +41,16 @@ def _get_websocket_url(request: Request) -> str:
     env = os.getenv("ENV", "dev")
     
     if env == "production":
-        # Production uses HTTPS domain with WSS
-        return "wss://plinytheai.com:8765"
+        # Production uses WSS through the main HTTPS endpoint
+        return "wss://plinytheai.com/ws/voice-assistant"
     elif env == "docker":
-        # Docker environment - use host from request but with WebSocket port
+        # Docker environment - use host from request
         host = request.headers.get("host", "localhost:8000")
-        # Remove port if present, add WebSocket port
-        host_without_port = host.split(":")[0]
-        return f"ws://{host_without_port}:8765"
+        return f"ws://{host}/ws/voice-assistant"
     else:
-        # Development - standard localhost
-        return "ws://localhost:8765"
+        # Development - use proxy endpoint for authentication
+        host = request.headers.get("host", "localhost:8000")
+        return f"ws://{host}/ws/voice-assistant"
 
 
 async def _create_context_aware_instructions(

@@ -17,6 +17,8 @@ from .progress import router as progress_router
 from .settings import get_settings
 from .streaming import router as streaming_router
 from .voice_assistant import router as voice_assistant_router
+from .voice_assistant import _initialize_assistant
+from .websocket_proxy import router as websocket_router
 
 settings = get_settings()
 
@@ -61,6 +63,22 @@ app.include_router(streaming_router)
 app.include_router(progress_router)
 app.include_router(knowledge_router)
 app.include_router(voice_assistant_router)
+app.include_router(websocket_router)
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize services on startup."""
+    # Auto-start voice assistant in production
+    if settings.env == "production":
+        try:
+            logger.info("Starting voice assistant service in production...")
+            await _initialize_assistant()
+            logger.info("Voice assistant service started successfully")
+        except Exception as e:
+            logger.error(f"Failed to start voice assistant: {e}")
+            # Don't fail startup if voice assistant fails
+            pass
 
 
 @app.get("/api/health", tags=["Utility"])

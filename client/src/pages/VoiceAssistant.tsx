@@ -206,8 +206,19 @@ const VoiceAssistant: React.FC = () => {
       const response = await apiClient.post('/api/v1/voice-assistant/connect');
       const connectionData = response.data;
       
+      // Get JWT token for WebSocket authentication
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+      
+      // Append token as query parameter for WebSocket authentication
+      const wsUrl = new URL(connectionData.connectionUrl);
+      wsUrl.searchParams.append('token', token);
+      
+      // Connect directly to WebSocket URL with token in query params
       await pipecatClientRef.current.connect({ 
-        connectionUrl: connectionData.connectionUrl 
+        connectionUrl: wsUrl.toString()
       });
 
       console.log('Successfully connected to Pipecat voice assistant');
