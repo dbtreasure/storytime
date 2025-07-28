@@ -44,8 +44,8 @@ COPY alembic /app/alembic
 COPY alembic.ini /app/alembic.ini
 RUN mkdir -p /app/static && cp -r /app/client/dist/* /app/static/
 
-# Expose API port
-EXPOSE 8000
+# Expose API port and WebSocket port
+EXPOSE 8000 8765
 
 # Set Python path so 'src' is importable
 ENV PYTHONPATH=/app/src

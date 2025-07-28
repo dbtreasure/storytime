@@ -2,8 +2,9 @@
 
 import asyncio
 import logging
+import os
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from ..database import AsyncSessionLocal, Job, User
@@ -33,6 +34,24 @@ _mcp_functions: dict[str, callable] = {}
 _mcp_client = None
 _current_user: User | None = None
 _user_jwt_token: str | None = None
+
+
+def _get_websocket_url(request: Request) -> str:
+    """Construct environment-aware WebSocket URL."""
+    env = os.getenv("ENV", "dev")
+    
+    if env == "production":
+        # Production uses HTTPS domain with WSS
+        return "wss://plinytheai.com:8765"
+    elif env == "docker":
+        # Docker environment - use host from request but with WebSocket port
+        host = request.headers.get("host", "localhost:8000")
+        # Remove port if present, add WebSocket port
+        host_without_port = host.split(":")[0]
+        return f"ws://{host_without_port}:8765"
+    else:
+        # Development - standard localhost
+        return "ws://localhost:8765"
 
 
 async def _create_context_aware_instructions(
@@ -192,6 +211,7 @@ async def _initialize_assistant(
 
 @router.post("/start")
 async def start_assistant(
+    http_request: Request,
     request: VoiceAssistantStartRequest = VoiceAssistantStartRequest(),
     user: User = Depends(get_current_user),
 ):
@@ -206,7 +226,7 @@ async def start_assistant(
         return {
             "status": "started",
             "message": f"Standard Pipecat assistant started successfully for user {user.email}{context_msg}",
-            "websocket_url": "ws://localhost:8765",  # Standard Pipecat port
+            "websocket_url": _get_websocket_url(http_request),
             "mcp_integration": "enabled" if _mcp_client else "disabled",
             "mcp_functions": list(_mcp_functions.keys()) if _mcp_functions else [],
             "context": {"mode": request.mode, "jobId": request.jobId},
@@ -229,7 +249,7 @@ async def stop_assistant():
 
 
 @router.get("/status")
-async def get_status():
+async def get_status(request: Request):
     """Get the status of the standard Pipecat assistant."""
     global _assistant_manager
 
@@ -237,14 +257,14 @@ async def get_status():
 
     return {
         "status": "running" if is_running else "stopped",
-        "websocket_url": "ws://localhost:8765" if is_running else None,  # Standard Pipecat port
+        "websocket_url": _get_websocket_url(request) if is_running else None,
         "mcp_functions": list(_mcp_functions.keys()) if _mcp_functions else [],
         "architecture": "Standard Pipecat with official components",
     }
 
 
 @router.post("/connect")
-async def connect_to_assistant(user: User = Depends(get_current_user)):
+async def connect_to_assistant(request: Request, user: User = Depends(get_current_user)):
     """Connect endpoint for Pipecat client library - requires authentication."""
     global _assistant_manager
 
@@ -256,7 +276,7 @@ async def connect_to_assistant(user: User = Depends(get_current_user)):
     logger.info(f"User {user.email} connecting to voice assistant")
 
     # Return connection info for Pipecat client (only connectionUrl allowed)
-    return {"connectionUrl": "ws://localhost:8765"}
+    return {"connectionUrl": _get_websocket_url(request)}
 
 
 @router.get("/health")
