@@ -23,8 +23,6 @@ servers:
   web:
     hosts:
       - 129.212.136.218
-    options:
-      publish: "8765:8765"
   worker:
     hosts:
       - 129.212.136.218
