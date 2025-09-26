@@ -1,0 +1,31 @@
+EXTRACTED CONTENT FROM JOB b93ab642-996b-4943-bf8d-5b22558aa942
+================================================================
+
+Total characters extracted: 33,803
+Total words extracted: 6,196
+Source: Mere Orthodoxy article
+
+First 500 characters of extracted content:
+-------------------------------------------
+Mere Orthodoxy | Christianity, Politics, and Culture
+
+The Birth of Comedy
+Written by Susannah Black Roberts | Aug 11, 2015 11:00:00 AM
+Originally published August 25, 2023
+
+God guards us, as in a treasury, things far more glorious than any yet seen by sun, moon, or angels; and he will bring these things to light when all creation has been freed from bondage to the enemy, and brought into the liberty of the brightness of the children of God.
+
+-Origen
+
+The Road to Hades
+
+Key Statistics:
+--------------
+- Successfully scraped using Playwright screenshot capture
+- Sent screenshot to Gemini Flash for text extraction
+- Extracted 33,803 characters / 6,196 words
+- Processed into 9 chunks for TTS generation
+- Generated 8.26 MB audio file
+- Total processing time: ~11 minutes
+
+This demonstrates that the new Playwright + Gemini Flash implementation is working correctly and can extract substantial content from web pages. The previous issue with the New Yorker URL was that it returned a 404 page, not a problem with the scraper itself.

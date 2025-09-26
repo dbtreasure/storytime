@@ -3,7 +3,7 @@
 import logging
 from typing import Any
 
-import google.generativeai as genai
+from google import genai
 
 from storytime.api.settings import get_settings
 
@@ -22,12 +22,9 @@ class PreprocessingService:
             self.client = None
             return
 
-        # Configure Google Gemini API
-        genai.configure(api_key=settings.google_api_key)
-
-        # Initialize the model (using Gemini 2.5 Pro for best performance)
-        self.model = genai.GenerativeModel("gemini-2.5-pro")
-        self.client = True
+        # Initialize Google Gemini client
+        self.client = genai.Client(api_key=settings.google_api_key)
+        self.model_name = "gemini-2.0-flash-exp"  # Using Flash for faster response
         logger.info("Gemini preprocessing service initialized")
 
     async def preprocess_text(
@@ -69,7 +66,10 @@ class PreprocessingService:
             logger.info("Calling Gemini API for text preprocessing...")
 
             # Generate response from Gemini
-            response = self.model.generate_content(prompt)
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt
+            )
 
             if not response.text:
                 logger.warning("Gemini returned empty response, using original text")

@@ -290,6 +290,17 @@ class JobProcessor:
             else:
                 raise ValueError("No text content, file, or URL provided")
 
+            # Save the extracted text to DigitalOcean Spaces for comparison/debugging
+            text_key = f"jobs/{job.id}/text.txt"
+            try:
+                await self.spaces_client.upload_text_file(
+                    text_key,
+                    text_content
+                )
+                logger.info(f"Saved extracted text to Spaces: {text_key}")
+            except Exception as e:
+                logger.warning(f"Failed to save text to Spaces: {e}")
+
             # Complete content acquisition step
             await self._update_job_step(
                 content_step.id,
@@ -299,6 +310,7 @@ class JobProcessor:
                 step_metadata={
                     "content_source": content_source,
                     "character_count": len(text_content),
+                    "text_saved_to": text_key,
                 },
             )
 
